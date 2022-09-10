@@ -25,8 +25,8 @@ const LETTERS = `abcdefghijklmnopqrstuvwxyz`;
 const SYMBOLS = `;.!:_-,?/'*+#%&^"|~$=<>\`@\\`;
 const RE =
   /(?<lower>[a-z\d]+)|(?<upper>[A-Z\d]+)|(?<symbol>[!"#$%&'()*+,\-./:;<=>?@\[\\\]^_`{|}~]+)|(?<space> )|(?<other>[^!"#$%&'()*+,\-./:;<=>?@\[\\\]^_`{|}~\w]+)/g;
-const { keys, values, entries, fromEntries } = Object;
-const { stringify, parse } = JSON;
+const {keys, values, entries, fromEntries} = Object;
+const {stringify, parse} = JSON;
 
 const SIGILS = {
   true: `!''`,
@@ -78,7 +78,7 @@ function isLowerCase(x: string): string {
 function encodeLetter(char: string): string {
   return (
     (isUpperCase(char) ? '$' : '_') +
-    SYMBOLS[LETTERS.indexOf(char.toLowerCase())]
+      SYMBOLS[LETTERS.indexOf(char.toLowerCase())]
     |> JSON.stringify(%)
   );
 }
@@ -87,10 +87,16 @@ function encodeLetter(char: string): string {
 function encodeString(key: string, globalVar = '$'): string {
   return key
     .split('')
-    .map((char: string): string =>
-      char |> encodeLetter(%) |> (!'$_'.includes(%)
-        ? `\${${globalVar}[${encodeLetter(char, globalVar)}]}`
-        : `\${${globalVar}.${encodeLetter(char, globalVar).replace('"', '')}}`)
+    .map(
+      (char: string): string =>
+        char
+        |> encodeLetter(%)
+        |> (!'$_'.includes(%)
+          ? `\${${globalVar}[${encodeLetter(char, globalVar)}]}`
+          : `\${${globalVar}.${encodeLetter(char, globalVar).replace(
+              '"',
+              ''
+            )}}`)
     )
     .join('');
 }
@@ -140,13 +146,14 @@ function generateHeader(globalVar = '$') {
         _.range(10)
         |> %.map((num: number) => [
           `${encodeNumber(num)}:++${globalVar}+[]`,
-          `${CHARMAP
-          |> entries(%)
-          |> %.filter(([, [, val]]) => (val: number) == num)
-          |> %.map(
-            ([char, [lit]]) =>
-              `${encodeLetter(char)}:\`\${${lit}}\`[${globalVar}]`
-          )
+          `${
+            CHARMAP
+            |> entries(%)
+            |> %.filter(([, [, val]]) => (val: number) == num)
+            |> %.map(
+              ([char, [lit]]) =>
+                `${encodeLetter(char)}:\`\${${lit}}\`[${globalVar}]`
+            )
           }`,
         ])
         |> %.flat()
@@ -195,14 +202,15 @@ function generateHeader(globalVar = '$') {
     Function: `(()=>{})`,
   };
 
-  var SIGILS = { ...SET1, ...LITERALS, space: '_' };
+  var SIGILS = {...SET1, ...LITERALS, space: '_'};
 
   const STEP2 = () => {
-    const { CHARMAP } = STEP1(),
-      CHARMAP1: { [key: string]: any } = {};
+    const {CHARMAP} = STEP1(),
+      CHARMAP1: {[key: string]: any} = {};
 
     for (const expr of LITERALS |> values(%)) {
-      const constructor = expr |> `(${%})` |> eval(%) |> %.constructor |> String(%);
+      const constructor =
+        expr |> `(${%})` |> eval(%) |> %.constructor |> String(%);
 
       for (const char of constructor)
         if (
@@ -216,16 +224,17 @@ function generateHeader(globalVar = '$') {
     for (const [char, [expr, index]] of CHARMAP1 |> entries(%)) {
       CHARMAP1[char] =
         `\`\${${expr}[${globalVar}.$]}\`[\`` +
-        `${index
-        |> %.toString()
-        |> %.split('')
-        |> %.map((digit) => `\${${`${globalVar}.${encodeNumber(digit)}`}}`)
-        |> %.join('')
+        `${
+          index
+          |> %.toString()
+          |> %.split('')
+          |> %.map(digit => `\${${`${globalVar}.${encodeNumber(digit)}`}}`)
+          |> %.join('')
         }\`]`;
     }
 
     return {
-      CHARMAP: { ...CHARMAP, ...CHARMAP1 },
+      CHARMAP: {...CHARMAP, ...CHARMAP1},
       RESULT:
         CHARMAP1
         |> entries(%)
@@ -281,7 +290,7 @@ function generateHeader(globalVar = '$') {
     toString: ':',
   };
 
-  const encodeWords = (words) =>
+  const encodeWords = words =>
     entries(words)
       .map(([key, val]) => [val, encodeString(key, globalVar)])
       .map(([key, val]) => `${globalVar}[${stringify(key)}]=\`${val}\``)
@@ -299,9 +308,10 @@ function generateHeader(globalVar = '$') {
           '=' +
           LITERALS.Function +
           `[${globalVar}.${SIGILS.constructor}]` + // Function calls
-          `(\`${`\${${globalVar}[${stringify(SIGILS.return)}]}` +
-          `\${${globalVar}.${SIGILS.space}}` +
-          `\${${globalVar}[${stringify(sigil)}]}`
+          `(\`${
+            `\${${globalVar}[${stringify(SIGILS.return)}]}` +
+            `\${${globalVar}.${SIGILS.space}}` +
+            `\${${globalVar}[${stringify(sigil)}]}`
           }\`)` +
           '()'
       )
@@ -382,7 +392,7 @@ function generateHeader(globalVar = '$') {
 
   const STEP5 = () => {
     let RESULT = {};
-    let CHARMAP = { ...STEP2().CHARMAP, C: '', D: '', U: '' };
+    let CHARMAP = {...STEP2().CHARMAP, C: '', D: '', U: ''};
     CHARMAP = keys(CHARMAP)
       .sort((a, b) => a.localeCompare(b))
       .join('');
@@ -402,9 +412,11 @@ function generateHeader(globalVar = '$') {
           let index =
             LETTERS.indexOf(char[0].toLowerCase()) + 10
             |> [...`${%}`]
-            |> %.map((x) => '${' + `${globalVar + '.' + encodeNumber(x)}` + '}')
+            |> %.map(x => '${' + `${globalVar + '.' + encodeNumber(x)}` + '}')
             |> %.join('')
-            |> '(+`' + % + '`)';
+            |> '(+`' +
+            % +
+            '`)';
 
           index = `${index}[${globalVar}[${stringify(
             SIGILS.toString
@@ -438,7 +450,7 @@ function generateHeader(globalVar = '$') {
 
     RESULT = Object.values(RESULT).join(SEP);
 
-    return { RESULT };
+    return {RESULT};
   };
 
   let HEADER = [
@@ -461,17 +473,18 @@ function generateHeader(globalVar = '$') {
     STEP2().RESULT,
 
     // Second set of words
-    encodeWords({ ...SET2, ...FUNCTIONS1 }),
+    encodeWords({...SET2, ...FUNCTIONS1}),
 
     // Built-in functions and more words
     STEP3().RESULT,
 
     // toString method
     globalVar +
-    `[${stringify(SIGILS.toString)}]` +
-    '=' +
-    `\`${encodeString('to', globalVar)}\${''[${globalVar}.${SIGILS.constructor
-    }][${globalVar}[${stringify(SIGILS.name)}]]}\``,
+      `[${stringify(SIGILS.toString)}]` +
+      '=' +
+      `\`${encodeString('to', globalVar)}\${''[${globalVar}.${
+        SIGILS.constructor
+      }][${globalVar}[${stringify(SIGILS.name)}]]}\``,
 
     // C, D, and U
     STEP4().RESULT,
@@ -486,13 +499,13 @@ function generateHeader(globalVar = '$') {
 
     // x => x.map(y => y.toString(36)).join('')
     globalVar +
-    `[${globalVar}.${SIGILS.space}]` +
-    '=' +
-    `$${globalVar}=>$${globalVar}` +
-    `[${globalVar}[${stringify(SIGILS.map)}]]($_${globalVar}=>` +
-    `$_${globalVar}[${globalVar}` +
-    `[${stringify(SIGILS.toString)}]](_${globalVar}))` +
-    `[${globalVar}[${stringify(SIGILS.join)}]]('')`,
+      `[${globalVar}.${SIGILS.space}]` +
+      '=' +
+      `$${globalVar}=>$${globalVar}` +
+      `[${globalVar}[${stringify(SIGILS.map)}]]($_${globalVar}=>` +
+      `$_${globalVar}[${globalVar}` +
+      `[${stringify(SIGILS.toString)}]](_${globalVar}))` +
+      `[${globalVar}[${stringify(SIGILS.join)}]]('')`,
   ].join(SEP);
 
   /** POSTPROCESSING
@@ -500,7 +513,7 @@ function generateHeader(globalVar = '$') {
    */
   HEADER = HEADER.replace(
     /\["([_$]+)"\]/g,
-    (p1) => '.' + p1.replace(/["\[\]]/g, '')
+    p1 => '.' + p1.replace(/["\[\]]/g, '')
   );
 
   return HEADER + ';'; // + globalVar + "['`'](" + globalVar + ')'
@@ -510,8 +523,9 @@ function parseText(text: string, globalVar = '$') {
   const GROUPS = text.matchAll(RE);
   let RESULT: string[] = [];
 
-  for (const { groups: GROUP } of GROUPS) {
-    let [[group, value]] = GROUP |> entries(%) |> %.filter(([, v]) => v != null);
+  for (const {groups: GROUP} of GROUPS) {
+    let [[group, value]] =
+      GROUP |> entries(%) |> %.filter(([, v]) => v != null);
 
     switch (group) {
       case 'lower': {
@@ -519,16 +533,17 @@ function parseText(text: string, globalVar = '$') {
           value.match(/.{5}|.+/g)
           |> Array.from(%)
           |> %.map(
-            (x) =>
+            x =>
               parseInt(x, 36)
               |> `${%}`.split('')
-              |> %.map((x) => x |> encodeNumber(%) |> `${globalVar}.${%}`)
+              |> %.map(x => x |> encodeNumber(%) |> `${globalVar}.${%}`)
               |> %.join('+')
               |> `+(${%})`
           )
           |> %.join();
 
         encoded = `${globalVar}[${globalVar}.${SIGILS.space}]([${encoded}])`;
+
         RESULT.push(encoded);
         break;
       }
@@ -538,10 +553,10 @@ function parseText(text: string, globalVar = '$') {
           value.match(/.{5}|.+/g)
           |> Array.from(%)
           |> %.map(
-            (x) =>
+            x =>
               parseInt(x, 36)
               |> `${%}`.split('')
-              |> %.map((x) => x |> encodeNumber(%) |> `${globalVar}.${%}`)
+              |> %.map(x => x |> encodeNumber(%) |> `${globalVar}.${%}`)
               |> %.join('+')
               |> `+(${%})`
           )
@@ -559,10 +574,11 @@ function parseText(text: string, globalVar = '$') {
       case 'other': {
         const codePoints =
           value
-          |> jsesc(%, { quotes: 'double' })
+          |> jsesc(%, {quotes: 'double'})
           |> `"${%}"`.toLowerCase()
           |> parseText(%, globalVar)
           |> `${globalVar}[${stringify(SIGILS.eval)}](${%})`;
+
         RESULT.push(codePoints);
         break;
       }
@@ -579,7 +595,7 @@ function parseText(text: string, globalVar = '$') {
     }
   }
 
-  RESULT = RESULT.map((x) => `\${${x}}`).join('') |> `\`${%}\``;
+  RESULT = RESULT.map(x => `\${${x}}`).join('') |> `\`${%}\``;
   return RESULT;
 }
 
@@ -595,4 +611,4 @@ export function obfuscate(text: string, globalVar = ''): string {
   );
 }
 
-fs.writeFileSync('./run.js', obfuscate(text, gv))
+fs.writeFileSync('./run.js', obfuscate(text, gv));
