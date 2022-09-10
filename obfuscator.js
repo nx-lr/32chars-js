@@ -1,5 +1,5 @@
 import _ from 'lodash';
-// import { highlight } from 'cli-highlight';
+import {highlight} from 'cli-highlight';
 import jsesc from 'jsesc';
 import punycode from 'punycode';
 import Chance from 'chance';
@@ -598,9 +598,6 @@ function parseText(text: string, globalVar = '$') {
   RESULT = RESULT.map(x => `\${${x}}`).join('') |> `\`${%}\``;
   return RESULT;
 }
-
-// obfuscate(text, gv) |> console.log(#);
-// // |> highlight(#, { language: 'js' })
 
 export function obfuscate(text: string, globalVar = ''): string {
   return (
