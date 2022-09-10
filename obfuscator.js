@@ -3,7 +3,6 @@ import _ from 'lodash';
 import jsesc from 'jsesc';
 import punycode from 'punycode';
 import Chance from 'chance';
-import seedrandom from 'seedrandom';
 import fs from 'fs';
 
 const text = fs.readFileSync('./test.txt', 'utf8');
@@ -80,7 +79,7 @@ function encodeLetter(char: string): string {
   return (
     (isUpperCase(char) ? '$' : '_') +
     SYMBOLS[LETTERS.indexOf(char.toLowerCase())]
-    |> JSON.stringify(#)
+    |> JSON.stringify(%)
   );
 }
 
@@ -89,7 +88,7 @@ function encodeString(key: string, globalVar = '$'): string {
   return key
     .split('')
     .map((char: string): string =>
-      char |> encodeLetter(#) |> (!'$_'.includes(#)
+      char |> encodeLetter(%) |> (!'$_'.includes(%)
         ? `\${${globalVar}[${encodeLetter(char, globalVar)}]}`
         : `\${${globalVar}.${encodeLetter(char, globalVar).replace('"', '')}}`)
     )
@@ -100,7 +99,7 @@ function encodeString(key: string, globalVar = '$'): string {
 function encodeNumber(num: number | string): string {
   return (
     parseInt(num).toString(2).padStart(3, 0)
-    |> #.replace(/(?<$0>0)|(?<$1>1)/g, ($0, $1) => ($0 == 1 ? '$' : '_'))
+    |> %.replace(/(?<$0>0)|(?<$1>1)/g, ($0, $1) => ($0 == 1 ? '$' : '_'))
   );
 }
 
@@ -130,7 +129,7 @@ function generateHeader(globalVar = '$') {
   const STEP1 = () => {
     const CHARMAP = {};
 
-    for (const [constant, expression] of CONSTANTS |> entries(#))
+    for (const [constant, expression] of CONSTANTS |> entries(%))
       for (const char of constant)
         if (!(char in CHARMAP) && /[a-z]/i.test(char))
           CHARMAP[char] = [expression, constant.indexOf(char)];
@@ -139,20 +138,20 @@ function generateHeader(globalVar = '$') {
       CHARMAP,
       RESULT:
         _.range(10)
-        |> #.map((num: number) => [
+        |> %.map((num: number) => [
           `${encodeNumber(num)}:++${globalVar}+[]`,
           `${CHARMAP
-          |> entries(#)
-          |> #.filter(([, [, val]]) => (val: number) == num)
-          |> #.map(
+          |> entries(%)
+          |> %.filter(([, [, val]]) => (val: number) == num)
+          |> %.map(
             ([char, [lit]]) =>
               `${encodeLetter(char)}:\`\${${lit}}\`[${globalVar}]`
           )
           }`,
         ])
-        |> #.flat()
-        |> #.join()
-        |> #.replace(/,+/g, ','),
+        |> %.flat()
+        |> %.join()
+        |> %.replace(/,+/g, ','),
     };
   };
 
@@ -202,8 +201,8 @@ function generateHeader(globalVar = '$') {
     const { CHARMAP } = STEP1(),
       CHARMAP1: { [key: string]: any } = {};
 
-    for (const expr of LITERALS |> values(#)) {
-      const constructor = expr |> `(${#})` |> eval(#) |> #.constructor |> String(#);
+    for (const expr of LITERALS |> values(%)) {
+      const constructor = expr |> `(${%})` |> eval(%) |> %.constructor |> String(%);
 
       for (const char of constructor)
         if (
@@ -214,14 +213,14 @@ function generateHeader(globalVar = '$') {
           CHARMAP1[char] = [expr, constructor.indexOf(char, globalVar)];
     }
 
-    for (const [char, [expr, index]] of CHARMAP1 |> entries(#)) {
+    for (const [char, [expr, index]] of CHARMAP1 |> entries(%)) {
       CHARMAP1[char] =
         `\`\${${expr}[${globalVar}.$]}\`[\`` +
         `${index
-        |> #.toString()
-        |> #.split('')
-        |> #.map((digit) => `\${${`${globalVar}.${encodeNumber(digit)}`}}`)
-        |> #.join('')
+        |> %.toString()
+        |> %.split('')
+        |> %.map((digit) => `\${${`${globalVar}.${encodeNumber(digit)}`}}`)
+        |> %.join('')
         }\`]`;
     }
 
@@ -229,9 +228,9 @@ function generateHeader(globalVar = '$') {
       CHARMAP: { ...CHARMAP, ...CHARMAP1 },
       RESULT:
         CHARMAP1
-        |> entries(#)
-        |> #.map(([key, val]) => `${globalVar}[${encodeLetter(key)}]=${val}`)
-        |> #.join(SEP),
+        |> entries(%)
+        |> %.map(([key, val]) => `${globalVar}[${encodeLetter(key)}]=${val}`)
+        |> %.join(SEP),
     };
   };
 
@@ -291,8 +290,8 @@ function generateHeader(globalVar = '$') {
   const STEP3 = () => ({
     RESULT:
       FUNCTIONS1
-      |> entries(#)
-      |> #.map(
+      |> entries(%)
+      |> %.map(
         ([name, sigil]) =>
           // Function constructor
           globalVar +
@@ -306,7 +305,7 @@ function generateHeader(globalVar = '$') {
           }\`)` +
           '()'
       )
-      |> #.join(SEP),
+      |> %.join(SEP),
   });
 
   /**
@@ -369,11 +368,11 @@ function generateHeader(globalVar = '$') {
     return {
       RESULT:
         CHARS
-        |> entries(#)
-        |> #.map(
+        |> entries(%)
+        |> %.map(
           ([key, val]) => globalVar + `[${encodeLetter(key)}]` + '=' + val
         )
-        |> #.join(SEP),
+        |> %.join(SEP),
     };
   };
 
@@ -402,10 +401,10 @@ function generateHeader(globalVar = '$') {
           // Index of letter in alphabet
           let index =
             LETTERS.indexOf(char[0].toLowerCase()) + 10
-            |> [...`${#}`]
-            |> #.map((x) => '${' + `${globalVar + '.' + encodeNumber(x)}` + '}')
-            |> #.join('')
-            |> '(+`' + # + '`)';
+            |> [...`${%}`]
+            |> %.map((x) => '${' + `${globalVar + '.' + encodeNumber(x)}` + '}')
+            |> %.join('')
+            |> '(+`' + % + '`)';
 
           index = `${index}[${globalVar}[${stringify(
             SIGILS.toString
@@ -512,22 +511,22 @@ function parseText(text: string, globalVar = '$') {
   let RESULT: string[] = [];
 
   for (const { groups: GROUP } of GROUPS) {
-    let [[group, value]] = GROUP |> entries(#) |> #.filter(([, v]) => v != null);
+    let [[group, value]] = GROUP |> entries(%) |> %.filter(([, v]) => v != null);
 
     switch (group) {
       case 'lower': {
         let encoded =
           value.match(/.{5}|.+/g)
-          |> Array.from(#)
-          |> #.map(
+          |> Array.from(%)
+          |> %.map(
             (x) =>
               parseInt(x, 36)
-              |> `${#}`.split('')
-              |> #.map((x) => x |> encodeNumber(#) |> `${globalVar}.${#}`)
-              |> #.join('+')
-              |> `+(${#})`
+              |> `${%}`.split('')
+              |> %.map((x) => x |> encodeNumber(%) |> `${globalVar}.${%}`)
+              |> %.join('+')
+              |> `+(${%})`
           )
-          |> #.join();
+          |> %.join();
 
         encoded = `${globalVar}[${globalVar}.${SIGILS.space}]([${encoded}])`;
         RESULT.push(encoded);
@@ -537,16 +536,16 @@ function parseText(text: string, globalVar = '$') {
       case 'upper': {
         let encoded =
           value.match(/.{5}|.+/g)
-          |> Array.from(#)
-          |> #.map(
+          |> Array.from(%)
+          |> %.map(
             (x) =>
               parseInt(x, 36)
-              |> `${#}`.split('')
-              |> #.map((x) => x |> encodeNumber(#) |> `${globalVar}.${#}`)
-              |> #.join('+')
-              |> `+(${#})`
+              |> `${%}`.split('')
+              |> %.map((x) => x |> encodeNumber(%) |> `${globalVar}.${%}`)
+              |> %.join('+')
+              |> `+(${%})`
           )
-          |> #.join();
+          |> %.join();
 
         encoded = `${globalVar}[${globalVar}.${SIGILS.space}]([${encoded}])`;
         encoded += encoded = `[${globalVar}[${stringify(
@@ -560,10 +559,10 @@ function parseText(text: string, globalVar = '$') {
       case 'other': {
         const codePoints =
           value
-          |> jsesc(#, { quotes: 'double' })
-          |> `"${#}"`.toLowerCase()
-          |> parseText(#, globalVar)
-          |> `${globalVar}[${stringify(SIGILS.eval)}](${#})`;
+          |> jsesc(%, { quotes: 'double' })
+          |> `"${%}"`.toLowerCase()
+          |> parseText(%, globalVar)
+          |> `${globalVar}[${stringify(SIGILS.eval)}](${%})`;
         RESULT.push(codePoints);
         break;
       }
@@ -580,7 +579,7 @@ function parseText(text: string, globalVar = '$') {
     }
   }
 
-  RESULT = RESULT.map((x) => `\${${x}}`).join('') |> `\`${#}\``;
+  RESULT = RESULT.map((x) => `\${${x}}`).join('') |> `\`${%}\``;
   return RESULT;
 }
 
@@ -596,4 +595,4 @@ export function obfuscate(text: string, globalVar = ''): string {
   );
 }
 
-fs.writeFileSync('./console.js', obfuscate(text, gv))
+fs.writeFileSync('./run.js', obfuscate(text, gv))
