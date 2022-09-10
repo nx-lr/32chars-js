@@ -1,0 +1,172 @@
+{
+    "name": "@saga/core",
+    "version": "1.0.0",
+    "main": "index.js",
+    "scripts": {
+      "start": "nodemon --exec babel-node index.js",
+      "flow": "flow",
+      "test": "echo \"Error: no test specified\" && exit 1"
+    },
+    "directories": {
+      "doc": "docs",
+      "test": "tests"
+    },
+    "engines": {
+      "vscode": "^1.58.0"
+    },
+    "categories": [
+      "Programming Languages",
+      "Themes"
+    ],
+    "contributes": {
+      "languages": [
+        {
+          "id": "saga",
+          "aliases": [
+            "Saga",
+            "saga"
+          ],
+          "extensions": [
+            ".saga"
+          ],
+          "configuration": "./language-configuration.json"
+        }
+      ],
+      "grammars": [
+        {
+          "language": "saga",
+          "scopeName": "source.saga",
+          "path": "./syntaxes/saga.tmLanguage.json"
+        }
+      ],
+      "themes": [
+        {
+          "label": "Saga",
+          "uiTheme": "vs-dark",
+          "path": "./themes/Saga-color-theme.json"
+        }
+      ]
+    },
+    "dependencies": {
+      "@babel/cli": "^7.13.16",
+      "@babel/core": "^7.13.16",
+      "@babel/node": "^7.13.13",
+      "@babel/plugin-proposal-class-properties": "^7.13.0",
+      "@babel/plugin-proposal-class-static-block": "^7.13.11",
+      "@babel/plugin-proposal-decorators": "^7.13.15",
+      "@babel/plugin-proposal-do-expressions": "^7.12.13",
+      "@babel/plugin-proposal-export-default-from": "^7.12.13",
+      "@babel/plugin-proposal-function-bind": "^7.12.13",
+      "@babel/plugin-proposal-function-sent": "^7.12.13",
+      "@babel/plugin-proposal-partial-application": "^7.12.13",
+      "@babel/plugin-proposal-pipeline-operator": "^7.12.13",
+      "@babel/plugin-proposal-private-methods": "^7.13.0",
+      "@babel/plugin-proposal-private-property-in-object": "^7.13.0",
+      "@babel/plugin-proposal-record-and-tuple": "^7.13.0",
+      "@babel/plugin-proposal-throw-expressions": "^7.12.13",
+      "@babel/plugin-transform-exponentiation-operator": "^7.12.13",
+      "@babel/preset-env": "^7.13.15",
+      "@babel/preset-flow": "^7.13.13",
+      "@babel/preset-react": "^7.13.13",
+      "@babel/preset-typescript": "^7.13.0",
+      "@bloomberg/record-tuple-polyfill": "^0.0.3",
+      "@iarna/toml": "^2.2.5",
+      "@unicode/unicode-13.0.0": "^1.2.0",
+      "aglfn": "^1.0.2",
+      "babel-plugin-operators-chaining": "^0.0.3",
+      "chalk": "^4.1.1",
+      "chance": "^1.1.7",
+      "chevrotain": "^9.0.1",
+      "chroma-js": "^2.1.2",
+      "coffeescript": "^2.5.1",
+      "color-hash": "^2.0.1",
+      "color-name-list": "^8.13.0",
+      "core-js": "^2.6.12",
+      "cspell": "^5.9.0",
+      "expand-brackets": "^2.1.4",
+      "flat": "^5.0.2",
+      "futil-js": "^1.67.3",
+      "genex": "^1.1.0",
+      "glob": "^7.1.7",
+      "highlight.js": "^10.7.2",
+      "html-entities": "^2.3.2",
+      "immutable": "^4.0.0-rc.12",
+      "itertools": "^1.7.0",
+      "itt": "^0.7.3",
+      "javascript-stringify": "^2.1.0",
+      "js-yaml": "^4.1.0",
+      "jsesc": "^2.5.2",
+      "json-beautify": "^1.1.1",
+      "lazy.js": "^0.5.1",
+      "licia": "^1.28.0",
+      "locutus": "^2.0.14",
+      "lodash": "^4.17.20",
+      "mori": "^0.3.2",
+      "prettier": "^2.2.1",
+      "punycode": "^2.1.1",
+      "ramda": "^0.27.1",
+      "randexp": "^0.5.3",
+      "random": "^2.2.0",
+      "readable-glyph-names": "^1.1.0",
+      "regexgen": "^1.3.0",
+      "seedrandom": "^3.0.5",
+      "string": "^3.3.3",
+      "strip-comments": "^2.0.1",
+      "tinycolor2": "^1.4.2",
+      "underscore": "^1.12.0",
+      "underscore.string": "^3.3.5",
+      "unflatten": "^1.0.4",
+      "voca": "^1.4.0",
+      "word-list": "^3.1.0",
+      "xregexp": "^4.4.1",
+      "yaml": "^1.10.0"
+    },
+    "keywords": [],
+    "author": "",
+    "license": "ISC",
+    "description": "",
+    "prettier": {
+      "printWidth": 80,
+      "trailingComma": "es5",
+      "tabWidth": 2,
+      "semi": true,
+      "singleQuote": true,
+      "arrowParens": "avoid",
+      "bracketSpacing": false,
+      "jsxBracketSameLine": true
+    },
+    "babel": {
+      "presets": [
+        "@babel/preset-env",
+        "@babel/preset-flow",
+        "@babel/preset-typescript",
+        "@babel/preset-react"
+      ],
+      "plugins": [
+        [
+          "@babel/plugin-proposal-pipeline-operator",
+          {
+            "proposal": "hack",
+            "topicToken": "#"
+          }
+        ],
+        "@babel/plugin-proposal-class-properties",
+        "@babel/plugin-proposal-class-static-block",
+        [
+          "@babel/plugin-proposal-decorators",
+          {
+            "decoratorsBeforeExport": true
+          }
+        ],
+        "@babel/plugin-proposal-do-expressions",
+        "@babel/plugin-proposal-export-default-from",
+        "@babel/plugin-proposal-function-bind",
+        "@babel/plugin-proposal-function-sent",
+        "@babel/plugin-proposal-partial-application",
+        "@babel/plugin-proposal-private-methods",
+        "@babel/plugin-proposal-private-property-in-object",
+        "@babel/plugin-proposal-throw-expressions"
+      ]
+    }
+  }
+  

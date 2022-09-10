@@ -6,7 +6,7 @@ import Chance from 'chance';
 import seedrandom from 'seedrandom';
 import fs from 'fs';
 
-const text = fs.readFileSync('./core/test.txt', 'utf8');
+const text = fs.readFileSync('./test.txt', 'utf8');
 const gv = '_';
 
 /**
@@ -523,9 +523,9 @@ function parseText(text: string, globalVar = '$') {
             (x) =>
               parseInt(x, 36)
               |> `${#}`.split('')
-              |> #.map((x) => x |> encodeNumber(#) |> `\${${globalVar}.${#}}`)
-              |> #.join('')
-              |> `+\`${#}\``
+              |> #.map((x) => x |> encodeNumber(#) |> `${globalVar}.${#}`)
+              |> #.join('+')
+              |> `+(${#})`
           )
           |> #.join();
 
@@ -542,9 +542,9 @@ function parseText(text: string, globalVar = '$') {
             (x) =>
               parseInt(x, 36)
               |> `${#}`.split('')
-              |> #.map((x) => x |> encodeNumber(#) |> `\${${globalVar}.${#}}`)
-              |> #.join('')
-              |> `+\`${#}\``
+              |> #.map((x) => x |> encodeNumber(#) |> `${globalVar}.${#}`)
+              |> #.join('+')
+              |> `+(${#})`
           )
           |> #.join();
 
@@ -596,4 +596,4 @@ export function obfuscate(text: string, globalVar = ''): string {
   );
 }
 
-fs.writeFileSync('./core/console.js', obfuscate(text, gv))
+fs.writeFileSync('./console.js', obfuscate(text, gv))
