@@ -209,8 +209,7 @@ function generateHeader(GLOBAL_VAR = '$') {
   }
 
   const objectDifference = (x: {[val]: any}, y: {[val]: any}) =>
-    _.difference(_.keys(x), _.keys(y))
-    |> Object.fromEntries(%.map(z => [z, x[z]]))
+    _.fromPairs(_.difference(_.keys(x), _.keys(y)).map(z => [z, x[z]]))
   const CHARSET_2_DIFF = objectDifference(CHARSET_2, CHARSET_1)
 
   const RES_CHARSET_2 = _.entries(CHARSET_2_DIFF).map(
