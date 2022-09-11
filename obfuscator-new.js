@@ -136,7 +136,7 @@ function generateHeader(GLOBAL_VAR = '$') {
     ])
     |> %.flat().join`,`
     |> %.replace(/,$/, '').replace(/,+/g, ',')
-    |> [GLOBAL_VAR + '=' + % + '}'][0]
+    |> [GLOBAL_VAR + '={' + % + '}'][0]
 
   RESULT += RES_CHARSET_1
 
