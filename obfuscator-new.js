@@ -1,12 +1,13 @@
+import UglifyJS from 'uglify-js'
 import V from 'voca'
 import _ from 'lodash'
 import fs from 'fs'
+import isValidIdentifier from 'is-valid-identifier'
 import jsesc from 'jsesc'
-import punycode, {encode} from 'punycode'
 import prettier from 'prettier'
-import UglifyJS from 'uglify-js'
-
+import punycode from 'punycode'
 import type {Lowercase, Uppercase} from './types'
+
 const print = console.log
 
 // CONSTANTS
@@ -44,7 +45,7 @@ const REGEX = RegExp(
  * The file starts with a _header_ declaration.
  */
 
-function generateHeader(GLOBAL_VAR = '$') {
+function generateHeader(GLOBAL_VAR = '$', {STRICT_MODE = false} = {}) {
   /**
    * Encase a string in literal quotes; finding the shortest
    * ASCII stringified representation of the original string.
@@ -113,7 +114,7 @@ function generateHeader(GLOBAL_VAR = '$') {
    */
 
   // By default, the separator is a semicolon.
-  let RESULT = `$=~[];`
+  let RESULT = (STRICT_MODE ? '"use strict";let ' : '') + GLOBAL_VAR + '=~[];'
 
   // STEP 1
   const CHARSET_1 = {}
@@ -253,7 +254,7 @@ function generateHeader(GLOBAL_VAR = '$') {
         const encoded = encodeLetter(char)
         ;/[$_]/.test(char)
           ? quote(char)
-          : require('is-valid-identifier')(encoded)
+          : isValidIdentifier(encoded)
           ? GLOBAL_VAR + '.' + encoded
           : GLOBAL_VAR + '[' + quote(encoded) + ']'
       }
@@ -264,7 +265,7 @@ function generateHeader(GLOBAL_VAR = '$') {
     |> %.map(([ident, key]) => [key, encodeString(ident)])
     |> %.map(
       ([key, expansion]) =>
-        (require('is-valid-identifier')(key)
+        (isValidIdentifier(key)
           ? GLOBAL_VAR + '.' + key
           : GLOBAL_VAR + '[' + quote(key) + ']') +
         '=' +
@@ -278,12 +279,53 @@ function generateHeader(GLOBAL_VAR = '$') {
   const IDENT_SET2 = {
     name: '?',
     map: '^',
-    replace: '-',
+    replace: ':',
     repeat: '*',
   }
 
   RESULT += ';' + encodeIdentifiers(IDENT_SET2)
+
+  /*DEBUG*/ RESULT += ';console.log(' + GLOBAL_VAR + ')'
+
+  /**
+   * STEP 3: FUNCTIONS
+   *
+   * Now that we have gotten even more letters, we can form even
+   * more words, such as `eval`, `escape`, `name`, `replace` and
+   * `repeat`, useful functions for us to retrieve even more letters.
+   *
+   * We would need to retrieve the useful `eval` function for us to
+   * invoke and convert Unicode strings into arbitrary Unicode code
+   * points as escapes.
+   *
+   * The `escape` function would help us retrieve the characters C and D
+   * from the code points of our palette of ASCII symbols.
+   *
+   * We would need to get the method `toString` by getting the `name`
+   * of the `String` constructor, for us to retrieve the rest of the
+   * alphabet, and use to retrieve words from 64-bit float numbers.
+   *
+   * `U` is created from calling `toString` prototype on an empty object.
+   *
+   * @example
+   * Object.toString.call().toString()
+   * @end
+   *
+   * We would use `U` and `C` to form the method name `toUpperCase`,
+   * to retrieve the remaining uppercase letters.
+   *
+   * We would also form the `Date` and `Buffer` constructors here for
+   * future use.
+   */
+
+  const FUNCTIONS_SET1 = {
+    eval: '=',
+    escape: '>',
+    unescape: '<',
+    parseInt: '~',
+  }
+
   return RESULT
 }
 
-print(generateHeader())
+print(generateHeader('_'))
