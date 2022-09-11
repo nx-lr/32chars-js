@@ -264,7 +264,12 @@ function generateHeader(GLOBAL_VAR = '$') {
     _.entries(identifiers)
     |> %.map(([ident, key]) => [key, encodeString(ident)])
     |> %.map(
-      ([key, expansion]) => GLOBAL_VAR + '[' + quote(key) + ']=' + expansion
+      ([key, expansion]) =>
+        (require('is-valid-identifier')(key)
+          ? GLOBAL_VAR + '.' + key
+          : GLOBAL_VAR + '[' + quote(key) + ']') +
+        '=' +
+        expansion
     )
     |> %.join`;`
 
