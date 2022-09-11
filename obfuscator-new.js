@@ -230,10 +230,21 @@ function generateHeader(GLOBAL_VAR = '$') {
    * those constant strings to the global object as well, this time
    * with single character keys.
    *
-   * The strings `constructor` is therefore so common and therefore would have the least expansions.
+   * The strings `constructor` is so common and therefore would have
+   * the least expansion.
    *
    * @example
-   * $['_!']+$['_&']+$['_%']+$['_~']+$._$+$['_|']+$['_=']+$['_!']+$._$+$['_&']+$['_|']
+   * 'constructor' ==
+   *    $['_!'] +
+   *    $['_&'] +
+   *    $['_%'] +
+   *    $['_~'] +
+   *    $._$ +
+   *    $['_|'] * +$['_='] +
+   *    $['_!'] +
+   *    $._$ +
+   *    $['_&'] +
+   *    $['_|']
    */
 
   // String encoding
