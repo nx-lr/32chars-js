@@ -13,7 +13,11 @@ const print = console.log
 const text = fs.readFileSync('./test.txt', 'utf8')
 
 /**
- * The file starts with a _header_ declaration.
+ * JinxScript is a substitution encoding scheme that goes through three phases:
+ *
+ * - Initialization, where characters and values are assigned to variables;
+ * - Substitution, where the variables are used to construct strings;
+ * - Execution, where the constructed code is evaluated and executed.
  */
 
 function generateDocument(TEXT, GLOBAL_VAR, { STRICT_MODE = false } = {}) {
@@ -43,9 +47,14 @@ function generateDocument(TEXT, GLOBAL_VAR, { STRICT_MODE = false } = {}) {
    *
    * So, we would use a cipher of our own, assigning a pair of
    * symbols to each letter of the English alphabet.
-   * The first symbol, `$` or `_` determines if the symbol is uppercase or lowercase.
-   * The second is assigned an arbitrary symbol. `_` and `$` are reserved for the two most common letters E and T. X and Z are rarely used and therefore get comm
+   * The first symbol, `$` or `_` determines if the symbol is uppercase or
+   * lowercase.
+   * The second is assigned an arbitrary symbol. `_` and `$` are reserved for
+   * the two most common letters E and T.
+   * X and Z are rarely used and therefore get the escape sequences which are
+   * slightly longer.
    */
+
   const LETTERS = `abcdefghijklmnopqrstuvwxyz`
   const CIPHER = `;.!:_-,?/'*+#%&^"|~$=<>\`@\\`
   const SPACE = '-'
@@ -85,7 +94,7 @@ function generateDocument(TEXT, GLOBAL_VAR, { STRICT_MODE = false } = {}) {
    * single characters from stringified representations of the constants.
    */
 
-  // By default, the separator is a semicolon.
+  // The separator is a semicolon, not a comma.
   let RESULT =
     (STRICT_MODE ? 'let _' + GLOBAL_VAR + ',' : '') + GLOBAL_VAR + '=~[];'
 
@@ -155,7 +164,6 @@ function generateDocument(TEXT, GLOBAL_VAR, { STRICT_MODE = false } = {}) {
     Function: '(()=>{})',
   }
 
-  const SIGILS = { ...IDENT_SET1, ...LITERALS, space: '_' }
   const CHARSET_2 = { ...CHARSET_1 }
 
   for (const [key, expression] of _.entries(LITERALS)) {
@@ -439,12 +447,12 @@ function generateDocument(TEXT, GLOBAL_VAR, { STRICT_MODE = false } = {}) {
    * a few surgical substitutions with regular expressions.
    */
 
-  const REMAINING_CHARS = _.difference(
+  _.difference(
     [...CIPHER_FROM].filter(x => !V.isNumeric(x)),
     CHARSET_3
   )
 
-  for (const letter of REMAINING_CHARS)
+  for (const letter of 'hkqwz')
     RESULT +=
       ';' +
       GLOBAL_VAR +
@@ -623,10 +631,10 @@ function generateDocument(TEXT, GLOBAL_VAR, { STRICT_MODE = false } = {}) {
     GROUPS.map(([group, substring]) => {
       switch (group) {
         case 'function':
-          console.log(substring)
+          // console.log(substring)
           return GLOBAL_VAR + '[' + JSON.stringify(IDENT_SET[substring]) + ']'
         case 'constructor':
-          console.log(substring)
+          // console.log(substring)
           return (
             '`${' +
             LITERALS[substring] +
