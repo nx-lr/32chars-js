@@ -447,8 +447,8 @@ function generateHeader(TEXT, GLOBAL_VAR, { STRICT_MODE = false } = {}) {
     ']'
 
   /**
-   * We will get thr remainder of the ASCII alphabet so we can
-   * splice it up with some regex.
+   * We will get the remainder of the ASCII alphabet, so to make it
+   * vastly easier to form ASCII-based identifiers very soon.
    */
 
   const CIPHER_FROM =
@@ -456,13 +456,17 @@ function generateHeader(TEXT, GLOBAL_VAR, { STRICT_MODE = false } = {}) {
 
   // Remaining characters
   const CHARSET_3 = [..._.keys(CHARSET_2), ...'CDU']
-    .filter(char => !!char.trim() || V.isNumeric(char))
+    .filter(char => !!char.trim())
     .sort()
-  const REMAINING_CHARS = _.difference([...CIPHER_FROM], CHARSET_3)
 
-  console.log(CHARSET_3)
+  // Remove numeric characters since they are already defined
+  // in the global object
+  const REMAINING_CHARS = _.difference(
+    [...CIPHER_FROM].filter(x => !V.isNumeric(x)),
+    CHARSET_3
+  )
 
-  for (const letter of 'hkqwz')
+  for (const letter of REMAINING_CHARS)
     RESULT +=
       ';' +
       GLOBAL_VAR +
@@ -480,25 +484,26 @@ function generateHeader(TEXT, GLOBAL_VAR, { STRICT_MODE = false } = {}) {
       ')'
 
   const IDENT_SET3 = { fromCharCode: '@' }
-  const CIPHER_TO = `_.:;!?*+^-=<>~'"/|#$%&@{}()[]\`\\`
-
-  const base31toUtf16 = (b: string) =>
-    String.fromCharCode(
-      ...b.split`,`.map(s =>
-        parseInt([...s].map(c => cipherFrom[cipherTo.indexOf(c)]).join``, 31)
-      )
-    )
-
   RESULT += ';' + encodeIdentifiers(IDENT_SET3)
+
+  const CIPHER_TO = `_.:;!?*+^-=<>~'"/|#$%&@{}()[]\`\\`
 
   const IDENT_SET = {
     ...IDENT_SET1,
     ...IDENT_SET2,
     ...IDENT_SET3,
   }
+  /**
+   * We will get the remainder of the ASCII alphabet, so to make it
+   * vastly easier to form ASCII-based identifiers very soon.
+   */
 
-  const CONSTANT_CIPHER =
-    GLOBAL_VAR + '[' + encodeString(0) + ']=' + encodeString(CIPHER_FROM)
+  const base31toUtf16 = b =>
+    String.fromCharCode(
+      ...b.split`,`.map(s =>
+        parseInt([...s].map(c => CIPHER_FROM[CIPHER_TO.indexOf(c)]).join``, 31)
+      )
+    )
 
   const MACRO_B31_UTF16 =
     'a=(a=>a.split`,`.map(a=>parseInt([...a].map(a=>CIPHER_FROM[CIPHER_TO.indexOf(a)]).join``,+(31))).map(a=>String.fromCharCode(a)).join``)'
@@ -526,7 +531,9 @@ function generateHeader(TEXT, GLOBAL_VAR, { STRICT_MODE = false } = {}) {
         ).join``
     )}`
 
-  RESULT += ';' + CONSTANT_CIPHER
+  RESULT +=
+    ';' + GLOBAL_VAR + '[' + encodeString(0) + ']=' + encodeString(CIPHER_FROM)
+
   RESULT += ';' + MACRO_B31_UTF16
 
   /** For debugging purposes only. */
