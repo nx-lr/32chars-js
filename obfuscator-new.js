@@ -86,7 +86,8 @@ function generateDocument(TEXT, GLOBAL_VAR, { STRICT_MODE = false } = {}) {
    */
 
   // By default, the separator is a semicolon.
-  let RESULT = (STRICT_MODE ? '"use strict";let ' : '') + GLOBAL_VAR + '=~[];'
+  let RESULT =
+    (STRICT_MODE ? 'let _' + GLOBAL_VAR + ',' : '') + GLOBAL_VAR + '=~[];'
 
   // STEP 1
   const CHARSET_1 = {}
@@ -585,12 +586,13 @@ function generateDocument(TEXT, GLOBAL_VAR, { STRICT_MODE = false } = {}) {
     _.keys(IDENT_SET),
   ].flat()
 
-  const REGEXES = {
-    space: / +/,
-    constant: RegExp(RE_CONSTANTS.join`|` + /|\b[a-zA-Z\d]\b/.source),
+  const REGEXPS = {
+    function: RegExp(_.keys(IDENT_SET).join`|`),
+    constant: /true|false|Infinity|NaN|undefined|\b[a-zA-FINORSU\d]\b/,
     constructor: RegExp(_.keys(LITERALS).join`|`),
+    spaces: / {2,}/,
+    space: / /,
     number: /\d+/,
-    regexp: /\/[!"#$%&'()*+,\-.:;<=>?@\[\\\]^_`{|}~]+\//,
     symbol: /[!"#$%&'()*+,\-./:;<=>?@\[\\\]^_`{|}~]+/,
     default: /[^!"#$%&'()*+,\-./:;<=>?@\[\\\]^_`{|}~ ]+/,
   }
@@ -601,24 +603,69 @@ function generateDocument(TEXT, GLOBAL_VAR, { STRICT_MODE = false } = {}) {
    * character in plain text.
    */
 
-  const REGEX = RegExp(
-    _.entries(REGEXES)
+  const REGEXP = RegExp(
+    _.entries(REGEXPS)
     |> %.map(([key: string, { source }]) => `(?<${key}>${source})`)
     |> %.join`|`,
     'g'
   )
 
-  const groups = [...text.matchAll(REGEX)]
+  const GROUPS = [...text.matchAll(REGEXP)]
     .map(({ groups }) => _.entries(groups).filter(([, value]) => value != null))
     .flat(1)
 
-  print(groups)
+  RESULT += ';' + '_' + GLOBAL_VAR + '=' + GLOBAL_VAR + "['-']"
+
+  RESULT +=
+    ';' +
+    'console.log(' +
+    // Map groups
+    GROUPS.map(([group, substring]) => {
+      switch (group) {
+        case 'function':
+          console.log(substring)
+          return GLOBAL_VAR + '[' + JSON.stringify(IDENT_SET[substring]) + ']'
+        case 'constructor':
+          console.log(substring)
+          return (
+            '`${' +
+            LITERALS[substring] +
+            '}`[' +
+            GLOBAL_VAR +
+            '.$][' +
+            GLOBAL_VAR +
+            "['?']]"
+          )
+        case 'constant':
+          if (/true|false|Infinity|NaN|undefined/.test(substring))
+            return '`${' + CONSTANTS[substring] + '}`'
+          else return encodeString(substring)
+        case 'number':
+          return encodeString(substring)
+        case 'symbol':
+          return quote(substring)
+        case 'default':
+          return GLOBAL_VAR + "[+!''](" + quote(utf16toBase31(substring)) + ')'
+        case 'spaces':
+          return (
+            GLOBAL_VAR +
+            '["-"][' +
+            GLOBAL_VAR +
+            '["*"]](' +
+            encodeString(substring.length) +
+            ')'
+          )
+        case 'space':
+          return '_' + GLOBAL_VAR
+      }
+    }).join`+` +
+    ')'
 
   /** For debugging purposes only. */
-  RESULT +=
-    ';console.log(' + GLOBAL_VAR + "[+!''](" + quote(utf16toBase31(TEXT)) + '))'
+  // RESULT +=
+  //   ';console.log(' + GLOBAL_VAR + "[+!''](" + quote(utf16toBase31(TEXT)) + '))'
 
   return RESULT
 }
 
-fs.writeFileSync('./run.js', generateDocument(text, '_', { STRICT_MODE: true }))
+fs.writeFileSync('./run.js', generateDocument(text, '$', { STRICT_MODE: true }))
