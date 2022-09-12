@@ -34,8 +34,8 @@ js-obfuscate ./path/to/file.txt
 
 - Add all possible substrings to existing strings defined on the global object
 - Add unicase alphanumeric strings to the parser
-- Use a better lexer as the current one fails to the `default` `Base31/UTF16` encoder when there are multiple preset strings in the same row.
-- Use a better substitution scheme that derives new n-grams through existing string manipulation methods (without fail)
+- Improve the current lexer as it fails to the `default` `Base31/UTF16` encoder when there are multiple of the same string in a row adjacent to other sequences of strings not separated by a word boundary.
+- Use a scheme that derives new n-grams by combining or modifying strings.
 
 ## How it works
 
