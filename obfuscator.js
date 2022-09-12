@@ -31,12 +31,9 @@ function generateDocument(TEXT, GLOBAL_VAR, { STRICT_MODE = false } = {}) {
    * print(quote`'json`)
    */
 
+  let count = 0
   const quote = string => do {
-    let choice = /'.*"|".*'/.test(string)
-      ? 'backtick'
-      : /'/.test(string)
-      ? 'double'
-      : 'single'
+    let choice = ['single', 'double'][count++ % 2]
     jsesc(string, { quotes: choice, wrap: true })
   }
 
@@ -76,10 +73,10 @@ function generateDocument(TEXT, GLOBAL_VAR, { STRICT_MODE = false } = {}) {
    */
 
   const CONSTANTS = {
-    true: '!""', // ''==false
+    true: '!``', // ''==false
     false: '![]', // []==true
     undefined: '[][[]]', // [][[]] doesn't exist
-    Infinity: '!""/![]', // true/false==1/0
+    Infinity: '!``/![]', // true/false==1/0
     NaN: '+{}', // It makes sense
     '[object Object]': '{}', // y e s
   }
@@ -157,7 +154,7 @@ function generateDocument(TEXT, GLOBAL_VAR, { STRICT_MODE = false } = {}) {
   const LITERALS = {
     Array: '[]',
     Object: '{}',
-    String: '""',
+    String: '``',
     Number: '(~[])',
     Boolean: '(![])',
     RegExp: '/./',
@@ -560,7 +557,7 @@ function generateDocument(TEXT, GLOBAL_VAR, { STRICT_MODE = false } = {}) {
         }
       )
       .replace('CIPHER_FROM', GLOBAL_VAR + '[+![]]')
-      .replace(/^/, GLOBAL_VAR + '[+!""]=')
+      .replace(/^/, GLOBAL_VAR + '[+!``]=')
 
   RESULT +=
     ';' + GLOBAL_VAR + '[' + encodeString(0) + ']=' + encodeString(CIPHER_FROM)
@@ -595,7 +592,7 @@ function generateDocument(TEXT, GLOBAL_VAR, { STRICT_MODE = false } = {}) {
   ].flat()
 
   const REGEXPS = {
-    number: /\d+/,
+    constant: /true|false|Infinity|NaN|undefined|\b[a-zA-FINORSU\d]\b/,
     symbol: /[!"#$%&'()*+,\-./:;<=>?@\[\\\]^_`{|}~]+/,
     default: /[^!"#$%&'()*+,\-./:;<=>?@\[\\\]^_`{|}~]+/,
   }
@@ -628,7 +625,7 @@ function generateDocument(TEXT, GLOBAL_VAR, { STRICT_MODE = false } = {}) {
     .map(({ groups }) => _.entries(groups).filter(([, value]) => value != null))
     .flat(1)
 
-  RESULT += ';' + '_' + GLOBAL_VAR + '=' + GLOBAL_VAR + "['-']"
+  RESULT += ';' + '_' + GLOBAL_VAR + '=' + GLOBAL_VAR + '[`-`]'
 
   RESULT +=
     ';' +
@@ -648,7 +645,7 @@ function generateDocument(TEXT, GLOBAL_VAR, { STRICT_MODE = false } = {}) {
             GLOBAL_VAR +
             '.$][' +
             GLOBAL_VAR +
-            "['?']]"
+            '[`?`]]'
           )
         case 'constant':
           if (/true|false|Infinity|NaN|undefined/.test(substring))
@@ -659,13 +656,13 @@ function generateDocument(TEXT, GLOBAL_VAR, { STRICT_MODE = false } = {}) {
         case 'symbol':
           return quote(substring)
         case 'default':
-          return GLOBAL_VAR + "[+!''](" + quote(utf16toBase31(substring)) + ')'
+          return GLOBAL_VAR + '[+!``](' + quote(utf16toBase31(substring)) + ')'
         case 'spaces':
           return (
             GLOBAL_VAR +
-            '["-"][' +
+            '[`-`][' +
             GLOBAL_VAR +
-            '["*"]](' +
+            '[`*`]](' +
             encodeString(substring.length) +
             ')'
           )
