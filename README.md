@@ -6,7 +6,7 @@ It is the spiritual successor to [jjencode](https://utf-8.jp/public/jjencode.htm
 
 Decoding it is super easy, just paste the output and run it in a terminal.
 
-The project is still in process.
+The project is still in the making though it definitely needs some improvement.
 
 ## Implementation Requirements
 
@@ -32,10 +32,12 @@ js-obfuscate ./path/to/file.txt
 
 ## Future enhancements
 
-- Add all possible substrings to existing strings defined on the global object
-- Add unicase alphanumeric strings to the parser
+- Important: **Please, add the compiled Babel output!**
+- Add unicase alphanumeric strings to the parser, as those can be gotten with a simple `.toString(36)` conversion on a number. The maximum allowed length is `10`.
+- Add all possible substrings to existing strings defined on the global object.
+- Limit the tokens to runs of 256 characters, though this run length
 - Improve the current lexer as it fails to the `default` `Base31/UTF16` encoder when there are multiple of the same string in a row adjacent to other sequences of strings not separated by a word boundary.
-- Use a scheme that derives new n-grams by combining or modifying strings.
+- Use an encoding/assignment scheme that derives new n-grams by combining or modifying strings. Default is 4 n-grams.
 
 ## How it works
 
