@@ -12,41 +12,11 @@ const print = console.log
 
 const text = fs.readFileSync('./test.txt', 'utf8')
 
-// CONSTANTS
-const REGEXES = {
-  space: / +/,
-  constant: /true|false|undefined|NaN|Infinity|\w/,
-  number: /\b\d+\b/,
-  lower: /[a-z\d]+/,
-  upper: /[A-Z\d]+/,
-  symbol: /[!"#$%&'()*+,\-./:;<=>?@\[\\\]^_`{|}~]+/,
-  default: /[^!"#$%&'()*+,\-./:;<=>?@\[\\\]^_`{|}~\w ]/,
-}
-
-/**
- * This regular expression is used to split the text
- * into smaller chunks of the same type.
- *
- * The literal space is ignored since it is the most used
- * character in plain text.
- */
-const REGEX = RegExp(
-  _.entries(REGEXES)
-  |> %.map(([key: string, { source }]) => `(?<${key}>${source})`)
-  |> %.join`|`
-)
-
-/**
- * DEBUG
- * @example
- * print(RE)
- */
-
 /**
  * The file starts with a _header_ declaration.
  */
 
-function generateHeader(TEXT, GLOBAL_VAR, { STRICT_MODE = false } = {}) {
+function generateDocument(TEXT, GLOBAL_VAR, { STRICT_MODE = false } = {}) {
   /**
    * Encase a string in literal quotes; finding the shortest
    * ASCII stringified representation of the original string.
@@ -459,8 +429,15 @@ function generateHeader(TEXT, GLOBAL_VAR, { STRICT_MODE = false } = {}) {
     .filter(char => !!char.trim())
     .sort()
 
-  // Remove numeric characters since they are already defined
-  // in the global object
+  /**
+   * We will remove numeric characters as they are already defined
+   * in the global object, and add these remaining letters one by
+   * one.
+   *
+   * This makes it a heck ton easier to encode macros with just
+   * a few surgical substitutions with regular expressions.
+   */
+
   const REMAINING_CHARS = _.difference(
     [...CIPHER_FROM].filter(x => !V.isNumeric(x)),
     CHARSET_3
@@ -486,17 +463,53 @@ function generateHeader(TEXT, GLOBAL_VAR, { STRICT_MODE = false } = {}) {
   const IDENT_SET3 = { fromCharCode: '@' }
   RESULT += ';' + encodeIdentifiers(IDENT_SET3)
 
-  const CIPHER_TO = `_.:;!?*+^-=<>~'"/|#$%&@{}()[]\`\\`
-
-  const IDENT_SET = {
-    ...IDENT_SET1,
-    ...IDENT_SET2,
-    ...IDENT_SET3,
-  }
   /**
-   * We will get the remainder of the ASCII alphabet, so to make it
-   * vastly easier to form ASCII-based identifiers very soon.
+   * TRANSFORMATION
+   *
+   * The transformation stage forms the bulk of the document.
+   * The text is split into runs of various sizes, each containing
+   * a different set of characters. These include:
+   *
+   * - Whitespace.
+   * - All 32 ASCII punctuation and symbol characters, which are
+   *   included literally without change.
+   * - All strings already defined in the output document, which are:
+   *   - strings used for properties and method names
+   *   - constructor names
+   *   - constants (except null)
+   *   and all substrings, 2 characters or more thereof, all
+   *   next to word boundaries.
+   * - Runs of all other characters, including Unicode sequences,
+   *   ignoring all boundaries.
    */
+
+  const CIPHER_TO = `_.:;!?*+^-=<>~'"/|#$%&@{}()[]\`\\`
+  const IDENT_SET = { ...IDENT_SET1, ...IDENT_SET2, ...IDENT_SET3 }
+
+  /**
+   * UTF-16 STRINGS
+   *
+   * Strings are encoded in JavaScript as UTF-16, and not UTF-8.
+   * As such, strings can be broken down into their meaningful
+   * code points.
+   *
+   * Every code point is converted into integers, and each is
+   * converted into base 31 so that all characters, save for the
+   * comma `,`, are used. Every resulting digit is ciphered.
+   *
+   * The comma is used as it is syntactically used to separate
+   * array elements, which are the ciphered digit substrings.
+   * When `.toString` is called, the commas come in, therefore
+   * there's no need to explicitly write `.join(',')`.
+   */
+
+  const utf16toBase31 = (s: string) =>
+    `${[...Array(s.length)].map(
+      (x, i) =>
+        [...s.charCodeAt(i).toString(31)].map(
+          c => CIPHER_TO[CIPHER_FROM.indexOf(c)]
+        ).join``
+    )}`
 
   const base31toUtf16 = b =>
     String.fromCharCode(
@@ -504,6 +517,23 @@ function generateHeader(TEXT, GLOBAL_VAR, { STRICT_MODE = false } = {}) {
         parseInt([...s].map(c => CIPHER_FROM[CIPHER_TO.indexOf(c)]).join``, 31)
       )
     )
+
+  /**
+   * UTF-16 STRINGS
+   *
+   * Strings are encoded in JavaScript as UTF-16, and not UTF-8.
+   * As such, strings can be broken down into their meaningful
+   * code points.
+   *
+   * Every code point is converted into integers, and each is
+   * converted into base 31 so that all characters, save for the
+   * comma `,`, are used. Every resulting digit is ciphered.
+   *
+   * The comma is used as it is syntactically used to separate
+   * array elements, which are the ciphered digit substrings.
+   * When `.toString` is called, the commas come in, therefore
+   * there's no need to explicitly write `.join(',')`.
+   */
 
   const MACRO_B31_UTF16 =
     'a=(a=>a.split`,`.map(a=>parseInt([...a].map(a=>CIPHER_FROM[CIPHER_TO.indexOf(a)]).join``,+(31))).map(a=>String.fromCharCode(a)).join``)'
@@ -523,18 +553,66 @@ function generateHeader(TEXT, GLOBAL_VAR, { STRICT_MODE = false } = {}) {
       .replace('CIPHER_FROM', GLOBAL_VAR + '[+![]]')
       .replace(/^/, GLOBAL_VAR + '[+!""]=')
 
-  const utf16toBase31 = (s: string) =>
-    `${[...Array(s.length)].map(
-      (x, i) =>
-        [...s.charCodeAt(i).toString(31)].map(
-          c => CIPHER_TO[CIPHER_FROM.indexOf(c)]
-        ).join``
-    )}`
-
   RESULT +=
     ';' + GLOBAL_VAR + '[' + encodeString(0) + ']=' + encodeString(CIPHER_FROM)
 
   RESULT += ';' + MACRO_B31_UTF16
+
+  /**
+   * UTF-16 STRINGS
+   *
+   * Strings are encoded in JavaScript as UTF-16, and not UTF-8.
+   * As such, strings can be broken down into their meaningful
+   * code points.
+   *
+   * Every code point is converted into integers, and each is
+   * converted into base 31 so that all characters, save for the
+   * comma `,`, are used. Every resulting digit is ciphered.
+   *
+   * The comma is used as it is syntactically used to separate
+   * array elements, which are the ciphered digit substrings.
+   * When `.toString` is called, the commas come in, therefore
+   * there's no need to explicitly write `.join(',')`.
+   */
+
+  // CONSTANTS
+  const RE_CONSTANTS = [
+    'true',
+    'false',
+    'Infinity',
+    'NaN',
+    'undefined',
+    _.keys(IDENT_SET),
+  ].flat()
+
+  const REGEXES = {
+    space: / +/,
+    constant: RegExp(RE_CONSTANTS.join`|` + /|\b[a-zA-Z\d]\b/.source),
+    constructor: RegExp(_.keys(LITERALS).join`|`),
+    number: /\d+/,
+    regexp: /\/[!"#$%&'()*+,\-.:;<=>?@\[\\\]^_`{|}~]+\//,
+    symbol: /[!"#$%&'()*+,\-./:;<=>?@\[\\\]^_`{|}~]+/,
+    default: /[^!"#$%&'()*+,\-./:;<=>?@\[\\\]^_`{|}~ ]+/,
+  }
+
+  /**
+   * This regular expression splits the text into runs.
+   * The literal space is ignored since it is the most used
+   * character in plain text.
+   */
+
+  const REGEX = RegExp(
+    _.entries(REGEXES)
+    |> %.map(([key: string, { source }]) => `(?<${key}>${source})`)
+    |> %.join`|`,
+    'g'
+  )
+
+  const groups = [...text.matchAll(REGEX)]
+    .map(({ groups }) => _.entries(groups).filter(([, value]) => value != null))
+    .flat(1)
+
+  print(groups)
 
   /** For debugging purposes only. */
   RESULT +=
@@ -543,4 +621,4 @@ function generateHeader(TEXT, GLOBAL_VAR, { STRICT_MODE = false } = {}) {
   return RESULT
 }
 
-fs.writeFileSync('./run.js', generateHeader(text, '_', { STRICT_MODE: true }))
+fs.writeFileSync('./run.js', generateDocument(text, '_', { STRICT_MODE: true }))
