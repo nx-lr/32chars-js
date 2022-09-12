@@ -661,10 +661,6 @@ function generateDocument(TEXT, GLOBAL_VAR, { STRICT_MODE = false } = {}) {
     }).join`+` +
     ')'
 
-  /** For debugging purposes only. */
-  // RESULT +=
-  //   ';console.log(' + GLOBAL_VAR + "[+!''](" + quote(utf16toBase31(TEXT)) + '))'
-
   return RESULT
 }
 
