@@ -595,6 +595,12 @@ function generateDocument(TEXT, GLOBAL_VAR, { STRICT_MODE = false } = {}) {
   ].flat()
 
   const REGEXPS = {
+    number: /\d+/,
+    symbol: /[!"#$%&'()*+,\-./:;<=>?@\[\\\]^_`{|}~]+/,
+    default: /[^!"#$%&'()*+,\-./:;<=>?@\[\\\]^_`{|}~]+/,
+  }
+
+  const REGEXPS_1 = {
     function: RegExp(_.keys(IDENT_SET).join`|`),
     constant: /true|false|Infinity|NaN|undefined|\b[a-zA-FINORSU\d]\b/,
     constructor: RegExp(_.keys(LITERALS).join`|`),
@@ -602,7 +608,7 @@ function generateDocument(TEXT, GLOBAL_VAR, { STRICT_MODE = false } = {}) {
     space: / /,
     number: /\d+/,
     symbol: /[!"#$%&'()*+,\-./:;<=>?@\[\\\]^_`{|}~]+/,
-    default: /[^!"#$%&'()*+,\-./:;<=>?@\[\\\]^_`{|}~ ]+/,
+    default: /[^!"#$%&'()*+,\-./:;<=>?@\[\\\]^_`{|}~]+/,
   }
 
   /**
