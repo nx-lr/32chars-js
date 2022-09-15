@@ -714,15 +714,11 @@ function generateDocument(TEXT, GLOBAL_VAR, { STRICT_MODE = false } = {}) {
             jsesc(substring, { quotes: choice, wrap: true })
           }
 
-        case 'identifier':
+        case 'identifier': {
           // TODO: Fix this damn code
-          if (substring in WORD_FREQUENCIES) {
-            const key = WORD_FREQUENCIES?.[substring]
-            return GLOBAL_VAR + '[' + JSON.stringify(key) + ']'
-          } else {
-            const encoded = utf16toBase31(substring)
-            return GLOBAL_VAR + '[+!``](' + JSON.stringify(encoded) + ')'
-          }
+          const encoded = utf16toBase31(substring)
+          return GLOBAL_VAR + '[+!``](' + JSON.stringify(encoded) + ')'
+        }
 
         case 'default':
           const encoded = utf16toBase31(substring)
