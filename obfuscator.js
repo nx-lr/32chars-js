@@ -638,7 +638,7 @@ function generateDocument(TEXT, GLOBAL_VAR, { STRICT_MODE = false } = {}) {
       switch (group) {
         case 'function':
           return GLOBAL_VAR + '[' + JSON.stringify(IDENT_SET[substring]) + ']'
-        
+
         case 'constructor':
           return (
             '`${' +
@@ -662,6 +662,10 @@ function generateDocument(TEXT, GLOBAL_VAR, { STRICT_MODE = false } = {}) {
 
         case 'constant':
           if (/true|false|Infinity|NaN|undefined/.test(substring)) {
+            /**
+             * Since + is both a unary and binary operator,
+             * test to see if the expression begins in one,
+             * if so put it in brackets */
             const constant = CONSTANTS[substring]
             try {
               eval('+' + constant)
