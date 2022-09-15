@@ -617,8 +617,21 @@ function generateDocument(TEXT, GLOBAL_VAR, { STRICT_MODE = false } = {}) {
     |> _.countBy(%)
     |> _.entries(%).filter(([, y]) => y != 1)
     |> %.sort(([, a], [, b]) => b - a)
-    |> %.filter(([, a]) => a > 2)
+    |> %.filter(([, a]) => a >= 2)
     |> _.fromPairs(%)
+
+  const keyGen = function* () {
+    const digitsTo = `.:;!?*+^-=<>~'"/|#%&@()[]{}\\\``,
+      digitsFrom = '0123456789abcdefghijklmnopqrstuvwxyz'
+    for (const key of '()[]{}') yield key
+    let count = digitsTo.length
+    print(count)
+    for (; count <= 2 ** 53; print(count) && count++)
+      yield count.toString(digitsTo.length).split``.map(
+        a => digitsTo[digitsFrom.indexOf(a)]
+      ).join``
+    return
+  }
 
   // print(wordFrequency)
 
