@@ -11,7 +11,6 @@ import type { Lowercase, Uppercase } from './types'
 const print = console.log
 const text = fs.readFileSync('./test.txt', 'utf8')
 
-// TODO: Fix identifier lookup
 const REGEXPS = {
   constant: /\b(true|false|Infinity|NaN|undefined)\b/,
   identifier: /\b[A-Za-z]{2,}\b/,
@@ -649,7 +648,7 @@ function generateDocument(TEXT, GLOBAL_VAR, { STRICT_MODE = false } = {}) {
   })()
 
   const WORD_FREQUENCIES =
-    (TEXT.match(/[a-z]{2,}/gi) ?? []).filter(word => word.length > 2)
+    (TEXT.match(/\b[A-Za-z]{2,}\b/g) ?? []).filter(word => word.length > 2)
     |> _.countBy(%)
     |> _.entries(%).filter(([, y]) => y != 1)
     |> %.sort(([, a], [, b]) => b - a)
