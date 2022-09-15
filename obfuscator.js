@@ -611,6 +611,17 @@ function generateDocument(TEXT, GLOBAL_VAR, { STRICT_MODE = false } = {}) {
     default: /[^!"#$%&'()*+,\-./:;<=>?@\[\\\]^_`{|}~]+/,
   }
 
+  /** Get the frequency of words in a string */
+  const wordFrequency =
+    (TEXT.match(/[a-z]{2,}/gi) ?? []).filter(word => word.length > 2)
+    |> _.countBy(%)
+    |> _.entries(%).filter(([, y]) => y != 1)
+    |> %.sort(([, a], [, b]) => b - a)
+    |> %.filter(([, a]) => a > 2)
+    |> _.fromPairs(%)
+
+  // print(wordFrequency)
+
   /**
    * This regular expression splits the text into runs.
    * The literal space is ignored since it is the most used
