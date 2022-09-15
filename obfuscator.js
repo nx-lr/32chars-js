@@ -10,11 +10,12 @@ import type { Lowercase, Uppercase } from './types'
 
 const print = console.log
 const text = fs.readFileSync('./test.txt', 'utf8')
-let REGEXP
 
+// TODO: Fix identifier lookup
 const REGEXPS = {
-  constant: /\b[a-zA-FINORSU\d]\b|true|false|Infinity|NaN|undefined/,
-  identifier: /\b[a-zA-Z]{2,}\b/,
+  constant: /\b(true|false|Infinity|NaN|undefined)\b/,
+  identifier: /\b[A-Za-z]{2,}\b/,
+  letter: /\b[a-zA-FINORSU\d]\b/,
   symbol: /[!"#$%&'()*+,\-./:;<=>?@\[\\\]^_`{|}~]+/,
   default: /[^!"#$%&'()*+,\-./:;<=>?@\[\\\]^_`{|}~]+/,
 }
@@ -29,7 +30,6 @@ let REGEXP = _.entries(REGEXPS).map(
   ([key, { source }]) => `(?<${key}>${source})`
 ).join`|`
 REGEXP = RegExp(REGEXP, 'g')
-REGEXP = reg
 
 module.exports.REGEXP = REGEXP
 
@@ -259,18 +259,18 @@ function generateDocument(TEXT, GLOBAL_VAR, { STRICT_MODE = false } = {}) {
 
   // String encoding
   const encodeString = (str: string = ''): string =>
-    [...`${str}`.replace(/\W/g, '')].map(
-      char => do {
-        if (/[$_]/.test(char)) quote(char)
-        else if (/\d/.test(char)) GLOBAL_VAR + '.' + encodeDigit(char)
-        else {
-          const encoded = encodeLetter(char)
-          isValidIdentifier(encoded)
-            ? GLOBAL_VAR + '.' + encoded
-            : GLOBAL_VAR + '[' + quote(encoded) + ']'
-        }
+    [...`${str}`.replace(/\W/g, '')].map(char => {
+      if (/[$_]/.test(char)) {
+        return quote(char)
+      } else if (/\d/.test(char)) {
+        return GLOBAL_VAR + '.' + encodeDigit(char)
+      } else {
+        const encoded = encodeLetter(char)
+        return isValidIdentifier(encoded)
+          ? GLOBAL_VAR + '.' + encoded
+          : GLOBAL_VAR + '[' + quote(encoded) + ']'
       }
-    ).join`+`
+    }).join`+`
 
   const encodeIdentifiers = (identifiers: { [ident]: string }) =>
     GLOBAL_VAR +
@@ -638,7 +638,7 @@ function generateDocument(TEXT, GLOBAL_VAR, { STRICT_MODE = false } = {}) {
    */
 
   const keyGen = (function* () {
-    const digitsTo = `.:;!?*+^-=<>~'"/|#%&@()[]{}\\\``,
+    const digitsTo = `.,:;!?*+^-=<>~'"/|#%&@()[]{}`,
       digitsFrom = '0123456789abcdefghijklmnopqrstuvwxyz'
     // yield brackets first since we didn't use them as keys yet
     for (const key of '()[]{}') yield key
@@ -665,11 +665,11 @@ function generateDocument(TEXT, GLOBAL_VAR, { STRICT_MODE = false } = {}) {
     ',' +
     _.entries(WORD_FREQUENCIES).map(
       ([word, key]) =>
-        quote(key) +
+        JSON.stringify(key) +
         ':' +
         GLOBAL_VAR +
         '[+!``](' +
-        quote(utf16toBase31(word)) +
+        JSON.stringify(utf16toBase31(word)) +
         ')'
     ).join`,` +
     '}'
@@ -682,42 +682,22 @@ function generateDocument(TEXT, GLOBAL_VAR, { STRICT_MODE = false } = {}) {
   // RESULT += ';' + 'console.log(' + GLOBAL_VAR + ')'
 
   RESULT +=
-    ';_' +
+    ';' +
+    '_' +
     GLOBAL_VAR +
     '=' +
     // Map groups
-    GROUPS.map(function transform([group, substring]) {
+    GROUPS.map(([group, substring]) => {
       switch (group) {
-        case 'function':
-          return GLOBAL_VAR + '[' + JSON.stringify(IDENT_SET[substring]) + ']'
-
-        case 'constructor':
-          return (
-            '`${' +
-            LITERALS[substring] +
-            '}`[' +
-            GLOBAL_VAR +
-            '.$][' +
-            GLOBAL_VAR +
-            '[`?`]]'
-          )
-
         case 'constant':
-          if (/true|false|Infinity|NaN|undefined/.test(substring)) {
-            /**
-             * Since + is both a unary and binary operator,
-             * test to see if the expression begins in one,
-             * if so put it in brackets.
-             */
-            const constant = CONSTANTS[substring]
-            try {
-              return eval('+' + constant) && constant
-            } catch {
-              return '(' + constant + ')'
-            }
-          } else return encodeString(substring)
+          /**
+           * Since + is both a unary and binary operator,
+           * test to see if the expression begins in one,
+           * if so put it in brackets.
+           */
+          return '`${' + CONSTANTS[substring] + '}`'
 
-        case 'number':
+        case 'letter':
           return encodeString(substring)
 
         case 'symbol':
@@ -734,28 +714,14 @@ function generateDocument(TEXT, GLOBAL_VAR, { STRICT_MODE = false } = {}) {
             jsesc(substring, { quotes: choice, wrap: true })
           }
 
-        case 'spaced':
-          return (
-            '[' +
-            substring.split` `.map(transform) +
-            '][' +
-            GLOBAL_VAR +
-            '[`%`]](' +
-            GLOBAL_VAR +
-            '[`-`])'
-          )
-
         case 'identifier':
-          if (substring in WORD_FREQUENCIES)
-            return (
-              GLOBAL_VAR +
-              '[' +
-              JSON.stringify(WORD_FREQUENCIES[substring]) +
-              ']'
-            )
-          else {
+          // TODO: Fix this damn code
+          if (substring in WORD_FREQUENCIES) {
+            const key = WORD_FREQUENCIES?.[substring]
+            return GLOBAL_VAR + '[' + JSON.stringify(key) + ']'
+          } else {
             const encoded = utf16toBase31(substring)
-            return GLOBAL_VAR + '[+!``](' + quote(encoded) + ')'
+            return GLOBAL_VAR + '[+!``](' + JSON.stringify(encoded) + ')'
           }
 
         case 'default':
@@ -766,9 +732,9 @@ function generateDocument(TEXT, GLOBAL_VAR, { STRICT_MODE = false } = {}) {
           return '_' + GLOBAL_VAR
       }
     }).join`+` +
-    ';console.log(_' +
+    ';/*console.log(_' +
     GLOBAL_VAR +
-    ');module.exports.result=_' +
+    ');*/module.exports.result=_' +
     GLOBAL_VAR
 
   return RESULT
