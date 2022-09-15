@@ -713,8 +713,8 @@ function generateDocument(TEXT, GLOBAL_VAR, { STRICT_MODE = false } = {}) {
             const encoded = utf16toBase31(substring)
             return GLOBAL_VAR + '[+!``](' + quote(encoded) + ')'
           } else {
-            const key = WORD_FREQUENCIES?.[substring]
-            return GLOBAL_VAR + '[' + JSON.stringify(key) + ']'
+            const key = WORD_FREQUENCIES[substring]
+            return GLOBAL_VAR + '[' + quote(key) + ']'
           }
 
         case 'default':
