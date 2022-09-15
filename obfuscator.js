@@ -1,5 +1,5 @@
 import UglifyJS from 'uglify-js'
-import V from 'voca'
+import V, { substr } from 'voca'
 import _ from 'lodash'
 import fs from 'fs'
 import isValidIdentifier from 'is-valid-identifier'
@@ -10,6 +10,28 @@ import type { Lowercase, Uppercase } from './types'
 
 const print = console.log
 const text = fs.readFileSync('./test.txt', 'utf8')
+let REGEXP
+
+const REGEXPS = {
+  constant: /\b[a-zA-FINORSU\d]\b|true|false|Infinity|NaN|undefined/,
+  identifier: /\b[a-zA-Z]{2,}\b/,
+  symbol: /[!"#$%&'()*+,\-./:;<=>?@\[\\\]^_`{|}~]+/,
+  default: /[^!"#$%&'()*+,\-./:;<=>?@\[\\\]^_`{|}~]+/,
+}
+
+/**
+ * This regular expression splits the text into runs.
+ * The literal space is ignored since it is the most used
+ * character in plain text.
+ */
+
+let REGEXP = _.entries(REGEXPS).map(
+  ([key, { source }]) => `(?<${key}>${source})`
+).join`|`
+REGEXP = RegExp(REGEXP, 'g')
+REGEXP = reg
+
+module.exports.REGEXP = REGEXP
 
 /**
  * JinxScript is a substitution encoding scheme that goes through three phases:
@@ -341,25 +363,6 @@ function generateDocument(TEXT, GLOBAL_VAR, { STRICT_MODE = false } = {}) {
     ).join`,` +
     '}'
 
-  // const RES_FUNCTIONS_1 = _.entries(GLOBAL_FUNC).map(
-  //   ([ident, shortcut]) => do {
-  //     GLOBAL_VAR +
-  //       '[' +
-  //       quote(shortcut) +
-  //       ']=' +
-  //       LITERALS.Function +
-  //       '[' +
-  //       [GLOBAL_VAR + '.$'][0] + // `constructor`
-  //       '](' +
-  //       [GLOBAL_VAR + '._'][0] + // `return`
-  //       '+' +
-  //       [GLOBAL_VAR + '[' + quote(SPACE) + ']'][0] + // space
-  //       '+' +
-  //       encodeString(ident) + // name of function
-  //       ')()'
-  //   }
-  // ).join`;`
-
   RESULT += ';' + RES_FUNCTIONS_1
 
   // toString
@@ -624,79 +627,66 @@ function generateDocument(TEXT, GLOBAL_VAR, { STRICT_MODE = false } = {}) {
     _.keys(IDENT_SET),
   ].flat()
 
-  const REGEXPS = {
-    constant: /\b(true|false|Infinity|NaN|undefined|[a-zA-FINORSU\d])\b/,
-    symbol: /[!"#$%&'()*+,\-./:;<=>?@\[\\\]^_`{|}~]+/,
-    default: /[^!"#$%&'()*+,\-./:;<=>?@\[\\\]^_`{|}~]+/,
-  }
-
-  const REGEXPS_1 = {
-    function: RegExp(_.keys(IDENT_SET).join`|`),
-    constant: /true|false|Infinity|NaN|undefined|\b[a-zA-FINORSU\d]\b/,
-    constructor: RegExp(_.keys(LITERALS).join`|`),
-    spaces: / {2,}/,
-    space: / /,
-    number: /\d+/,
-    symbol: /[!"#$%&'()*+,\-./:;<=>?@\[\\\]^_`{|}~]+/,
-    default: /[^!"#$%&'()*+,\-./:;<=>?@\[\\\]^_`{|}~]+/,
-  }
-
   /**
    * PART 4: ENCODING
    *
    * What we would now do is encode the string by matching all
-   * words in the string, sorting them by their frequency and then using
+   * words in the string, sorting them by their frequency and then
+   * assigning symbol keys to these values (base 29).
    *
-   *
-   * Get the frequency of words in a string */
-  const wordFrequency =
-    (TEXT.match(/[a-z]{2,}/gi) ?? []).filter(word => word.length > 2)
-    |> _.countBy(%)
-    |> _.entries(%).filter(([, y]) => y != 1)
-    |> %.sort(([, a], [, b]) => b - a)
-    |> %.filter(([, a]) => a >= 2)
-    |> _.fromPairs(%)
+   * The most frequent words in the string would get shorter keys.
+   */
 
   const keyGen = (function* () {
     const digitsTo = `.:;!?*+^-=<>~'"/|#%&@()[]{}\\\``,
-      digitsFrom = '0123456789abcdefghijklmnopqrstuvwxyz',
-      init = '()[]{}'
+      digitsFrom = '0123456789abcdefghijklmnopqrstuvwxyz'
+    // yield brackets first since we didn't use them as keys yet
     for (const key of '()[]{}') yield key
-    for (let i = 0; i <= 2 ** 53; i++)
+    for (let i = 0; i <= Number.MAX_SAFE_INTEGER; i++)
       yield i.toString(digitsTo.length).split``.map(
         a => digitsTo[digitsFrom.indexOf(a)]
       ).join``.padStart(2, digitsTo[0])
   })()
 
-  // print(wordFrequency)
+  const WORD_FREQUENCIES =
+    (TEXT.match(/[a-z]{2,}/gi) ?? []).filter(word => word.length > 2)
+    |> _.countBy(%)
+    |> _.entries(%).filter(([, y]) => y != 1)
+    |> %.sort(([, a], [, b]) => b - a)
+    |> %.filter(([, a]) => a > 1)
+    |> %.map(([word, freq]) => [word, keyGen.next().value])
+    |> _.fromPairs(%)
 
-  /**
-   * This regular expression splits the text into runs.
-   * The literal space is ignored since it is the most used
-   * character in plain text.
-   */
-
-  const REGEXP = RegExp(
-    _.entries(REGEXPS)
-    |> %.map(([key: string, { source }]) => `(?<${key}>${source})`)
-    |> %.join`|`,
-    'g'
-  )
+  RESULT +=
+    ';' +
+    GLOBAL_VAR +
+    '={...' +
+    GLOBAL_VAR +
+    ',' +
+    _.entries(WORD_FREQUENCIES).map(
+      ([word, key]) =>
+        quote(key) +
+        ':' +
+        GLOBAL_VAR +
+        '[+!``](' +
+        quote(utf16toBase31(word)) +
+        ')'
+    ).join`,` +
+    '}'
 
   const GROUPS = [...text.matchAll(REGEXP)]
     .map(({ groups }) => _.entries(groups).filter(([, value]) => value != null))
     .flat(1)
 
-  RESULT += ';' + '_' + GLOBAL_VAR + '=' + GLOBAL_VAR + '[`-`]'
-
   // // DEBUG
   // RESULT += ';' + 'console.log(' + GLOBAL_VAR + ')'
 
   RESULT +=
-    ';' +
-    'console.log(' +
+    ';_' +
+    GLOBAL_VAR +
+    '=' +
     // Map groups
-    GROUPS.map(([group, substring]) => {
+    GROUPS.map(function transform([group, substring]) {
       switch (group) {
         case 'function':
           return GLOBAL_VAR + '[' + JSON.stringify(IDENT_SET[substring]) + ']'
@@ -744,16 +734,42 @@ function generateDocument(TEXT, GLOBAL_VAR, { STRICT_MODE = false } = {}) {
             jsesc(substring, { quotes: choice, wrap: true })
           }
 
-        case 'default': {
+        case 'spaced':
+          return (
+            '[' +
+            substring.split` `.map(transform) +
+            '][' +
+            GLOBAL_VAR +
+            '[`%`]](' +
+            GLOBAL_VAR +
+            '[`-`])'
+          )
+
+        case 'identifier':
+          if (substring in WORD_FREQUENCIES)
+            return (
+              GLOBAL_VAR +
+              '[' +
+              JSON.stringify(WORD_FREQUENCIES[substring]) +
+              ']'
+            )
+          else {
+            const encoded = utf16toBase31(substring)
+            return GLOBAL_VAR + '[+!``](' + quote(encoded) + ')'
+          }
+
+        case 'default':
           const encoded = utf16toBase31(substring)
           return GLOBAL_VAR + '[+!``](' + quote(encoded) + ')'
-        }
 
         case 'space':
           return '_' + GLOBAL_VAR
       }
     }).join`+` +
-    ')'
+    ';console.log(_' +
+    GLOBAL_VAR +
+    ');module.exports.result=_' +
+    GLOBAL_VAR
 
   return RESULT
 }
