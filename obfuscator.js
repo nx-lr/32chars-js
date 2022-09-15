@@ -642,17 +642,16 @@ function generateDocument(TEXT, GLOBAL_VAR, { STRICT_MODE = false } = {}) {
     // yield brackets first since we didn't use them as keys yet
     for (const key of '()[]{}') yield key
     for (let i = 0; i <= Number.MAX_SAFE_INTEGER; i++)
-      yield i.toString(digitsTo.length).split``.map(
+      yield i.toString(digitsTo.length).padStart(2, 0).split``.map(
         a => digitsTo[digitsFrom.indexOf(a)]
-      ).join``.padStart(2, digitsTo[0])
+      ).join``
   })()
 
   const WORD_FREQUENCIES =
-    (TEXT.match(/\b[A-Za-z]{2,}\b/g) ?? []).filter(word => word.length > 2)
+    TEXT.match(/\b[A-Za-z]{2,}\b/g) ?? []
     |> _.countBy(%)
-    |> _.entries(%).filter(([, y]) => y != 1)
+    |> _.entries(%)
     |> %.sort(([, a], [, b]) => b - a)
-    |> %.filter(([, a]) => a > 1)
     |> %.map(([word, freq]) => [word, keyGen.next().value])
     |> _.fromPairs(%)
 
@@ -664,11 +663,11 @@ function generateDocument(TEXT, GLOBAL_VAR, { STRICT_MODE = false } = {}) {
     ',' +
     _.entries(WORD_FREQUENCIES).map(
       ([word, key]) =>
-        JSON.stringify(key) +
+        quote(key) +
         ':' +
         GLOBAL_VAR +
         '[+!``](' +
-        JSON.stringify(utf16toBase31(word)) +
+        quote(utf16toBase31(word)) +
         ')'
     ).join`,` +
     '}'
@@ -689,11 +688,6 @@ function generateDocument(TEXT, GLOBAL_VAR, { STRICT_MODE = false } = {}) {
     GROUPS.map(([group, substring]) => {
       switch (group) {
         case 'constant':
-          /**
-           * Since + is both a unary and binary operator,
-           * test to see if the expression begins in one,
-           * if so put it in brackets.
-           */
           return '`${' + CONSTANTS[substring] + '}`'
 
         case 'letter':
@@ -713,11 +707,15 @@ function generateDocument(TEXT, GLOBAL_VAR, { STRICT_MODE = false } = {}) {
             jsesc(substring, { quotes: choice, wrap: true })
           }
 
-        case 'identifier': {
+        case 'identifier':
           // TODO: Fix this damn code
-          const encoded = utf16toBase31(substring)
-          return GLOBAL_VAR + '[+!``](' + JSON.stringify(encoded) + ')'
-        }
+          if (WORD_FREQUENCIES?.[substring] == null) {
+            const encoded = utf16toBase31(substring)
+            return GLOBAL_VAR + '[+!``](' + quote(encoded) + ')'
+          } else {
+            const key = WORD_FREQUENCIES?.[substring]
+            return GLOBAL_VAR + '[' + JSON.stringify(key) + ']'
+          }
 
         case 'default':
           const encoded = utf16toBase31(substring)
