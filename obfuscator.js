@@ -231,7 +231,7 @@ function generateDocument(TEXT, GLOBAL_VAR, { STRICT_MODE = false } = {}) {
 
   // String encoding
   const encodeString = (str: string = ''): string =>
-    [...('' + str).replace(/\W/g, '')].map(
+    [...`${str}`.replace(/\W/g, '')].map(
       char => do {
         if (/[$_]/.test(char)) quote(char)
         else if (/\d/.test(char)) GLOBAL_VAR + '.' + encodeDigit(char)
@@ -650,26 +650,16 @@ function generateDocument(TEXT, GLOBAL_VAR, { STRICT_MODE = false } = {}) {
             '[`?`]]'
           )
 
-        case 'spaces':
-          return (
-            GLOBAL_VAR +
-            '[`-`][' +
-            GLOBAL_VAR +
-            '[`*`]](' +
-            encodeString(substring.length) +
-            ')'
-          )
-
         case 'constant':
           if (/true|false|Infinity|NaN|undefined/.test(substring)) {
             /**
              * Since + is both a unary and binary operator,
              * test to see if the expression begins in one,
-             * if so put it in brackets */
+             * if so put it in brackets.
+             */
             const constant = CONSTANTS[substring]
             try {
-              eval('+' + constant)
-              return constant
+              return eval('+' + constant) && constant
             } catch {
               return '(' + constant + ')'
             }
@@ -679,10 +669,23 @@ function generateDocument(TEXT, GLOBAL_VAR, { STRICT_MODE = false } = {}) {
           return encodeString(substring)
 
         case 'symbol':
-          return quote(substring)
+          return do {
+            const s = substring.match(/'/g)?.length || 0,
+              d = substring.match(/"/g)?.length || 0
+            const b = !/`/.test(substring) && /['"]/.test(substring)
+            const choice =
+              s < d
+                ? 'single'
+                : s > d
+                ? 'double'
+                : ['single', 'double', 'backtick'][count++ % 3]
+            jsesc(substring, { quotes: choice, wrap: true })
+          }
 
-        case 'default':
-          return GLOBAL_VAR + '[+!``](' + quote(utf16toBase31(substring)) + ')'
+        case 'default': {
+          const encoded = utf16toBase31(substring)
+          return GLOBAL_VAR + '[+!``](' + quote(encoded) + ')'
+        }
 
         case 'space':
           return '_' + GLOBAL_VAR
