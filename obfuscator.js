@@ -5,11 +5,10 @@ import fs from 'fs'
 import isValidIdentifier from 'is-valid-identifier'
 import jsesc from 'jsesc'
 import prettier from 'prettier'
-import punycode, { encode } from 'punycode'
+import punycode from 'punycode'
 import type { Lowercase, Uppercase } from './types'
 
 const print = console.log
-
 const text = fs.readFileSync('./test.txt', 'utf8')
 
 /**
@@ -33,7 +32,11 @@ function generateDocument(TEXT, GLOBAL_VAR, { STRICT_MODE = false } = {}) {
 
   let count = 0
   const quote = string => do {
-    let choice = ['single', 'double'][count++ % 2]
+    let s = string.match(/'/g)?.length || 0,
+      d = string.match(/"/g)?.length || 0
+    let b = !/`/.test(string) && /['"]/.test(string)
+    let choice =
+      s < d ? 'single' : s > d ? 'double' : ['single', 'double'][count++ % 2]
     jsesc(string, { quotes: choice, wrap: true })
   }
 
@@ -592,7 +595,7 @@ function generateDocument(TEXT, GLOBAL_VAR, { STRICT_MODE = false } = {}) {
   ].flat()
 
   const REGEXPS = {
-    constant: /true|false|Infinity|NaN|undefined|\b[a-zA-FINORSU\d]\b/,
+    constant: /\b(true|false|Infinity|NaN|undefined|[a-zA-FINORSU\d])\b/,
     symbol: /[!"#$%&'()*+,\-./:;<=>?@\[\\\]^_`{|}~]+/,
     default: /[^!"#$%&'()*+,\-./:;<=>?@\[\\\]^_`{|}~]+/,
   }
@@ -634,10 +637,9 @@ function generateDocument(TEXT, GLOBAL_VAR, { STRICT_MODE = false } = {}) {
     GROUPS.map(([group, substring]) => {
       switch (group) {
         case 'function':
-          // console.log(substring)
           return GLOBAL_VAR + '[' + JSON.stringify(IDENT_SET[substring]) + ']'
+        
         case 'constructor':
-          // console.log(substring)
           return (
             '`${' +
             LITERALS[substring] +
@@ -647,16 +649,7 @@ function generateDocument(TEXT, GLOBAL_VAR, { STRICT_MODE = false } = {}) {
             GLOBAL_VAR +
             '[`?`]]'
           )
-        case 'constant':
-          if (/true|false|Infinity|NaN|undefined/.test(substring))
-            return '`${' + CONSTANTS[substring] + '}`'
-          else return encodeString(substring)
-        case 'number':
-          return encodeString(substring)
-        case 'symbol':
-          return quote(substring)
-        case 'default':
-          return GLOBAL_VAR + '[+!``](' + quote(utf16toBase31(substring)) + ')'
+
         case 'spaces':
           return (
             GLOBAL_VAR +
@@ -666,6 +659,27 @@ function generateDocument(TEXT, GLOBAL_VAR, { STRICT_MODE = false } = {}) {
             encodeString(substring.length) +
             ')'
           )
+
+        case 'constant':
+          if (/true|false|Infinity|NaN|undefined/.test(substring)) {
+            const constant = CONSTANTS[substring]
+            try {
+              eval('+' + constant)
+              return constant
+            } catch {
+              return '(' + constant + ')'
+            }
+          } else return encodeString(substring)
+
+        case 'number':
+          return encodeString(substring)
+
+        case 'symbol':
+          return quote(substring)
+
+        case 'default':
+          return GLOBAL_VAR + '[+!``](' + quote(utf16toBase31(substring)) + ')'
+
         case 'space':
           return '_' + GLOBAL_VAR
       }
