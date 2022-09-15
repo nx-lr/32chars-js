@@ -195,10 +195,16 @@ function generateDocument(TEXT, GLOBAL_VAR, { STRICT_MODE = false } = {}) {
     _.fromPairs(_.difference(_.keys(x), _.keys(y)).map(z => [z, x[z]]))
   const CHARSET_2_DIFF = objectDifference(CHARSET_2, CHARSET_1)
 
-  const RES_CHARSET_2 = _.entries(CHARSET_2_DIFF).map(
-    ([letter, [expression, index, expansion]]) =>
-      GLOBAL_VAR + '[' + quote(encodeLetter(letter)) + ']=' + expansion
-  ).join`;`
+  const RES_CHARSET_2 =
+    GLOBAL_VAR +
+    '={...' +
+    GLOBAL_VAR +
+    ',' +
+    _.entries(CHARSET_2_DIFF).map(
+      ([letter, [expression, index, expansion]]) =>
+        quote(encodeLetter(letter)) + ':' + expansion
+    ).join`,` +
+    '}'
 
   /**
    * STEP 2.1: FORMING WORDS
@@ -244,18 +250,19 @@ function generateDocument(TEXT, GLOBAL_VAR, { STRICT_MODE = false } = {}) {
       }
     ).join`+`
 
-  const encodeIdentifiers = (identifiers: { [ident]: string }): string =>
-    _.entries(identifiers)
+  const encodeIdentifiers = (identifiers: { [ident]: string }) =>
+    GLOBAL_VAR +
+    '={...' +
+    GLOBAL_VAR +
+    ',' +
+    (_.entries(identifiers)
     |> %.map(([ident, key]) => [key, encodeString(ident)])
     |> %.map(
       ([key, expansion]) =>
-        (isValidIdentifier(key)
-          ? GLOBAL_VAR + '.' + key
-          : GLOBAL_VAR + '[' + quote(key) + ']') +
-        '=' +
-        expansion
+        (isValidIdentifier(key) ? key : quote(key)) + ':' + expansion
     )
-    |> %.join`;`
+    |> %.join`,`) +
+    '}'
 
   RESULT += ';' + encodeIdentifiers(IDENT_SET1)
   RESULT += ';' + RES_CHARSET_2
@@ -311,29 +318,53 @@ function generateDocument(TEXT, GLOBAL_VAR, { STRICT_MODE = false } = {}) {
    * future use.
    */
 
-  const RES_FUNCTIONS_1 = _.entries(GLOBAL_FUNC).map(
-    ([ident, shortcut]) => do {
-      GLOBAL_VAR +
-        '[' +
+  const RES_FUNCTIONS_1 =
+    GLOBAL_VAR +
+    '={...' +
+    GLOBAL_VAR +
+    ',' +
+    _.entries(GLOBAL_FUNC).map(
+      ([ident, shortcut]) => do {
         quote(shortcut) +
-        ']=' +
-        LITERALS.Function +
-        '[' +
-        [GLOBAL_VAR + '.$'][0] + // `constructor`
-        '](' +
-        [GLOBAL_VAR + '._'][0] + // `return`
-        '+' +
-        [GLOBAL_VAR + '[' + quote(SPACE) + ']'][0] + // space
-        '+' +
-        encodeString(ident) + // name of function
-        ')()'
-    }
-  ).join`;`
+          ':' +
+          LITERALS.Function +
+          '[' +
+          [GLOBAL_VAR + '.$'][0] + // `constructor`
+          '](' +
+          [GLOBAL_VAR + '._'][0] + // `return`
+          '+' +
+          [GLOBAL_VAR + '[' + quote(SPACE) + ']'][0] + // space
+          '+' +
+          encodeString(ident) + // name of function
+          ')()'
+      }
+    ).join`,` +
+    '}'
+
+  // const RES_FUNCTIONS_1 = _.entries(GLOBAL_FUNC).map(
+  //   ([ident, shortcut]) => do {
+  //     GLOBAL_VAR +
+  //       '[' +
+  //       quote(shortcut) +
+  //       ']=' +
+  //       LITERALS.Function +
+  //       '[' +
+  //       [GLOBAL_VAR + '.$'][0] + // `constructor`
+  //       '](' +
+  //       [GLOBAL_VAR + '._'][0] + // `return`
+  //       '+' +
+  //       [GLOBAL_VAR + '[' + quote(SPACE) + ']'][0] + // space
+  //       '+' +
+  //       encodeString(ident) + // name of function
+  //       ')()'
+  //   }
+  // ).join`;`
 
   RESULT += ';' + RES_FUNCTIONS_1
 
   // toString
   const TO_STRING = "'"
+
   RESULT +=
     ';' +
     GLOBAL_VAR +
@@ -430,8 +461,7 @@ function generateDocument(TEXT, GLOBAL_VAR, { STRICT_MODE = false } = {}) {
    * vastly easier to form ASCII-based identifiers very soon.
    */
 
-  const CIPHER_FROM =
-    '0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ'
+  const CIPHER_FROM = '0123456789abcdefghijklmnopqrstuvwxyz'
 
   // Remaining characters
   const CHARSET_3 = [..._.keys(CHARSET_2), ...'CDU']
@@ -611,7 +641,14 @@ function generateDocument(TEXT, GLOBAL_VAR, { STRICT_MODE = false } = {}) {
     default: /[^!"#$%&'()*+,\-./:;<=>?@\[\\\]^_`{|}~]+/,
   }
 
-  /** Get the frequency of words in a string */
+  /**
+   * PART 4: ENCODING
+   *
+   * What we would now do is encode the string by matching all
+   * words in the string, sorting them by their frequency and then using
+   *
+   *
+   * Get the frequency of words in a string */
   const wordFrequency =
     (TEXT.match(/[a-z]{2,}/gi) ?? []).filter(word => word.length > 2)
     |> _.countBy(%)
@@ -620,18 +657,16 @@ function generateDocument(TEXT, GLOBAL_VAR, { STRICT_MODE = false } = {}) {
     |> %.filter(([, a]) => a >= 2)
     |> _.fromPairs(%)
 
-  const keyGen = function* () {
+  const keyGen = (function* () {
     const digitsTo = `.:;!?*+^-=<>~'"/|#%&@()[]{}\\\``,
-      digitsFrom = '0123456789abcdefghijklmnopqrstuvwxyz'
+      digitsFrom = '0123456789abcdefghijklmnopqrstuvwxyz',
+      init = '()[]{}'
     for (const key of '()[]{}') yield key
-    let count = digitsTo.length
-    print(count)
-    for (; count <= 2 ** 53; print(count) && count++)
-      yield count.toString(digitsTo.length).split``.map(
+    for (let i = 0; i <= 2 ** 53; i++)
+      yield i.toString(digitsTo.length).split``.map(
         a => digitsTo[digitsFrom.indexOf(a)]
-      ).join``
-    return
-  }
+      ).join``.padStart(2, digitsTo[0])
+  })()
 
   // print(wordFrequency)
 
@@ -653,6 +688,9 @@ function generateDocument(TEXT, GLOBAL_VAR, { STRICT_MODE = false } = {}) {
     .flat(1)
 
   RESULT += ';' + '_' + GLOBAL_VAR + '=' + GLOBAL_VAR + '[`-`]'
+
+  // // DEBUG
+  // RESULT += ';' + 'console.log(' + GLOBAL_VAR + ')'
 
   RESULT +=
     ';' +
