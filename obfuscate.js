@@ -45,7 +45,7 @@ module.exports.REGEXP = REGEXP;
 function generateDocument(
   TEXT,
   GLOBAL_VAR,
-  {STRICT_MODE = false, QUOTE = "arbitrary"} = {}
+  {STRICT_MODE = false, QUOTE = ""} = {}
 ) {
   const checkIdentifier = (ident: string): boolean =>
     isValidIdentifier(ident) && !BUILTINS.test(ident);
