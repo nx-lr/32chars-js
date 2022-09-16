@@ -13,6 +13,7 @@ const text = fs.readFileSync('./test.txt', 'utf8')
 
 const REGEXPS = {
   constant: /\b(true|false|Infinity|NaN|undefined)\b/,
+  constructor: /\b(Array|Object|String|Number|Boolean|RegExp|Function)\b/,
   identifier: /\b[A-Za-z]{2,}\b/,
   letter: /\b[a-zA-FINORSU\d]\b/,
   symbol: /[!"#$%&'()*+,\-./:;<=>?@\[\\\]^_`{|}~]+/,
@@ -175,7 +176,7 @@ function generateDocument(TEXT, GLOBAL_VAR, { STRICT_MODE = false } = {}) {
   }
 
   // And these are what we would achieve from there:
-  const LITERALS = {
+  const CONSTRUCTORS = {
     Array: '[]',
     Object: '{}',
     String: '``',
@@ -187,7 +188,7 @@ function generateDocument(TEXT, GLOBAL_VAR, { STRICT_MODE = false } = {}) {
 
   const CHARSET_2 = { ...CHARSET_1 }
 
-  for (const [key, expression] of Object.entries(LITERALS)) {
+  for (const [key, expression] of Object.entries(CONSTRUCTORS)) {
     let index
     const constructor = eval(key).toString()
     for (const char of constructor)
@@ -350,7 +351,7 @@ function generateDocument(TEXT, GLOBAL_VAR, { STRICT_MODE = false } = {}) {
       ([ident, shortcut]) => do {
         quote(shortcut) +
           ':' +
-          LITERALS.Function +
+          CONSTRUCTORS.Function +
           '[' +
           [GLOBAL_VAR + '.$'][0] + // `constructor`
           '](' +
@@ -377,7 +378,7 @@ function generateDocument(TEXT, GLOBAL_VAR, { STRICT_MODE = false } = {}) {
     ']=' +
     encodeString('to') +
     '+' + // no word breaks
-    LITERALS.String +
+    CONSTRUCTORS.String +
     // `constructor`
     ['[' + GLOBAL_VAR + '.$' + ']'][0] +
     // `name`
@@ -451,7 +452,7 @@ function generateDocument(TEXT, GLOBAL_VAR, { STRICT_MODE = false } = {}) {
     quote(encodeLetter('U')) +
     ']=' +
     '`${' +
-    LITERALS.Object +
+    CONSTRUCTORS.Object +
     ['[' + GLOBAL_VAR + '[' + quote(TO_STRING) + ']]'][0] +
     ['[' + GLOBAL_VAR + '[' + quote(IDENT_SET1.call) + ']]'][0] +
     '()}`[' +
@@ -582,7 +583,7 @@ function generateDocument(TEXT, GLOBAL_VAR, { STRICT_MODE = false } = {}) {
     'a=(a=>a.split`,`.map(a=>parseInt([...a].map(a=>CIPHER_FROM[CIPHER_TO.indexOf(a)]).join``,+(31))).map(a=>String.fromCharCode(a)).join``)'
       .replace(/^\w=|;$/g, '')
       .replace('CIPHER_TO', quote(CIPHER_TO))
-      .replace('String', LITERALS.String + '[' + GLOBAL_VAR + '.$]')
+      .replace('String', CONSTRUCTORS.String + '[' + GLOBAL_VAR + '.$]')
       .replace(/\d+/, match => encodeString(match))
       .replace('parseInt', GLOBAL_VAR + '[' + quote(GLOBAL_FUNC.parseInt) + ']')
       .replace(/\ba\b/g, '_' + GLOBAL_VAR)
@@ -692,40 +693,34 @@ function generateDocument(TEXT, GLOBAL_VAR, { STRICT_MODE = false } = {}) {
       switch (group) {
         case 'constant':
           return '`${' + CONSTANTS[substring] + '}`'
-
+        case 'constructor':
+          return `${CONSTRUCTORS[substring]}[${GLOBAL_VAR}.$][${GLOBAL_VAR}[\`?\`]]`
         case 'letter':
           return encodeString(substring)
-
-        case 'symbol':
-          return do {
-            const s = substring.match(/'/g)?.length || 0,
-              d = substring.match(/"/g)?.length || 0
-            const b = !/`/.test(substring) && /['"]/.test(substring)
-            const choice =
-              s < d
-                ? 'single'
-                : s > d
-                ? 'double'
-                : ['single', 'double', 'backtick'][count++ % 3]
-            jsesc(substring, { quotes: choice, wrap: true })
-          }
-
         case 'identifier':
-          const key = IDENT_SET?.substring ?? WORD_FREQUENCIES[substring]
+          const key = WORD_FREQUENCIES[substring]
           return GLOBAL_VAR + '[' + quote(key) + ']'
-
         case 'default':
           const encoded = utf16toBase31(substring)
           return GLOBAL_VAR + '[+!``](' + quote(encoded) + ')'
-
         case 'space':
           return '_' + GLOBAL_VAR
+        case 'symbol': {
+          const single = substring.match(/'/g)?.length || 0,
+            double = substring.match(/"/g)?.length || 0,
+            backtick = !/`/.test(substring) && /['"]/.test(substring)
+          const choice = do {
+            if (backtick) 'backtick'
+            if (single < double) 'single'
+            if (single > double) 'double'
+            else ['single', 'double', 'backtick'][count++ % 3]
+          }
+          return jsesc(substring, { quotes: choice, wrap: true })
+        }
       }
-    }).join`+` +
-    ';/*console.log(_' +
-    GLOBAL_VAR +
-    ');*/module.exports.result=_' +
-    GLOBAL_VAR
+    }).join`+`
+
+  RESULT += ';' + 'module.exports.result=_' + GLOBAL_VAR
 
   return RESULT
 }
