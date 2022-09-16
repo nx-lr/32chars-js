@@ -1,15 +1,15 @@
-import UglifyJS from 'uglify-js'
-import V, { substr } from 'voca'
-import _ from 'lodash'
-import fs from 'fs'
-import isValidIdentifier from 'is-valid-identifier'
-import jsesc from 'jsesc'
-import prettier from 'prettier'
-import punycode from 'punycode'
-import type { Lowercase, Uppercase } from './types'
+import UglifyJS from "uglify-js"
+import V, { substr } from "voca"
+import _ from "lodash"
+import fs from "fs"
+import isValidIdentifier from "is-valid-identifier"
+import jsesc from "jsesc"
+import prettier from "prettier"
+import punycode from "punycode"
+import type { Lowercase, Uppercase } from "./types"
 
 const print = console.log
-const text = fs.readFileSync('./test.txt', 'utf8')
+const text = fs.readFileSync("./test.txt", "utf8")
 
 const REGEXPS = {
   constant: /\b(true|false|Infinity|NaN|undefined)\b/,
@@ -29,7 +29,7 @@ const REGEXPS = {
 let REGEXP = Object.entries(REGEXPS).map(
   ([key, { source }]) => `(?<${key}>${source})`
 ).join`|`
-REGEXP = RegExp(REGEXP, 'g')
+REGEXP = RegExp(REGEXP, "g")
 
 module.exports.REGEXP = REGEXP
 
@@ -58,7 +58,7 @@ function generateDocument(TEXT, GLOBAL_VAR, { STRICT_MODE = false } = {}) {
       d = string.match(/"/g)?.length || 0
     let b = !/`/.test(string) && /['"]/.test(string)
     let choice =
-      s < d ? 'single' : s > d ? 'double' : ['single', 'double'][count++ % 2]
+      s < d ? "single" : s > d ? "double" : ["single", "double"][count++ % 2]
     jsesc(string, { quotes: choice, wrap: true })
   }
 
@@ -79,16 +79,16 @@ function generateDocument(TEXT, GLOBAL_VAR, { STRICT_MODE = false } = {}) {
 
   const LETTERS = `abcdefghijklmnopqrstuvwxyz`
   const CIPHER = `;.!:_-,?/'*+#%&^"|~$=<>\`@\\`
-  const SPACE = '-'
+  const SPACE = "-"
 
   const encodeLetter = (char: Lowercase | Uppercase) =>
-    (V.isUpperCase(char) ? '$' : '_') +
+    (V.isUpperCase(char) ? "$" : "_") +
     (char.toLowerCase() |> LETTERS.indexOf(%) |> CIPHER[%])
 
   const encodeDigit = (number: string | number) =>
     +number
     |> %.toString(2).padStart(3, 0)
-    |> %.replace(/(?<_0>0)|(?<_1>1)/g, (_0, _1) => (_0 == 1 ? '$' : '_'))
+    |> %.replace(/(?<_0>0)|(?<_1>1)/g, (_0, _1) => (_0 == 1 ? "$" : "_"))
 
   /**
    * DEBUG
@@ -98,12 +98,12 @@ function generateDocument(TEXT, GLOBAL_VAR, { STRICT_MODE = false } = {}) {
    */
 
   const CONSTANTS = {
-    true: '!``', // ''==false
-    false: '![]', // []==true
-    undefined: '[][[]]', // [][[]] doesn't exist
-    Infinity: '!``/![]', // true/false==1/0
-    NaN: '+{}', // It makes sense
-    '[object Object]': '{}', // y e s
+    true: "!``", // ''==false
+    false: "![]", // []==true
+    undefined: "[][[]]", // [][[]] doesn't exist
+    Infinity: "!``/![]", // true/false==1/0
+    NaN: "+{}", // It makes sense
+    "[object Object]": "{}", // y e s
   }
 
   /**
@@ -118,7 +118,7 @@ function generateDocument(TEXT, GLOBAL_VAR, { STRICT_MODE = false } = {}) {
 
   // The separator is a semicolon, not a comma.
   let RESULT =
-    (STRICT_MODE ? 'let _' + GLOBAL_VAR + ',' : '') + GLOBAL_VAR + '=~[];'
+    (STRICT_MODE ? "let _" + GLOBAL_VAR + "," : "") + GLOBAL_VAR + "=~[];"
 
   // STEP 1
   const CHARSET_1 = {}
@@ -131,18 +131,18 @@ function generateDocument(TEXT, GLOBAL_VAR, { STRICT_MODE = false } = {}) {
   const RES_CHARSET_1 =
     _.range(0, 10)
     |> %.map((digit: number) => [
-      encodeDigit(digit) + ':`${++' + GLOBAL_VAR + '}`',
+      encodeDigit(digit) + ":`${++" + GLOBAL_VAR + "}`",
       Object.entries(CHARSET_1)
       |> %.filter(([, [, val: number]]) => val == digit)
       |> %.map(([char, [lit]]) => {
         const key = quote(encodeLetter(char))
-        return key + ':`${' + lit + '}`[' + GLOBAL_VAR + ']'
+        return key + ":`${" + lit + "}`[" + GLOBAL_VAR + "]"
       }),
     ])
     |> %.flat().join`,`
-    |> %.replace(/,$/, '').replace(/,+/g, ',')
-    |> [GLOBAL_VAR + '={' + % + '}'][0]
-    |> %.replace('_' + void 0, SPACE) // Replace space
+    |> %.replace(/,$/, "").replace(/,+/g, ",")
+    |> [GLOBAL_VAR + "={" + % + "}"][0]
+    |> %.replace("_" + void 0, SPACE) // Replace space
 
   RESULT += RES_CHARSET_1
 
@@ -167,23 +167,23 @@ function generateDocument(TEXT, GLOBAL_VAR, { STRICT_MODE = false } = {}) {
 
   // These will be explained later in the next section.
   const IDENT_SET1 = {
-    concat: '+',
-    call: '!',
-    join: '%',
-    slice: '/',
-    return: '_',
-    constructor: '$',
+    concat: "+",
+    call: "!",
+    join: "%",
+    slice: "/",
+    return: "_",
+    constructor: "$",
   }
 
   // And these are what we would achieve from there:
   const CONSTRUCTORS = {
-    Array: '[]',
-    Object: '{}',
-    String: '``',
-    Number: '(~[])',
-    Boolean: '(![])',
-    RegExp: '/./',
-    Function: '(()=>{})',
+    Array: "[]",
+    Object: "{}",
+    String: "``",
+    Number: "(~[])",
+    Boolean: "(![])",
+    RegExp: "/./",
+    Function: "(()=>{})",
   }
 
   const CHARSET_2 = { ...CHARSET_1 }
@@ -200,15 +200,15 @@ function generateDocument(TEXT, GLOBAL_VAR, { STRICT_MODE = false } = {}) {
     const [char, [expression, index]] = value
 
     const expansion =
-      '`${' +
+      "`${" +
       expression +
-      '[' +
+      "[" +
       GLOBAL_VAR +
-      '.$]}`[' +
+      ".$]}`[" +
       (index.toString().split``
-      |> %.map(digit => GLOBAL_VAR + '.' + encodeDigit(digit))
+      |> %.map(digit => GLOBAL_VAR + "." + encodeDigit(digit))
       |> %.join`+`) +
-      ']'
+      "]"
 
     if (!(char in CHARSET_1)) CHARSET_2[char] = [expression, index, expansion]
   }
@@ -221,14 +221,14 @@ function generateDocument(TEXT, GLOBAL_VAR, { STRICT_MODE = false } = {}) {
 
   const RES_CHARSET_2 =
     GLOBAL_VAR +
-    '={...' +
+    "={..." +
     GLOBAL_VAR +
-    ',' +
+    "," +
     Object.entries(CHARSET_2_DIFF).map(
       ([letter, [expression, index, expansion]]) =>
-        quote(encodeLetter(letter)) + ':' + expansion
+        quote(encodeLetter(letter)) + ":" + expansion
     ).join`,` +
-    '}'
+    "}"
 
   /**
    * STEP 2.1: FORMING WORDS
@@ -260,47 +260,47 @@ function generateDocument(TEXT, GLOBAL_VAR, { STRICT_MODE = false } = {}) {
    */
 
   // String encoding
-  const encodeString = (str: string = ''): string =>
-    [...`${str}`.replace(/\W/g, '')].map(char => {
+  const encodeString = (str: string = ""): string =>
+    [...`${str}`.replace(/\W/g, "")].map(char => {
       if (/[$_]/.test(char)) {
         return quote(char)
       } else if (/\d/.test(char)) {
-        return GLOBAL_VAR + '.' + encodeDigit(char)
+        return GLOBAL_VAR + "." + encodeDigit(char)
       } else {
         const encoded = encodeLetter(char)
         return isValidIdentifier(encoded)
-          ? GLOBAL_VAR + '.' + encoded
-          : GLOBAL_VAR + '[' + quote(encoded) + ']'
+          ? GLOBAL_VAR + "." + encoded
+          : GLOBAL_VAR + "[" + quote(encoded) + "]"
       }
     }).join`+`
 
   const encodeIdentifiers = (identifiers: { [ident]: string }) =>
     GLOBAL_VAR +
-    '={...' +
+    "={..." +
     GLOBAL_VAR +
-    ',' +
+    "," +
     (Object.entries(identifiers)
     |> %.map(([ident, key]) => [key, encodeString(ident)])
     |> %.map(
       ([key, expansion]) =>
-        (isValidIdentifier(key) ? key : quote(key)) + ':' + expansion
+        (isValidIdentifier(key) ? key : quote(key)) + ":" + expansion
     )
     |> %.join`,`) +
-    '}'
+    "}"
 
-  RESULT += ';' + encodeIdentifiers(IDENT_SET1)
-  RESULT += ';' + RES_CHARSET_2
+  RESULT += ";" + encodeIdentifiers(IDENT_SET1)
+  RESULT += ";" + RES_CHARSET_2
 
   const IDENT_SET2 = {
-    name: '?',
-    map: '^',
-    replace: ':',
-    repeat: '*',
-    split: '|',
-    indexOf: '#',
+    name: "?",
+    map: "^",
+    replace: ":",
+    repeat: "*",
+    split: "|",
+    indexOf: "#",
   }
 
-  RESULT += ';' + encodeIdentifiers(IDENT_SET2)
+  RESULT += ";" + encodeIdentifiers(IDENT_SET2)
 
   /**
    * STEP 3: FUNCTIONS
@@ -318,10 +318,10 @@ function generateDocument(TEXT, GLOBAL_VAR, { STRICT_MODE = false } = {}) {
    */
 
   const GLOBAL_FUNC = {
-    eval: '=',
-    escape: '>',
-    unescape: '<',
-    parseInt: '+',
+    eval: "=",
+    escape: ">",
+    unescape: "<",
+    parseInt: "+",
   }
 
   /**
@@ -344,45 +344,45 @@ function generateDocument(TEXT, GLOBAL_VAR, { STRICT_MODE = false } = {}) {
 
   const RES_FUNCTIONS_1 =
     GLOBAL_VAR +
-    '={...' +
+    "={..." +
     GLOBAL_VAR +
-    ',' +
+    "," +
     Object.entries(GLOBAL_FUNC).map(
       ([ident, shortcut]) => do {
         quote(shortcut) +
-          ':' +
+          ":" +
           CONSTRUCTORS.Function +
-          '[' +
-          [GLOBAL_VAR + '.$'][0] + // `constructor`
-          '](' +
-          [GLOBAL_VAR + '._'][0] + // `return`
-          '+' +
-          [GLOBAL_VAR + '[' + quote(SPACE) + ']'][0] + // space
-          '+' +
+          "[" +
+          [GLOBAL_VAR + ".$"][0] + // `constructor`
+          "](" +
+          [GLOBAL_VAR + "._"][0] + // `return`
+          "+" +
+          [GLOBAL_VAR + "[" + quote(SPACE) + "]"][0] + // space
+          "+" +
           encodeString(ident) + // name of function
-          ')()'
+          ")()"
       }
     ).join`,` +
-    '}'
+    "}"
 
-  RESULT += ';' + RES_FUNCTIONS_1
+  RESULT += ";" + RES_FUNCTIONS_1
 
   // toString
   const TO_STRING = "'"
 
   RESULT +=
-    ';' +
+    ";" +
     GLOBAL_VAR +
-    '[' +
+    "[" +
     quote(TO_STRING) +
-    ']=' +
-    encodeString('to') +
-    '+' + // no word breaks
+    "]=" +
+    encodeString("to") +
+    "+" + // no word breaks
     CONSTRUCTORS.String +
     // `constructor`
-    ['[' + GLOBAL_VAR + '.$' + ']'][0] +
+    ["[" + GLOBAL_VAR + ".$" + "]"][0] +
     // `name`
-    ['[' + GLOBAL_VAR + '[' + quote(IDENT_SET2.name) + ']]'][0]
+    ["[" + GLOBAL_VAR + "[" + quote(IDENT_SET2.name) + "]]"][0]
 
   /**
    * We would use the escape function to get the letters C and D
@@ -401,38 +401,38 @@ function generateDocument(TEXT, GLOBAL_VAR, { STRICT_MODE = false } = {}) {
    */
 
   RESULT +=
-    ';' +
+    ";" +
     GLOBAL_VAR +
-    '[' +
-    quote(encodeLetter('C')) +
-    ']=' +
+    "[" +
+    quote(encodeLetter("C")) +
+    "]=" +
     GLOBAL_VAR +
-    '[' +
+    "[" +
     quote(GLOBAL_FUNC.escape) +
-    '](' +
-    quote('<') + // U+3C
-    ')[' +
+    "](" +
+    quote("<") + // U+3C
+    ")[" +
     GLOBAL_VAR +
-    '.' +
+    "." +
     encodeDigit(2) +
-    ']'
+    "]"
 
   RESULT +=
-    ';' +
+    ";" +
     GLOBAL_VAR +
-    '[' +
-    quote(encodeLetter('D')) +
-    ']=' +
+    "[" +
+    quote(encodeLetter("D")) +
+    "]=" +
     GLOBAL_VAR +
-    '[' +
+    "[" +
     quote(GLOBAL_FUNC.escape) +
-    '](' +
-    quote('=') + // U+3D
-    ')[' +
+    "](" +
+    quote("=") + // U+3D
+    ")[" +
     GLOBAL_VAR +
-    '.' +
+    "." +
     encodeDigit(2) +
-    ']'
+    "]"
 
   /**
    * U is retrieved from the following formula:
@@ -446,30 +446,30 @@ function generateDocument(TEXT, GLOBAL_VAR, { STRICT_MODE = false } = {}) {
    */
 
   RESULT +=
-    ';' +
+    ";" +
     GLOBAL_VAR +
-    '[' +
-    quote(encodeLetter('U')) +
-    ']=' +
-    '`${' +
+    "[" +
+    quote(encodeLetter("U")) +
+    "]=" +
+    "`${" +
     CONSTRUCTORS.Object +
-    ['[' + GLOBAL_VAR + '[' + quote(TO_STRING) + ']]'][0] +
-    ['[' + GLOBAL_VAR + '[' + quote(IDENT_SET1.call) + ']]'][0] +
-    '()}`[' +
+    ["[" + GLOBAL_VAR + "[" + quote(TO_STRING) + "]]"][0] +
+    ["[" + GLOBAL_VAR + "[" + quote(IDENT_SET1.call) + "]]"][0] +
+    "()}`[" +
     GLOBAL_VAR +
-    '.' +
+    "." +
     encodeDigit(8) +
-    ']'
+    "]"
 
   /**
    * We will get the remainder of the ASCII alphabet, so to make it
    * vastly easier to form ASCII-based identifiers very soon.
    */
 
-  const CIPHER_FROM = '0123456789abcdefghijklmnopqrstuvwxyz'
+  const CIPHER_FROM = "0123456789abcdefghijklmnopqrstuvwxyz"
 
   // Remaining characters
-  const CHARSET_3 = [...Object.keys(CHARSET_2), ...'CDU']
+  const CHARSET_3 = [...Object.keys(CHARSET_2), ..."CDU"]
     .filter(char => !!char.trim())
     .sort()
 
@@ -487,25 +487,25 @@ function generateDocument(TEXT, GLOBAL_VAR, { STRICT_MODE = false } = {}) {
     CHARSET_3
   )
 
-  for (const letter of 'hkqwz')
+  for (const letter of "hkqwz")
     RESULT +=
-      ';' +
+      ";" +
       GLOBAL_VAR +
-      '[' +
+      "[" +
       quote(encodeLetter(letter)) +
-      ']=' +
-      '(+(' +
+      "]=" +
+      "(+(" +
       encodeString(CIPHER_FROM.indexOf(letter)) +
-      '))[' +
+      "))[" +
       GLOBAL_VAR +
-      '[' +
+      "[" +
       quote(TO_STRING) +
-      ']](' +
+      "]](" +
       encodeString(36) +
-      ')'
+      ")"
 
-  const IDENT_SET3 = { fromCharCode: '@' }
-  RESULT += ';' + encodeIdentifiers(IDENT_SET3)
+  const IDENT_SET3 = { fromCharCode: "@" }
+  RESULT += ";" + encodeIdentifiers(IDENT_SET3)
 
   /**
    * TRANSFORMATION
@@ -580,27 +580,27 @@ function generateDocument(TEXT, GLOBAL_VAR, { STRICT_MODE = false } = {}) {
    */
 
   const MACRO_B31_UTF16 =
-    'a=(a=>a.split`,`.map(a=>parseInt([...a].map(a=>CIPHER_FROM[CIPHER_TO.indexOf(a)]).join``,+(31))).map(a=>String.fromCharCode(a)).join``)'
-      .replace(/^\w=|;$/g, '')
-      .replace('CIPHER_TO', quote(CIPHER_TO))
-      .replace('String', CONSTRUCTORS.String + '[' + GLOBAL_VAR + '.$]')
+    "a=(a=>a.split`,`.map(a=>parseInt([...a].map(a=>CIPHER_FROM[CIPHER_TO.indexOf(a)]).join``,+(31))).map(a=>String.fromCharCode(a)).join``)"
+      .replace(/^\w=|;$/g, "")
+      .replace("CIPHER_TO", quote(CIPHER_TO))
+      .replace("String", CONSTRUCTORS.String + "[" + GLOBAL_VAR + ".$]")
       .replace(/\d+/, match => encodeString(match))
-      .replace('parseInt', GLOBAL_VAR + '[' + quote(GLOBAL_FUNC.parseInt) + ']')
-      .replace(/\ba\b/g, '_' + GLOBAL_VAR)
+      .replace("parseInt", GLOBAL_VAR + "[" + quote(GLOBAL_FUNC.parseInt) + "]")
+      .replace(/\ba\b/g, "_" + GLOBAL_VAR)
       .replace(
         /\.(?<ident>split|map|indexOf|join|fromCharCode)\b/g,
         ident => do {
-          ident = ident.replace(/^\./, '')
-          '[' + GLOBAL_VAR + '[' + quote(IDENT_SET[ident]) + ']]'
+          ident = ident.replace(/^\./, "")
+          "[" + GLOBAL_VAR + "[" + quote(IDENT_SET[ident]) + "]]"
         }
       )
-      .replace('CIPHER_FROM', GLOBAL_VAR + '[+![]]')
-      .replace(/^/, GLOBAL_VAR + '[+!``]=')
+      .replace("CIPHER_FROM", GLOBAL_VAR + "[+![]]")
+      .replace(/^/, GLOBAL_VAR + "[+!``]=")
 
   RESULT +=
-    ';' + GLOBAL_VAR + '[' + encodeString(0) + ']=' + encodeString(CIPHER_FROM)
+    ";" + GLOBAL_VAR + "[" + encodeString(0) + "]=" + encodeString(CIPHER_FROM)
 
-  RESULT += ';' + MACRO_B31_UTF16
+  RESULT += ";" + MACRO_B31_UTF16
 
   /**
    * UTF-16 STRINGS
@@ -621,11 +621,11 @@ function generateDocument(TEXT, GLOBAL_VAR, { STRICT_MODE = false } = {}) {
 
   // CONSTANTS
   const RE_CONSTANTS = [
-    'true',
-    'false',
-    'Infinity',
-    'NaN',
-    'undefined',
+    "true",
+    "false",
+    "Infinity",
+    "NaN",
+    "undefined",
     Object.keys(IDENT_SET),
   ].flat()
 
@@ -641,9 +641,9 @@ function generateDocument(TEXT, GLOBAL_VAR, { STRICT_MODE = false } = {}) {
 
   const keyGen = (function* () {
     const digitsTo = `.,:;!?*+^-=<>~'"/|#%&@()[]{}`,
-      digitsFrom = '0123456789abcdefghijklmnopqrstuvwxyz'
+      digitsFrom = "0123456789abcdefghijklmnopqrstuvwxyz"
     // yield brackets first since we didn't use them as keys yet
-    for (const key of '()[]{}') yield key
+    for (const key of "()[]{}") yield key
     for (let i = 0; i <= Number.MAX_SAFE_INTEGER; i++)
       yield i.toString(digitsTo.length).padStart(2, 0).split``.map(
         a => digitsTo[digitsFrom.indexOf(a)]
@@ -658,21 +658,21 @@ function generateDocument(TEXT, GLOBAL_VAR, { STRICT_MODE = false } = {}) {
     |> Object.fromEntries(%)
 
   RESULT +=
-    ';' +
+    ";" +
     GLOBAL_VAR +
-    '={...' +
+    "={..." +
     GLOBAL_VAR +
-    ',' +
+    "," +
     Object.entries(WORD_FREQUENCIES).map(
       ([word, key]) =>
         quote(key) +
-        ':' +
+        ":" +
         GLOBAL_VAR +
-        '[+!``](' +
+        "[+!``](" +
         quote(utf16toBase31(word)) +
-        ')'
+        ")"
     ).join`,` +
-    '}'
+    "}"
 
   const GROUPS = [...text.matchAll(REGEXP)]
     .map(({ groups }) =>
@@ -684,45 +684,45 @@ function generateDocument(TEXT, GLOBAL_VAR, { STRICT_MODE = false } = {}) {
   // RESULT += ';' + 'console.log(' + GLOBAL_VAR + ')'
 
   RESULT +=
-    ';' +
-    '_' +
+    ";" +
+    "_" +
     GLOBAL_VAR +
-    '=' +
+    "=" +
     // Map groups
     GROUPS.map(([group, substring]) => {
       switch (group) {
-        case 'constant':
-          return '`${' + CONSTANTS[substring] + '}`'
-        case 'constructor':
+        case "constant":
+          return "`${" + CONSTANTS[substring] + "}`"
+        case "constructor":
           return `${CONSTRUCTORS[substring]}[${GLOBAL_VAR}.$][${GLOBAL_VAR}[\`?\`]]`
-        case 'letter':
+        case "letter":
           return encodeString(substring)
-        case 'identifier':
+        case "identifier":
           const key = WORD_FREQUENCIES[substring]
-          return GLOBAL_VAR + '[' + quote(key) + ']'
-        case 'default':
+          return GLOBAL_VAR + "[" + quote(key) + "]"
+        case "default":
           const encoded = utf16toBase31(substring)
-          return GLOBAL_VAR + '[+!``](' + quote(encoded) + ')'
-        case 'space':
-          return '_' + GLOBAL_VAR
-        case 'symbol': {
+          return GLOBAL_VAR + "[+!``](" + quote(encoded) + ")"
+        case "space":
+          return "_" + GLOBAL_VAR
+        case "symbol": {
           const single = substring.match(/'/g)?.length || 0,
             double = substring.match(/"/g)?.length || 0,
             backtick = !/`/.test(substring) && /['"]/.test(substring)
           const choice = do {
-            if (backtick) 'backtick'
-            if (single < double) 'single'
-            if (single > double) 'double'
-            else ['single', 'double', 'backtick'][count++ % 3]
+            if (backtick) "backtick"
+            if (single < double) "single"
+            if (single > double) "double"
+            else ["single", "double", "backtick"][count++ % 3]
           }
           return jsesc(substring, { quotes: choice, wrap: true })
         }
       }
     }).join`+`
 
-  RESULT += ';' + 'module.exports.result=_' + GLOBAL_VAR
+  RESULT += ";" + "module.exports.result=_" + GLOBAL_VAR
 
   return RESULT
 }
 
-fs.writeFileSync('./run.js', generateDocument(text, '$', { STRICT_MODE: true }))
+fs.writeFileSync("./run.js", generateDocument(text, "$", { STRICT_MODE: true }))
