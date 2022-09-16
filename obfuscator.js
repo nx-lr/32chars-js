@@ -12,12 +12,13 @@ const print = console.log;
 const text = fs.readFileSync("./test.txt", "utf8");
 
 const REGEXPS = {
+  space: / +/,
   constant: /\b(true|false|Infinity|NaN|undefined)\b/,
   constructor: /\b(Array|Object|String|Number|Boolean|RegExp|Function)\b/,
-  identifier: /\b[A-Za-z]{2,}\b/,
+  word: /\b[A-Za-z]{2,}\b/,
   letter: /\b[a-zA-FINORSU\d]\b/,
   symbol: /[!"#$%&'()*+,\-./:;<=>?@\[\\\]^_`{|}~]+/,
-  default: /[^!"#$%&'()*+,\-./:;<=>?@\[\\\]^_`{|}~]+/,
+  default: /[^!"#$%&'()*+,\-./:;<=>?@\[\\\]^_`{|}~ ]+/,
 };
 
 /**
@@ -53,13 +54,16 @@ function generateDocument(TEXT, GLOBAL_VAR, { STRICT_MODE = false } = {}) {
    */
 
   let count = 0;
-  const quote = string => do {
-    let s = string.match(/'/g)?.length || 0,
-      d = string.match(/"/g)?.length || 0;
-    let b = !/`/.test(string) && /['"]/.test(string);
-    let choice =
-      s < d ? "single" : s > d ? "double" : ["single", "double"][count++ % 2];
-    jsesc(string, { quotes: choice, wrap: true });
+  const quote = string => {
+    const single = string.match(/'/g)?.length || 0,
+      double = string.match(/"/g)?.length || 0,
+      backtick = !/`/.test(string) && /['"]/.test(string);
+    const choice = do {
+      if (single < double) "single";
+      if (single > double) "double";
+      else ["single", "double"][count++ % 2];
+    };
+    return jsesc(string, { quotes: choice, wrap: true });
   };
 
   /**
@@ -633,28 +637,32 @@ function generateDocument(TEXT, GLOBAL_VAR, { STRICT_MODE = false } = {}) {
    * PART 4: ENCODING
    *
    * What we would now do is encode the string by matching all
-   * words in the string, sorting them by their frequency and then
-   * assigning symbol keys to these values (base 29).
+   * words in the string, ranking them by their frequency and then
+   * assigning symbol keys to these values in base 30, excluding
+   * combinations with _ and $ which are valid identifiers
+   * and have already been assigned.
    *
-   * The most frequent words in the string would get shorter keys.
+   * They would be referenced later on when we assemble the
+   * string.
    */
 
   const keyGen = (function* () {
-    const digitsTo = `.,:;!?*+^-=<>~'"/|#%&@()[]{}`,
+    const digitsTo = `.,:;!?*+^-=<>~'"\`/|\\#%&@()[]{}`,
       digitsFrom = "0123456789abcdefghijklmnopqrstuvwxyz";
     // yield brackets first since we didn't use them as keys yet
     for (const key of "()[]{}") yield key;
     for (let i = 0; i <= Number.MAX_SAFE_INTEGER; i++)
-      yield i.toString(digitsTo.length).padStart(2, 0).split``.map(
-        a => digitsTo[digitsFrom.indexOf(a)]
-      ).join``;
+      yield i.toString(digitsTo.length)
+      |> %.padStart(2, 0).split``
+      |> %.map(a => digitsTo[digitsFrom.indexOf(a)])
+      |> %.join``;
   })();
 
   const WORD_FREQUENCIES =
     TEXT.match(/\b[A-Za-z]{2,}\b/g) ?? []
     |> Object.entries(_.countBy(%))
     |> %.sort(([, a], [, b]) => b - a)
-    |> %.map(([word, freq]) => [word, keyGen.next().value])
+    |> %.map(([word]) => [word, keyGen.next().value])
     |> Object.fromEntries(%);
 
   RESULT +=
@@ -674,53 +682,58 @@ function generateDocument(TEXT, GLOBAL_VAR, { STRICT_MODE = false } = {}) {
     ).join`,` +
     "}";
 
+  /**
+   * PART 5: SUBSTITUTION
+   *
+   * We would first split up the text into spaces so we can join
+   * the result into a string later on. Spaces are represented
+   * with empty arrays.
+   */
+
   const GROUPS = [...text.matchAll(REGEXP)]
-    .map(({ groups }) =>
-      Object.entries(groups).filter(([, value]) => value != null)
-    )
+    .map(({ groups }) => Object.entries(groups).filter(([, value]) => !!value))
     .flat(1);
 
   // // DEBUG
   // RESULT += ';' + 'console.log(' + GLOBAL_VAR + ')'
 
-  RESULT +=
-    ";" +
-    "_" +
-    GLOBAL_VAR +
-    "=" +
-    // Map groups
-    GROUPS.map(([group, substring]) => {
-      switch (group) {
-        case "constant":
-          return "`${" + CONSTANTS[substring] + "}`";
-        case "constructor":
-          return `${CONSTRUCTORS[substring]}[${GLOBAL_VAR}.$][${GLOBAL_VAR}[\`?\`]]`;
-        case "letter":
-          return encodeString(substring);
-        case "identifier":
-          const key = WORD_FREQUENCIES[substring];
-          return GLOBAL_VAR + "[" + quote(key) + "]";
-        case "default":
-          const encoded = utf16toBase31(substring);
-          return GLOBAL_VAR + "[+!``](" + quote(encoded) + ")";
-        case "space":
-          return "_" + GLOBAL_VAR;
-        case "symbol": {
-          const single = substring.match(/'/g)?.length || 0,
-            double = substring.match(/"/g)?.length || 0,
-            backtick = !/`/.test(substring) && /['"]/.test(substring);
-          const choice = do {
-            if (backtick) "backtick";
-            if (single < double) "single";
-            if (single > double) "double";
-            else ["single", "double", "backtick"][count++ % 3];
-          };
-          return jsesc(substring, { quotes: choice, wrap: true });
-        }
-      }
-    }).join`+`;
+  const EXPRESSION = GROUPS.map(([group, substring]) => {
+    switch (group) {
+      case "constant":
+        return "`${" + CONSTANTS[substring] + "}`";
+      case "constructor":
+        return `${CONSTRUCTORS[substring]}[${GLOBAL_VAR}.$][${GLOBAL_VAR}['?']]`;
+      case "letter":
+        return encodeString(substring);
+      case "word":
+        const key = WORD_FREQUENCIES[substring];
+        return GLOBAL_VAR + "[" + quote(key) + "]";
+      case "default":
+        const encoded = utf16toBase31(substring);
+        return GLOBAL_VAR + "[+!``](" + quote(encoded) + ")";
+      case "space":
+        const { length } = substring;
+        const encodedLen = encodeString(length);
+        if (length == 1) return GLOBAL_VAR + "[`-`]";
+        else return `${GLOBAL_VAR}['-'][${GLOBAL_VAR}['*']](${encodedLen})`;
+      case "symbol":
+        const single = substring.match(/'/g)?.length || 0,
+          double = substring.match(/"/g)?.length || 0,
+          backtick = !/`/.test(substring) && /['"]/.test(substring);
+        const choice = do {
+          if (backtick) "backtick";
+          if (single < double) "single";
+          if (single > double) "double";
+          else ["single", "double", "backtick"][count++ % 3];
+        };
+        return jsesc(substring, { quotes: choice, wrap: true });
+    }
+  }).join`+`;
 
-  RESULT += ";" + "module.exports.result=_" + GLOBAL_VAR;
+  RESULT += ";" + "_" + GLOBAL_VAR + "=" + EXPRESSION;
+
+  // Map groups
+  RESULT += ";" + "module['exports']['result']=_" + GLOBAL_VAR;
 
   return RESULT;
 }
