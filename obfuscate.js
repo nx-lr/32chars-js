@@ -220,9 +220,9 @@ function generateDocument(
       "[" +
       GLOBAL_VAR +
       ".$]}`[" +
-      (index.toString().split``
-      |> %.map(digit => GLOBAL_VAR + "." + encodeDigit(digit))
-      |> %.join`+`) +
+      index.toString().split``.map(
+        digit => GLOBAL_VAR + "." + encodeDigit(digit)
+      ).join`+` +
       "]";
 
     if (!(char in CHARSET_1)) CHARSET_2[char] = [expression, index, expansion];
