@@ -107,7 +107,6 @@ function generateDocument(
     |> %.replace(/(?<$0>0)|(?<$1>1)/g, ($0, $1) => ($0 == 1 ? "$" : "_"));
 
   /**
-   * DEBUG
    * @example
    * print(encodeDigit(314))
    * print(encodeLetter('x'))
@@ -703,9 +702,6 @@ function generateDocument(
   const GROUPS = [...text.matchAll(REGEXP)]
     .map(({groups}) => Object.entries(groups).filter(([, value]) => !!value))
     .flat(1);
-
-  // // DEBUG
-  // RESULT += ';' + 'console.log(' + GLOBAL_VAR + ')'
 
   const EXPRESSION = GROUPS.map(([group, substring]) => {
     switch (group) {
