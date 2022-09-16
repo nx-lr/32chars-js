@@ -1,12 +1,12 @@
 import UglifyJS from "uglify-js";
-import V, { substr } from "voca";
+import V, {substr} from "voca";
 import _ from "lodash";
 import fs from "fs";
 import isValidIdentifier from "is-valid-identifier";
 import jsesc from "jsesc";
 import prettier from "prettier";
 import punycode from "punycode";
-import type { Lowercase, Uppercase } from "./types";
+import type {Lowercase, Uppercase} from "./types";
 
 const print = console.log;
 const text = fs.readFileSync("./test.txt", "utf8");
@@ -27,9 +27,10 @@ const REGEXPS = {
  * character in plain text.
  */
 
-let REGEXP = Object.entries(REGEXPS).map(
-  ([key, { source }]) => `(?<${key}>${source})`
-).join`|`;
+let REGEXP =
+  Object.entries(REGEXPS)
+  |> %.map(([key, {source}]) => `(?<${key}>${source})`)
+  |> %.join`|`;
 REGEXP = RegExp(REGEXP, "g");
 
 module.exports.REGEXP = REGEXP;
@@ -42,7 +43,10 @@ module.exports.REGEXP = REGEXP;
  * - Execution, where the constructed code is evaluated and executed.
  */
 
-function generateDocument(TEXT, GLOBAL_VAR, { STRICT_MODE = false } = {}) {
+function generateDocument(TEXT, GLOBAL_VAR, {STRICT_MODE = false} = {}) {
+  if (!isValidIdentifier(GLOBAL_VAR))
+    throw new Error("Invalid global variable: " + quote(GLOBAL_VAR));
+
   /**
    * Encase a string in literal quotes; finding the shortest
    * ASCII stringified representation of the original string.
@@ -63,7 +67,7 @@ function generateDocument(TEXT, GLOBAL_VAR, { STRICT_MODE = false } = {}) {
       if (single > double) "double";
       else ["single", "double"][count++ % 2];
     };
-    return jsesc(string, { quotes: choice, wrap: true });
+    return jsesc(string, {quotes: choice, wrap: true});
   };
 
   /**
@@ -190,7 +194,7 @@ function generateDocument(TEXT, GLOBAL_VAR, { STRICT_MODE = false } = {}) {
     Function: "(()=>{})",
   };
 
-  const CHARSET_2 = { ...CHARSET_1 };
+  const CHARSET_2 = {...CHARSET_1};
 
   for (const [key, expression] of Object.entries(CONSTRUCTORS)) {
     let index;
@@ -278,7 +282,7 @@ function generateDocument(TEXT, GLOBAL_VAR, { STRICT_MODE = false } = {}) {
       }
     }).join`+`;
 
-  const encodeIdentifiers = (identifiers: { [ident]: string }) =>
+  const encodeIdentifiers = (identifiers: {[ident]: string}) =>
     GLOBAL_VAR +
     "={..." +
     GLOBAL_VAR +
@@ -508,7 +512,7 @@ function generateDocument(TEXT, GLOBAL_VAR, { STRICT_MODE = false } = {}) {
       encodeString(36) +
       ")";
 
-  const IDENT_SET3 = { fromCharCode: "@" };
+  const IDENT_SET3 = {fromCharCode: "@"};
   RESULT += ";" + encodeIdentifiers(IDENT_SET3);
 
   /**
@@ -532,7 +536,7 @@ function generateDocument(TEXT, GLOBAL_VAR, { STRICT_MODE = false } = {}) {
    */
 
   const CIPHER_TO = `_.:;!?*+^-=<>~'"/|#$%&@{}()[]\`\\`;
-  const IDENT_SET = { ...IDENT_SET1, ...IDENT_SET2, ...IDENT_SET3 };
+  const IDENT_SET = {...IDENT_SET1, ...IDENT_SET2, ...IDENT_SET3};
 
   /**
    * UTF-16 STRINGS
@@ -691,7 +695,7 @@ function generateDocument(TEXT, GLOBAL_VAR, { STRICT_MODE = false } = {}) {
    */
 
   const GROUPS = [...text.matchAll(REGEXP)]
-    .map(({ groups }) => Object.entries(groups).filter(([, value]) => !!value))
+    .map(({groups}) => Object.entries(groups).filter(([, value]) => !!value))
     .flat(1);
 
   // // DEBUG
@@ -712,7 +716,7 @@ function generateDocument(TEXT, GLOBAL_VAR, { STRICT_MODE = false } = {}) {
         const encoded = utf16toBase31(substring);
         return GLOBAL_VAR + "[+!``](" + quote(encoded) + ")";
       case "space":
-        const { length } = substring;
+        const {length} = substring;
         const encodedLen = encodeString(length);
         if (length == 1) return GLOBAL_VAR + "[`-`]";
         else return `${GLOBAL_VAR}['-'][${GLOBAL_VAR}['*']](${encodedLen})`;
@@ -726,7 +730,7 @@ function generateDocument(TEXT, GLOBAL_VAR, { STRICT_MODE = false } = {}) {
           if (single > double) "double";
           else ["single", "double", "backtick"][count++ % 3];
         };
-        return jsesc(substring, { quotes: choice, wrap: true });
+        return jsesc(substring, {quotes: choice, wrap: true});
     }
   }).join`+`;
 
@@ -735,10 +739,14 @@ function generateDocument(TEXT, GLOBAL_VAR, { STRICT_MODE = false } = {}) {
   // Map groups
   RESULT += ";" + "module['exports']['result']=_" + GLOBAL_VAR;
 
+  print(`================================================================
+STATS
+================================================================
+Input length: ${TEXT.length}
+Output length: ${RESULT.length}
+Ratio: ${RESULT.length / TEXT.length}`);
+
   return RESULT;
 }
 
-fs.writeFileSync(
-  "./run.js",
-  generateDocument(text, "$", { STRICT_MODE: true })
-);
+fs.writeFileSync("./run.js", generateDocument(text, "_", {STRICT_MODE: true}));
