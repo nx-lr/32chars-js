@@ -25,7 +25,7 @@ const REGEXPS = {
  * character in plain text.
  */
 
-let REGEXP = _.entries(REGEXPS).map(
+let REGEXP = Object.entries(REGEXPS).map(
   ([key, { source }]) => `(?<${key}>${source})`
 ).join`|`
 REGEXP = RegExp(REGEXP, 'g')
@@ -122,7 +122,7 @@ function generateDocument(TEXT, GLOBAL_VAR, { STRICT_MODE = false } = {}) {
   // STEP 1
   const CHARSET_1 = {}
 
-  for (const [constant, expression] of _.entries(CONSTANTS))
+  for (const [constant, expression] of Object.entries(CONSTANTS))
     for (const char of constant)
       if (/[\w\s]/.test(char) && !(char in CHARSET_1))
         CHARSET_1[char] = [expression, constant.indexOf(char)]
@@ -131,7 +131,7 @@ function generateDocument(TEXT, GLOBAL_VAR, { STRICT_MODE = false } = {}) {
     _.range(0, 10)
     |> %.map((digit: number) => [
       encodeDigit(digit) + ':`${++' + GLOBAL_VAR + '}`',
-      _.entries(CHARSET_1)
+      Object.entries(CHARSET_1)
       |> %.filter(([, [, val: number]]) => val == digit)
       |> %.map(([char, [lit]]) => {
         const key = quote(encodeLetter(char))
@@ -187,7 +187,7 @@ function generateDocument(TEXT, GLOBAL_VAR, { STRICT_MODE = false } = {}) {
 
   const CHARSET_2 = { ...CHARSET_1 }
 
-  for (const [key, expression] of _.entries(LITERALS)) {
+  for (const [key, expression] of Object.entries(LITERALS)) {
     let index
     const constructor = eval(key).toString()
     for (const char of constructor)
@@ -195,7 +195,7 @@ function generateDocument(TEXT, GLOBAL_VAR, { STRICT_MODE = false } = {}) {
         CHARSET_2[char] = [expression, (index = constructor.indexOf(char))]
   }
 
-  for (const value of _.entries(CHARSET_2)) {
+  for (const value of Object.entries(CHARSET_2)) {
     const [char, [expression, index]] = value
 
     const expansion =
@@ -213,7 +213,9 @@ function generateDocument(TEXT, GLOBAL_VAR, { STRICT_MODE = false } = {}) {
   }
 
   const objectDifference = (x: object, y: object) =>
-    _.fromPairs(_.difference(_.keys(x), _.keys(y)).map(z => [z, x[z]]))
+    Object.fromEntries(
+      _.difference(Object.keys(x), Object.keys(y)).map(z => [z, x[z]])
+    )
   const CHARSET_2_DIFF = objectDifference(CHARSET_2, CHARSET_1)
 
   const RES_CHARSET_2 =
@@ -221,7 +223,7 @@ function generateDocument(TEXT, GLOBAL_VAR, { STRICT_MODE = false } = {}) {
     '={...' +
     GLOBAL_VAR +
     ',' +
-    _.entries(CHARSET_2_DIFF).map(
+    Object.entries(CHARSET_2_DIFF).map(
       ([letter, [expression, index, expansion]]) =>
         quote(encodeLetter(letter)) + ':' + expansion
     ).join`,` +
@@ -276,7 +278,7 @@ function generateDocument(TEXT, GLOBAL_VAR, { STRICT_MODE = false } = {}) {
     '={...' +
     GLOBAL_VAR +
     ',' +
-    (_.entries(identifiers)
+    (Object.entries(identifiers)
     |> %.map(([ident, key]) => [key, encodeString(ident)])
     |> %.map(
       ([key, expansion]) =>
@@ -344,7 +346,7 @@ function generateDocument(TEXT, GLOBAL_VAR, { STRICT_MODE = false } = {}) {
     '={...' +
     GLOBAL_VAR +
     ',' +
-    _.entries(GLOBAL_FUNC).map(
+    Object.entries(GLOBAL_FUNC).map(
       ([ident, shortcut]) => do {
         quote(shortcut) +
           ':' +
@@ -466,7 +468,7 @@ function generateDocument(TEXT, GLOBAL_VAR, { STRICT_MODE = false } = {}) {
   const CIPHER_FROM = '0123456789abcdefghijklmnopqrstuvwxyz'
 
   // Remaining characters
-  const CHARSET_3 = [..._.keys(CHARSET_2), ...'CDU']
+  const CHARSET_3 = [...Object.keys(CHARSET_2), ...'CDU']
     .filter(char => !!char.trim())
     .sort()
 
@@ -623,7 +625,7 @@ function generateDocument(TEXT, GLOBAL_VAR, { STRICT_MODE = false } = {}) {
     'Infinity',
     'NaN',
     'undefined',
-    _.keys(IDENT_SET),
+    Object.keys(IDENT_SET),
   ].flat()
 
   /**
@@ -649,11 +651,10 @@ function generateDocument(TEXT, GLOBAL_VAR, { STRICT_MODE = false } = {}) {
 
   const WORD_FREQUENCIES =
     TEXT.match(/\b[A-Za-z]{2,}\b/g) ?? []
-    |> _.countBy(%)
-    |> _.entries(%)
+    |> Object.entries(_.countBy(%))
     |> %.sort(([, a], [, b]) => b - a)
     |> %.map(([word, freq]) => [word, keyGen.next().value])
-    |> _.fromPairs(%)
+    |> Object.fromEntries(%)
 
   RESULT +=
     ';' +
@@ -661,7 +662,7 @@ function generateDocument(TEXT, GLOBAL_VAR, { STRICT_MODE = false } = {}) {
     '={...' +
     GLOBAL_VAR +
     ',' +
-    _.entries(WORD_FREQUENCIES).map(
+    Object.entries(WORD_FREQUENCIES).map(
       ([word, key]) =>
         quote(key) +
         ':' +
@@ -673,7 +674,9 @@ function generateDocument(TEXT, GLOBAL_VAR, { STRICT_MODE = false } = {}) {
     '}'
 
   const GROUPS = [...text.matchAll(REGEXP)]
-    .map(({ groups }) => _.entries(groups).filter(([, value]) => value != null))
+    .map(({ groups }) =>
+      Object.entries(groups).filter(([, value]) => value != null)
+    )
     .flat(1)
 
   // // DEBUG
@@ -708,14 +711,8 @@ function generateDocument(TEXT, GLOBAL_VAR, { STRICT_MODE = false } = {}) {
           }
 
         case 'identifier':
-          // TODO: Fix this damn code
-          if (WORD_FREQUENCIES?.[substring] == null) {
-            const encoded = utf16toBase31(substring)
-            return GLOBAL_VAR + '[+!``](' + quote(encoded) + ')'
-          } else {
-            const key = WORD_FREQUENCIES[substring]
-            return GLOBAL_VAR + '[' + quote(key) + ']'
-          }
+          const key = IDENT_SET?.substring ?? WORD_FREQUENCIES[substring]
+          return GLOBAL_VAR + '[' + quote(key) + ']'
 
         case 'default':
           const encoded = utf16toBase31(substring)
