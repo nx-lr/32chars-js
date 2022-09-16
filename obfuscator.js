@@ -44,7 +44,13 @@ module.exports.REGEXP = REGEXP;
  */
 
 function generateDocument(TEXT, GLOBAL_VAR, {STRICT_MODE = false} = {}) {
-  if (!isValidIdentifier(GLOBAL_VAR))
+  const checkIdentifier = (ident: string): boolean => do {
+    const builtins =
+      /\b(Infinity|NaN|undefined|globalThis|thiseval|isFinite|isNaN|parseFloat|parseInt|encodeURI|encodeURIComponent|decodeURI|decodeURIComponent|escape|unescape|Object|Function|Boolean|Symbol|Number|BigInt|Math|Date|String|RegExp|Array|Int8Array|Uint8Array|Uint8ClampedArray|Int16Array|Uint16Array|Int32Array|Uint32Array|Float32Array|Float64Array|BigInt64Array|BigUint64Array|Map|Set|WeakMap|WeakSet|ArrayBuffer|SharedArrayBuffer|Atomics|DataView|JSON|Promise|Generator|GeneratorFunction|AsyncFunction|AsyncGenerator|AsyncGeneratorFunction|Reflect|Proxy|Intl|WebAssembly)\b/;
+    isValidIdentifier(ident) && !builtins.test(ident);
+  };
+
+  if (!checkIdentifier(GLOBAL_VAR))
     throw new Error("Invalid global variable: " + quote(GLOBAL_VAR));
 
   /**
@@ -587,7 +593,7 @@ function generateDocument(TEXT, GLOBAL_VAR, {STRICT_MODE = false} = {}) {
    * there's no need to explicitly write `.join(',')`.
    */
 
-  const MACRO_B31_UTF16 =
+  const ENCODING_MACRO =
     "a=(a=>a.split`,`.map(a=>parseInt([...a].map(a=>CIPHER_FROM[CIPHER_TO.indexOf(a)]).join``,+(31))).map(a=>String.fromCharCode(a)).join``)"
       .replace(/^\w=|;$/g, "")
       .replace("CIPHER_TO", quote(CIPHER_TO))
@@ -605,10 +611,8 @@ function generateDocument(TEXT, GLOBAL_VAR, {STRICT_MODE = false} = {}) {
       .replace("CIPHER_FROM", GLOBAL_VAR + "[+![]]")
       .replace(/^/, GLOBAL_VAR + "[+!``]=");
 
-  RESULT +=
-    ";" + GLOBAL_VAR + "[" + encodeString(0) + "]=" + encodeString(CIPHER_FROM);
-
-  RESULT += ";" + MACRO_B31_UTF16;
+  RESULT += ";" + GLOBAL_VAR + "[+![]]=" + encodeString(CIPHER_FROM);
+  RESULT += ";" + ENCODING_MACRO;
 
   /**
    * UTF-16 STRINGS
@@ -723,7 +727,7 @@ function generateDocument(TEXT, GLOBAL_VAR, {STRICT_MODE = false} = {}) {
       case "symbol":
         const single = substring.match(/'/g)?.length || 0,
           double = substring.match(/"/g)?.length || 0,
-          backtick = !/`/.test(substring) && /['"]/.test(substring);
+          backtick = !/`|\${/.test(substring) && /['"]/.test(substring);
         const choice = do {
           if (backtick) "backtick";
           if (single < double) "single";
