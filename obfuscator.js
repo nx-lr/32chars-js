@@ -1,11 +1,8 @@
-import UglifyJS from "uglify-js";
-import V, {substr} from "voca";
+import V from "voca";
 import _ from "lodash";
 import fs from "fs";
 import isValidIdentifier from "is-valid-identifier";
 import jsesc from "jsesc";
-import prettier from "prettier";
-import punycode from "punycode";
 import type {Lowercase, Uppercase} from "./types";
 
 const print = console.log;
@@ -733,9 +730,11 @@ function generateDocument(
         const encodedLen = encodeString(length);
         if (length == 1) return GLOBAL_VAR + "[" + quote("-") + "]";
         else
-          return `${GLOBAL_VAR}[${quote("-")}][${GLOBAL_VAR}[${quote(
-            "*"
-          )}]](${encodedLen})`;
+          return (
+            `${GLOBAL_VAR}[${quote("-")}]` +
+            `[${GLOBAL_VAR}[${quote("*")}]]` +
+            `(${encodedLen})`
+          );
       case "symbol":
         return quote(substring);
     }
