@@ -3,10 +3,12 @@ import _ from "lodash";
 import fs from "fs";
 import isValidIdentifier from "is-valid-identifier";
 import jsesc from "jsesc";
-import type {Lowercase, Uppercase} from "./types";
 
 const print = console.log;
-const text = fs.readFileSync("./test.txt", "utf8");
+const text = fs.readFileSync("./input.txt", "utf8");
+
+const BUILTINS =
+  /\b(Infinity|NaN|undefined|globalThis|thiseval|isFinite|isNaN|parseFloat|parseInt|encodeURI|encodeURIComponent|decodeURI|decodeURIComponent|escape|unescape|Object|Function|Boolean|Symbol|Number|BigInt|Math|Date|String|RegExp|Array|Int8Array|Uint8Array|Uint8ClampedArray|Int16Array|Uint16Array|Int32Array|Uint32Array|Float32Array|Float64Array|BigInt64Array|BigUint64Array|Map|Set|WeakMap|WeakSet|ArrayBuffer|SharedArrayBuffer|Atomics|DataView|JSON|Promise|Generator|GeneratorFunction|AsyncFunction|AsyncGenerator|AsyncGeneratorFunction|Reflect|Proxy|Intl|WebAssembly)\b/;
 
 const REGEXPS = {
   space: / +/,
@@ -45,12 +47,8 @@ function generateDocument(
   GLOBAL_VAR,
   {STRICT_MODE = false, QUOTE = "arbitrary"} = {}
 ) {
-  const checkIdentifier = (ident: string): boolean => do {
-    const builtins =
-      /\b(Infinity|NaN|undefined|globalThis|thiseval|isFinite|isNaN|parseFloat|parseInt|encodeURI|encodeURIComponent|decodeURI|decodeURIComponent|escape|unescape|Object|Function|Boolean|Symbol|Number|BigInt|Math|Date|String|RegExp|Array|Int8Array|Uint8Array|Uint8ClampedArray|Int16Array|Uint16Array|Int32Array|Uint32Array|Float32Array|Float64Array|BigInt64Array|BigUint64Array|Map|Set|WeakMap|WeakSet|ArrayBuffer|SharedArrayBuffer|Atomics|DataView|JSON|Promise|Generator|GeneratorFunction|AsyncFunction|AsyncGenerator|AsyncGeneratorFunction|Reflect|Proxy|Intl|WebAssembly)\b/;
-    isValidIdentifier(ident) && !builtins.test(ident);
-  };
-
+  const checkIdentifier = (ident: string): boolean =>
+    isValidIdentifier(ident) && !BUILTINS.test(ident);
   if (!checkIdentifier(GLOBAL_VAR))
     throw new Error("Invalid global variable: " + quote(GLOBAL_VAR));
 
@@ -67,7 +65,7 @@ function generateDocument(
   let count = 0;
   const quote = string => do {
     let choice = do {
-      if (QUOTE == "single" || QUOTE == "double") QUOTE;
+      if (/single|double/.test(QUOTE)) QUOTE;
       else {
         const single = string.match(/'/g)?.length || 0,
           double = string.match(/"/g)?.length || 0,
@@ -106,7 +104,7 @@ function generateDocument(
   const encodeDigit = (number: string | number) =>
     +number
     |> %.toString(2).padStart(3, 0)
-    |> %.replace(/(?<_0>0)|(?<_1>1)/g, (_0, _1) => (_0 == 1 ? "$" : "_"));
+    |> %.replace(/(?<$0>0)|(?<$1>1)/g, ($0, $1) => ($0 == 1 ? "$" : "_"));
 
   /**
    * DEBUG
@@ -728,13 +726,11 @@ function generateDocument(
       case "space":
         const {length} = substring;
         const encodedLen = encodeString(length);
-        if (length == 1) return GLOBAL_VAR + "[" + quote("-") + "]";
-        else
-          return (
-            `${GLOBAL_VAR}[${quote("-")}]` +
-            `[${GLOBAL_VAR}[${quote("*")}]]` +
-            `(${encodedLen})`
-          );
+        return length == 1
+          ? GLOBAL_VAR + "[" + quote("-") + "]"
+          : `${GLOBAL_VAR}[${quote("-")}]` +
+              `[${GLOBAL_VAR}[${quote("*")}]]` +
+              `(${encodedLen})`;
       case "symbol":
         return quote(substring);
     }
@@ -746,9 +742,9 @@ function generateDocument(
   RESULT +=
     ";" + `module[${quote("exports")}][${quote("result")}]=_` + GLOBAL_VAR;
 
-  print(`================================================================
+  print(`=====
 STATS
-================================================================
+=====
 Input length: ${TEXT.length}
 Output length: ${RESULT.length}
 Ratio: ${RESULT.length / TEXT.length}`);

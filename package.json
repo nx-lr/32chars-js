@@ -1,50 +1,36 @@
 {
-  "name": "@saga/core",
-  "version": "1.0.0",
-  "main": "index.js",
-  "scripts": {
-    "start": "nodemon --exec babel-node index.js",
-    "flow": "flow",
-    "test": "echo \"Error: no test specified\" && exit 1"
-  },
-  "directories": {
-    "doc": "docs",
-    "test": "tests"
-  },
-  "engines": {
-    "vscode": "^1.58.0"
-  },
-  "categories": [
-    "Programming Languages",
-    "Themes"
-  ],
-  "contributes": {
-    "languages": [
-      {
-        "id": "saga",
-        "aliases": [
-          "Saga",
-          "saga"
-        ],
-        "extensions": [
-          ".saga"
-        ],
-        "configuration": "./language-configuration.json"
-      }
+  "author": "",
+  "babel": {
+    "plugins": [
+      [
+        "@babel/plugin-proposal-pipeline-operator",
+        {
+          "proposal": "hack",
+          "topicToken": "%"
+        }
+      ],
+      "@babel/plugin-proposal-class-properties",
+      "@babel/plugin-proposal-class-static-block",
+      [
+        "@babel/plugin-proposal-decorators",
+        {
+          "decoratorsBeforeExport": true
+        }
+      ],
+      "@babel/plugin-proposal-do-expressions",
+      "@babel/plugin-proposal-export-default-from",
+      "@babel/plugin-proposal-function-bind",
+      "@babel/plugin-proposal-function-sent",
+      "@babel/plugin-proposal-partial-application",
+      "@babel/plugin-proposal-private-methods",
+      "@babel/plugin-proposal-private-property-in-object",
+      "@babel/plugin-proposal-throw-expressions"
     ],
-    "grammars": [
-      {
-        "language": "saga",
-        "scopeName": "source.saga",
-        "path": "./syntaxes/saga.tmLanguage.json"
-      }
-    ],
-    "themes": [
-      {
-        "label": "Saga",
-        "uiTheme": "vs-dark",
-        "path": "./themes/Saga-color-theme.json"
-      }
+    "presets": [
+      "@babel/preset-env",
+      "@babel/preset-flow",
+      "@babel/preset-typescript",
+      "@babel/preset-react"
     ]
   },
   "dependencies": {
@@ -78,56 +64,34 @@
     "itt": "^0.7.3",
     "jsesc": "^2.5.2",
     "lodash": "^4.17.21",
+    "mathjs": "^11.2.1",
     "prettier": "^2.7.1",
     "punycode": "^2.1.1",
     "uglify-js": "^3.17.0",
     "voca": "^1.4.0"
   },
+  "description": "A better version of jjencode using all ASCII symbol characters, and modern JavaScript syntax. This CLI-based program is STRICTLY for experimentation ONLY and SHALL NEVER be used for production or generation of malicious code.",
+  "directories": {
+    "doc": "docs",
+    "test": "tests"
+  },
   "keywords": [],
-  "author": "",
   "license": "ISC",
-  "description": "",
+  "main": "index.js",
+  "name": "voidscript",
   "prettier": {
+    "arrowParens": "avoid",
+    "bracketSpacing": false,
+    "jsxBracketSameLine": true,
     "printWidth": 80,
-    "trailingComma": "es5",
-    "tabWidth": 2,
     "semi": true,
     "singleQuote": false,
-    "arrowParens": "avoid",
-    "bracketSpacing": true,
-    "jsxBracketSameLine": true
+    "tabWidth": 2,
+    "trailingComma": "es5"
   },
-  "babel": {
-    "presets": [
-      "@babel/preset-env",
-      "@babel/preset-flow",
-      "@babel/preset-typescript",
-      "@babel/preset-react"
-    ],
-    "plugins": [
-      [
-        "@babel/plugin-proposal-pipeline-operator",
-        {
-          "proposal": "hack",
-          "topicToken": "%"
-        }
-      ],
-      "@babel/plugin-proposal-class-properties",
-      "@babel/plugin-proposal-class-static-block",
-      [
-        "@babel/plugin-proposal-decorators",
-        {
-          "decoratorsBeforeExport": true
-        }
-      ],
-      "@babel/plugin-proposal-do-expressions",
-      "@babel/plugin-proposal-export-default-from",
-      "@babel/plugin-proposal-function-bind",
-      "@babel/plugin-proposal-function-sent",
-      "@babel/plugin-proposal-partial-application",
-      "@babel/plugin-proposal-private-methods",
-      "@babel/plugin-proposal-private-property-in-object",
-      "@babel/plugin-proposal-throw-expressions"
-    ]
-  }
+  "scripts": {
+    "start": "babel-node index.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "version": "1.0.0"
 }
