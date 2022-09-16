@@ -43,7 +43,11 @@ module.exports.REGEXP = REGEXP;
  * - Execution, where the constructed code is evaluated and executed.
  */
 
-function generateDocument(TEXT, GLOBAL_VAR, {STRICT_MODE = false} = {}) {
+function generateDocument(
+  TEXT,
+  GLOBAL_VAR,
+  {STRICT_MODE = false, QUOTE = "arbitrary"} = {}
+) {
   const checkIdentifier = (ident: string): boolean => do {
     const builtins =
       /\b(Infinity|NaN|undefined|globalThis|thiseval|isFinite|isNaN|parseFloat|parseInt|encodeURI|encodeURIComponent|decodeURI|decodeURIComponent|escape|unescape|Object|Function|Boolean|Symbol|Number|BigInt|Math|Date|String|RegExp|Array|Int8Array|Uint8Array|Uint8ClampedArray|Int16Array|Uint16Array|Int32Array|Uint32Array|Float32Array|Float64Array|BigInt64Array|BigUint64Array|Map|Set|WeakMap|WeakSet|ArrayBuffer|SharedArrayBuffer|Atomics|DataView|JSON|Promise|Generator|GeneratorFunction|AsyncFunction|AsyncGenerator|AsyncGeneratorFunction|Reflect|Proxy|Intl|WebAssembly)\b/;
@@ -64,16 +68,19 @@ function generateDocument(TEXT, GLOBAL_VAR, {STRICT_MODE = false} = {}) {
    */
 
   let count = 0;
-  const quote = string => {
-    const single = string.match(/'/g)?.length || 0,
-      double = string.match(/"/g)?.length || 0,
-      backtick = !/`/.test(string) && /['"]/.test(string);
-    const choice = do {
-      if (single < double) "single";
-      if (single > double) "double";
-      else ["single", "double"][count++ % 2];
+  const quote = string => do {
+    let choice = do {
+      if (QUOTE == "single" || QUOTE == "double") QUOTE;
+      else {
+        const single = string.match(/'/g)?.length || 0,
+          double = string.match(/"/g)?.length || 0,
+          backtick = !/`/.test(string) && /['"]/.test(string);
+        if (single < double) "single";
+        if (single > double) "double";
+        else ["single", "double"][count++ % 2];
+      }
     };
-    return jsesc(string, {quotes: choice, wrap: true});
+    jsesc(string, {quotes: choice, wrap: true});
   };
 
   /**
@@ -112,10 +119,10 @@ function generateDocument(TEXT, GLOBAL_VAR, {STRICT_MODE = false} = {}) {
    */
 
   const CONSTANTS = {
-    true: "!``", // ''==false
+    true: `!${quote("")}`, // ''==false
     false: "![]", // []==true
     undefined: "[][[]]", // [][[]] doesn't exist
-    Infinity: "!``/![]", // true/false==1/0
+    Infinity: `!${quote("")}/![]`, // true/false==1/0
     NaN: "+{}", // It makes sense
     "[object Object]": "{}", // y e s
   };
@@ -193,7 +200,7 @@ function generateDocument(TEXT, GLOBAL_VAR, {STRICT_MODE = false} = {}) {
   const CONSTRUCTORS = {
     Array: "[]",
     Object: "{}",
-    String: "``",
+    String: quote(""),
     Number: "(~[])",
     Boolean: "(![])",
     RegExp: "/./",
@@ -609,7 +616,7 @@ function generateDocument(TEXT, GLOBAL_VAR, {STRICT_MODE = false} = {}) {
         }
       )
       .replace("CIPHER_FROM", GLOBAL_VAR + "[+![]]")
-      .replace(/^/, GLOBAL_VAR + "[+!``]=");
+      .replace(/^/, GLOBAL_VAR + `[+!${quote("")}]=`);
 
   RESULT += ";" + GLOBAL_VAR + "[+![]]=" + encodeString(CIPHER_FROM);
   RESULT += ";" + ENCODING_MACRO;
@@ -684,7 +691,7 @@ function generateDocument(TEXT, GLOBAL_VAR, {STRICT_MODE = false} = {}) {
         quote(key) +
         ":" +
         GLOBAL_VAR +
-        "[+!``](" +
+        `[+!${quote("")}](` +
         quote(utf16toBase31(word)) +
         ")"
     ).join`,` +
@@ -710,7 +717,9 @@ function generateDocument(TEXT, GLOBAL_VAR, {STRICT_MODE = false} = {}) {
       case "constant":
         return "`${" + CONSTANTS[substring] + "}`";
       case "constructor":
-        return `${CONSTRUCTORS[substring]}[${GLOBAL_VAR}.$][${GLOBAL_VAR}['?']]`;
+        return `${
+          CONSTRUCTORS[substring]
+        }[${GLOBAL_VAR}.$][${GLOBAL_VAR}[${quote("?")}]]`;
       case "letter":
         return encodeString(substring);
       case "word":
@@ -718,30 +727,25 @@ function generateDocument(TEXT, GLOBAL_VAR, {STRICT_MODE = false} = {}) {
         return GLOBAL_VAR + "[" + quote(key) + "]";
       case "default":
         const encoded = utf16toBase31(substring);
-        return GLOBAL_VAR + "[+!``](" + quote(encoded) + ")";
+        return GLOBAL_VAR + `[+!${quote("")}](` + quote(encoded) + ")";
       case "space":
         const {length} = substring;
         const encodedLen = encodeString(length);
-        if (length == 1) return GLOBAL_VAR + "[`-`]";
-        else return `${GLOBAL_VAR}['-'][${GLOBAL_VAR}['*']](${encodedLen})`;
+        if (length == 1) return GLOBAL_VAR + "[" + quote("-") + "]";
+        else
+          return `${GLOBAL_VAR}[${quote("-")}][${GLOBAL_VAR}[${quote(
+            "*"
+          )}]](${encodedLen})`;
       case "symbol":
-        const single = substring.match(/'/g)?.length || 0,
-          double = substring.match(/"/g)?.length || 0,
-          backtick = !/`|\${/.test(substring) && /['"]/.test(substring);
-        const choice = do {
-          if (backtick) "backtick";
-          if (single < double) "single";
-          if (single > double) "double";
-          else ["single", "double", "backtick"][count++ % 3];
-        };
-        return jsesc(substring, {quotes: choice, wrap: true});
+        return quote(substring);
     }
   }).join`+`;
 
   RESULT += ";" + "_" + GLOBAL_VAR + "=" + EXPRESSION;
 
   // Map groups
-  RESULT += ";" + "module['exports']['result']=_" + GLOBAL_VAR;
+  RESULT +=
+    ";" + `module[${quote("exports")}][${quote("result")}]=_` + GLOBAL_VAR;
 
   print(`================================================================
 STATS
@@ -753,4 +757,7 @@ Ratio: ${RESULT.length / TEXT.length}`);
   return RESULT;
 }
 
-fs.writeFileSync("./run.js", generateDocument(text, "_", {STRICT_MODE: true}));
+fs.writeFileSync(
+  "./run.js",
+  generateDocument(text, "_", {STRICT_MODE: true, QUOTE: "single"})
+);
