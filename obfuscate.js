@@ -50,7 +50,7 @@ function generateDocument(
   const checkIdentifier = (ident: string): boolean =>
     isValidIdentifier(ident) && !BUILTINS.test(ident);
   if (!checkIdentifier(GLOBAL_VAR))
-    throw new Error("Invalid global variable: " + quote(GLOBAL_VAR));
+    throw new Error(`Invalid global variable: ${quote(GLOBAL_VAR)}`);
 
   /**
    * Encase a string in literal quotes; finding the shortest
@@ -69,7 +69,7 @@ function generateDocument(
       else {
         const single = string.match(/'/g)?.length || 0,
           double = string.match(/"/g)?.length || 0,
-          backtick = !/`/.test(string) && /['"]/.test(string);
+          backtick = !/\${|`/.test(string) && /['"]/.test(string);
         if (single < double) "single";
         if (single > double) "double";
         else ["single", "double"][count++ % 2];
@@ -132,8 +132,7 @@ function generateDocument(
    */
 
   // The separator is a semicolon, not a comma.
-  let RESULT =
-    (STRICT_MODE ? "let _" + GLOBAL_VAR + "," : "") + GLOBAL_VAR + "=~[];";
+  let RESULT = `${STRICT_MODE ? `let _${GLOBAL_VAR},` : ""}${GLOBAL_VAR}=~[];`;
 
   // STEP 1
   const CHARSET_1 = {};
@@ -146,18 +145,18 @@ function generateDocument(
   const RES_CHARSET_1 =
     _.range(0, 10)
     |> %.map((digit: number) => [
-      encodeDigit(digit) + ":`${++" + GLOBAL_VAR + "}`",
+      `${encodeDigit(digit)}:\`\${++${GLOBAL_VAR}}\``,
       Object.entries(CHARSET_1)
       |> %.filter(([, [, val: number]]) => val == digit)
       |> %.map(([char, [lit]]) => {
         const key = quote(encodeLetter(char));
-        return key + ":`${" + lit + "}`[" + GLOBAL_VAR + "]";
+        return `${key}:\`\${${lit}}\`[${GLOBAL_VAR}]`;
       }),
     ])
     |> %.flat().join`,`
     |> %.replace(/,$/, "").replace(/,+/g, ",")
-    |> [GLOBAL_VAR + "={" + % + "}"][0]
-    |> %.replace("_" + void 0, SPACE); // Replace space
+    |> `${GLOBAL_VAR}={${%}}`
+    |> %.replace("_undefined", SPACE); // Replace space
 
   RESULT += RES_CHARSET_1;
 
@@ -213,18 +212,8 @@ function generateDocument(
 
   for (const value of Object.entries(CHARSET_2)) {
     const [char, [expression, index]] = value;
-
-    const expansion =
-      "`${" +
-      expression +
-      "[" +
-      GLOBAL_VAR +
-      ".$]}`[" +
-      index.toString().split``.map(
-        digit => GLOBAL_VAR + "." + encodeDigit(digit)
-      ).join`+` +
-      "]";
-
+    const expansion = `\`\${${expression}[${GLOBAL_VAR}.$]}\`[${`${index}`
+      .split``.map(digit => `${GLOBAL_VAR}.${encodeDigit(digit)}`).join`+`}]`;
     if (!(char in CHARSET_1)) CHARSET_2[char] = [expression, index, expansion];
   }
 
@@ -235,13 +224,10 @@ function generateDocument(
   const CHARSET_2_DIFF = objectDifference(CHARSET_2, CHARSET_1);
 
   const RES_CHARSET_2 =
-    GLOBAL_VAR +
-    "={..." +
-    GLOBAL_VAR +
-    "," +
+    `${GLOBAL_VAR}={...${GLOBAL_VAR},` +
     Object.entries(CHARSET_2_DIFF).map(
-      ([letter, [expression, index, expansion]]) =>
-        quote(encodeLetter(letter)) + ":" + expansion
+      ([letter, [, , expansion]]) =>
+        `${quote(encodeLetter(letter))}:${expansion}`
     ).join`,` +
     "}";
 
@@ -280,27 +266,22 @@ function generateDocument(
       if (/[$_]/.test(char)) {
         return quote(char);
       } else if (/\d/.test(char)) {
-        return GLOBAL_VAR + "." + encodeDigit(char);
+        return `${GLOBAL_VAR}.${encodeDigit(char)}`;
       } else {
         const encoded = encodeLetter(char);
         return isValidIdentifier(encoded)
-          ? GLOBAL_VAR + "." + encoded
-          : GLOBAL_VAR + "[" + quote(encoded) + "]";
+          ? `${GLOBAL_VAR}.${encoded}`
+          : `${GLOBAL_VAR}[${quote(encoded)}]`;
       }
     }).join`+`;
 
   const encodeIdentifiers = (identifiers: {[ident]: string}) =>
-    GLOBAL_VAR +
-    "={..." +
-    GLOBAL_VAR +
-    "," +
-    (Object.entries(identifiers)
-    |> %.map(([ident, key]) => [key, encodeString(ident)])
-    |> %.map(
-      ([key, expansion]) =>
-        (isValidIdentifier(key) ? key : quote(key)) + ":" + expansion
-    )
-    |> %.join`,`) +
+    `${GLOBAL_VAR}={...${GLOBAL_VAR},` +
+    Object.entries(identifiers)
+      .map(([ident, key]) => [key, encodeString(ident)])
+      .map(
+        ([key, expr]) => `${isValidIdentifier(key) ? key : quote(key)}:${expr}`
+      ).join`,` +
     "}";
 
   RESULT += ";" + encodeIdentifiers(IDENT_SET1);
@@ -358,25 +339,16 @@ function generateDocument(
    */
 
   const RES_FUNCTIONS_1 =
-    GLOBAL_VAR +
-    "={..." +
-    GLOBAL_VAR +
-    "," +
+    `${GLOBAL_VAR}={...${GLOBAL_VAR},` +
     Object.entries(GLOBAL_FUNC).map(
-      ([ident, shortcut]) => do {
-        quote(shortcut) +
-          ":" +
-          CONSTRUCTORS.Function +
-          "[" +
-          [GLOBAL_VAR + ".$"][0] + // `constructor`
-          "](" +
-          [GLOBAL_VAR + "._"][0] + // `return`
-          "+" +
-          [GLOBAL_VAR + "[" + quote(SPACE) + "]"][0] + // space
-          "+" +
-          encodeString(ident) + // name of function
-          ")()";
-      }
+      ([ident, shortcut]) =>
+        `${quote(shortcut)}:` +
+        "(()=>{})" +
+        `[${GLOBAL_VAR}.$]` +
+        "(" +
+        `${GLOBAL_VAR}._+${GLOBAL_VAR}[${quote("-")}]+${encodeString(ident)}` +
+        ")" +
+        "()"
     ).join`,` +
     "}";
 
@@ -387,17 +359,10 @@ function generateDocument(
 
   RESULT +=
     ";" +
-    GLOBAL_VAR +
-    "[" +
-    quote(TO_STRING) +
-    "]=" +
+    `${GLOBAL_VAR}[${quote("'")}]=` +
     encodeString("to") +
-    "+" + // no word breaks
-    CONSTRUCTORS.String +
-    // `constructor`
-    ["[" + GLOBAL_VAR + ".$" + "]"][0] +
-    // `name`
-    ["[" + GLOBAL_VAR + "[" + quote(IDENT_SET2.name) + "]]"][0];
+    "+" +
+    `${quote("")}[${GLOBAL_VAR}.$][${GLOBAL_VAR}[${quote("?")}]]`;
 
   /**
    * We would use the escape function to get the letters C and D
@@ -417,43 +382,24 @@ function generateDocument(
 
   RESULT +=
     ";" +
-    GLOBAL_VAR +
-    "[" +
-    quote(encodeLetter("C")) +
-    "]=" +
-    GLOBAL_VAR +
-    "[" +
-    quote(GLOBAL_FUNC.escape) +
-    "](" +
-    quote("<") + // U+3C
-    ")[" +
-    GLOBAL_VAR +
-    "." +
-    encodeDigit(2) +
-    "]";
+    `${GLOBAL_VAR}[${quote(encodeLetter("C"))}]=` +
+    `${GLOBAL_VAR}[${quote(">")}]` +
+    `(${quote("<")})` +
+    `[${GLOBAL_VAR}.${encodeDigit(2)}]`;
 
   RESULT +=
     ";" +
-    GLOBAL_VAR +
-    "[" +
-    quote(encodeLetter("D")) +
-    "]=" +
-    GLOBAL_VAR +
-    "[" +
-    quote(GLOBAL_FUNC.escape) +
-    "](" +
-    quote("=") + // U+3D
-    ")[" +
-    GLOBAL_VAR +
-    "." +
-    encodeDigit(2) +
-    "]";
+    `${GLOBAL_VAR}[${quote(encodeLetter("D"))}]=` +
+    `${GLOBAL_VAR}[${quote(">")}]` +
+    `(${quote("=")})` +
+    `[${GLOBAL_VAR}.${encodeDigit(2)}]`;
 
   /**
    * U is retrieved from the following formula:
    *
    * @example
    * Object.toString.call().toString()
+   * `${{}.toString.call()}`[8]
    * @end
    *
    * We would use `U` and `C` to form the method name `toUpperCase`,
@@ -462,19 +408,9 @@ function generateDocument(
 
   RESULT +=
     ";" +
-    GLOBAL_VAR +
-    "[" +
-    quote(encodeLetter("U")) +
-    "]=" +
-    "`${" +
-    CONSTRUCTORS.Object +
-    ["[" + GLOBAL_VAR + "[" + quote(TO_STRING) + "]]"][0] +
-    ["[" + GLOBAL_VAR + "[" + quote(IDENT_SET1.call) + "]]"][0] +
-    "()}`[" +
-    GLOBAL_VAR +
-    "." +
-    encodeDigit(8) +
-    "]";
+    `${GLOBAL_VAR}[${quote(encodeLetter("U"))}]=` +
+    `\`\${{}[${GLOBAL_VAR}[${quote("'")}]][${GLOBAL_VAR}[${quote("!")}]]()}\`` +
+    `[${GLOBAL_VAR}.${encodeDigit(8)}]`;
 
   /**
    * We will get the remainder of the ASCII alphabet, so to make it
@@ -505,19 +441,9 @@ function generateDocument(
   for (const letter of "hkqwz")
     RESULT +=
       ";" +
-      GLOBAL_VAR +
-      "[" +
-      quote(encodeLetter(letter)) +
-      "]=" +
-      "(+(" +
-      encodeString(CIPHER_FROM.indexOf(letter)) +
-      "))[" +
-      GLOBAL_VAR +
-      "[" +
-      quote(TO_STRING) +
-      "]](" +
-      encodeString(36) +
-      ")";
+      `${GLOBAL_VAR}[${quote(encodeLetter(letter))}]=` +
+      `(+(${encodeString(CIPHER_FROM.indexOf(letter))}))` +
+      `[${GLOBAL_VAR}[${quote("'")}]](${encodeString(36)})`;
 
   const IDENT_SET3 = {fromCharCode: "@"};
   RESULT += ";" + encodeIdentifiers(IDENT_SET3);
@@ -598,21 +524,18 @@ function generateDocument(
     "a=(a=>a.split`,`.map(a=>parseInt([...a].map(a=>CIPHER_FROM[CIPHER_TO.indexOf(a)]).join``,+(31))).map(a=>String.fromCharCode(a)).join``)"
       .replace(/^\w=|;$/g, "")
       .replace("CIPHER_TO", quote(CIPHER_TO))
-      .replace("String", CONSTRUCTORS.String + "[" + GLOBAL_VAR + ".$]")
+      .replace("String", `${quote("")}[${GLOBAL_VAR}.$]`)
       .replace(/\d+/, match => encodeString(match))
-      .replace("parseInt", GLOBAL_VAR + "[" + quote(GLOBAL_FUNC.parseInt) + "]")
+      .replace("parseInt", `${GLOBAL_VAR}[${quote("+")}]`)
       .replace(/\ba\b/g, "_" + GLOBAL_VAR)
-      .replace(
-        /\.(?<ident>split|map|indexOf|join|fromCharCode)\b/g,
-        ident => do {
-          ident = ident.replace(/^\./, "");
-          "[" + GLOBAL_VAR + "[" + quote(IDENT_SET[ident]) + "]]";
-        }
-      )
-      .replace("CIPHER_FROM", GLOBAL_VAR + "[+![]]")
-      .replace(/^/, GLOBAL_VAR + `[+!${quote("")}]=`);
+      .replace(/\.(?<ident>split|map|indexOf|join|fromCharCode)\b/g, ident => {
+        ident = ident.replace(/^\./, "");
+        return `[${GLOBAL_VAR}[${quote(IDENT_SET[ident])}]]`;
+      })
+      .replace("CIPHER_FROM", `${GLOBAL_VAR}[+![]]`)
+      .replace(/^/, `${GLOBAL_VAR}[+!${quote("")}]=`);
 
-  RESULT += ";" + GLOBAL_VAR + "[+![]]=" + encodeString(CIPHER_FROM);
+  RESULT += ";" + `${GLOBAL_VAR}[+![]]=${encodeString(CIPHER_FROM)}`;
   RESULT += ";" + ENCODING_MACRO;
 
   /**
@@ -676,18 +599,12 @@ function generateDocument(
 
   RESULT +=
     ";" +
-    GLOBAL_VAR +
-    "={..." +
-    GLOBAL_VAR +
-    "," +
+    `${GLOBAL_VAR}={...${GLOBAL_VAR},` +
     Object.entries(WORD_FREQUENCIES).map(
       ([word, key]) =>
-        quote(key) +
-        ":" +
-        GLOBAL_VAR +
-        `[+!${quote("")}](` +
-        quote(utf16toBase31(word)) +
-        ")"
+        `${quote(key)}:${GLOBAL_VAR}[+!${quote("")}](${quote(
+          utf16toBase31(word)
+        )})`
     ).join`,` +
     "}";
 
@@ -706,7 +623,7 @@ function generateDocument(
   const EXPRESSION = GROUPS.map(([group, substring]) => {
     switch (group) {
       case "constant":
-        return "`${" + CONSTANTS[substring] + "}`";
+        return `\`\${${CONSTANTS[substring]}}\``;
       case "constructor":
         return `${
           CONSTRUCTORS[substring]
@@ -715,24 +632,24 @@ function generateDocument(
         return encodeString(substring);
       case "word":
         const key = WORD_FREQUENCIES[substring];
-        return GLOBAL_VAR + "[" + quote(key) + "]";
+        return `${GLOBAL_VAR}[${quote(key)}]`;
       case "default":
         const encoded = utf16toBase31(substring);
-        return GLOBAL_VAR + `[+!${quote("")}](` + quote(encoded) + ")";
+        return `${GLOBAL_VAR}[+!${quote("")}](${quote(encoded)})`;
       case "space":
         const {length} = substring;
         const encodedLen = encodeString(length);
         return length == 1
-          ? GLOBAL_VAR + "[" + quote("-") + "]"
-          : `${GLOBAL_VAR}[${quote("-")}]` +
-              `[${GLOBAL_VAR}[${quote("*")}]]` +
-              `(${encodedLen})`;
+          ? `${GLOBAL_VAR}[${quote("-")}]`
+          : `${GLOBAL_VAR}[${quote("-")}][${GLOBAL_VAR}[${quote(
+              "*"
+            )}]](${encodedLen})`;
       case "symbol":
         return quote(substring);
     }
   }).join`+`;
 
-  RESULT += ";" + "_" + GLOBAL_VAR + "=" + EXPRESSION;
+  RESULT += ";" + `_${GLOBAL_VAR}=${EXPRESSION}`;
 
   // Map groups
   RESULT +=
