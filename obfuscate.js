@@ -155,7 +155,7 @@ function generateDocument(
     ])
     |> %.flat().join`,`
     |> %.replace(/,$/, "").replace(/,+/g, ",")
-    |> `${GLOBAL_VAR}={${%}}`
+    |> GLOBAL_VAR + "={" + % + "}"
     |> %.replace("_undefined", SPACE); // Replace space
 
   RESULT += RES_CHARSET_1;
