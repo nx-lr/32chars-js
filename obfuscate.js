@@ -488,7 +488,7 @@ function generateDocument(
    * there's no need to explicitly write `.join(',')`.
    */
 
-  const utf16toBase31 = (s: string) =>
+  const base31 = (s: string) =>
     `${[...Array(s.length)].map(
       (x, i) =>
         [...s.charCodeAt(i).toString(31)].map(
@@ -496,7 +496,7 @@ function generateDocument(
         ).join``
     )}`;
 
-  const base31toUtf16 = b =>
+  const base31Decode = b =>
     String.fromCharCode(
       ...b.split`,`.map(s =>
         parseInt([...s].map(c => CIPHER_FROM[CIPHER_TO.indexOf(c)]).join``, 31)
@@ -602,9 +602,7 @@ function generateDocument(
     `${GLOBAL_VAR}={...${GLOBAL_VAR},` +
     Object.entries(WORD_FREQUENCIES).map(
       ([word, key]) =>
-        `${quote(key)}:${GLOBAL_VAR}[+!${quote("")}](${quote(
-          utf16toBase31(word)
-        )})`
+        `${quote(key)}:${GLOBAL_VAR}[+!${quote("")}](${quote(base31(word))})`
     ).join`,` +
     "}";
 
@@ -634,16 +632,15 @@ function generateDocument(
         const key = WORD_FREQUENCIES[substring];
         return `${GLOBAL_VAR}[${quote(key)}]`;
       case "default":
-        const encoded = utf16toBase31(substring);
+        const encoded = base31(substring);
         return `${GLOBAL_VAR}[+!${quote("")}](${quote(encoded)})`;
       case "space":
         const {length} = substring;
         const encodedLen = encodeString(length);
         return length == 1
           ? `${GLOBAL_VAR}[${quote("-")}]`
-          : `${GLOBAL_VAR}[${quote("-")}][${GLOBAL_VAR}[${quote(
-              "*"
-            )}]](${encodedLen})`;
+          : `${GLOBAL_VAR}[${quote("-")}][${GLOBAL_VAR}[${quote("*")}]]` +
+              `(${encodedLen})`;
       case "symbol":
         return quote(substring);
     }
