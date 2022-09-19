@@ -652,17 +652,20 @@ function generateDocument(
   RESULT +=
     ";" + `module[${quote("exports")}][${quote("result")}]=_` + GLOBAL_VAR;
 
-  print(`=====
+  return {
+    result: RESULT,
+    stats: `=====
 STATS
 =====
 Input length: ${TEXT.length}
 Output length: ${RESULT.length}
-Ratio: ${RESULT.length / TEXT.length}`);
-
-  return RESULT;
+Ratio: ${RESULT.length / TEXT.length}`,
+  };
 }
 
-fs.writeFileSync(
-  "./output.js",
-  generateDocument(text, "_", {STRICT_MODE: true, QUOTE: "single"})
-);
+const {result, stats} = generateDocument(text, "_", {
+  STRICT_MODE: true,
+  QUOTE: "single",
+});
+
+fs.writeFileSync("./output.js", result);
