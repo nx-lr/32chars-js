@@ -663,6 +663,6 @@ Ratio: ${RESULT.length / TEXT.length}`);
 }
 
 fs.writeFileSync(
-  "./run.js",
+  "./output.js",
   generateDocument(text, "_", {STRICT_MODE: true, QUOTE: "single"})
 );
