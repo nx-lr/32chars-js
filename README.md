@@ -11,7 +11,7 @@ The project is still in the making though it definitely needs some improvement.
 ## Features
 
 - Generated code can be run even on a browser!
-- Admire that build time (2s build/2s execution time on entire _Lord of the Rings_ trilogy)
+- Admire that build time (3s build/1s execution time on Prettier minified source code)
 - Only 32 characters, nothing more, nothing less!
 
 ## Disclaimer
