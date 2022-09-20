@@ -423,7 +423,7 @@ function generateDocument(
     ].map(x => x.join`:`) +
     "}";
 
-  const IDENT_SET3 = {fromCharCode: "@", keys: "&", values: "~"};
+  const IDENT_SET3 = {fromCharCode: "@", keys: "&", values: "~", source: "="};
   RESULT += ";" + encodeIdentifiers(IDENT_SET3);
 
   /**
@@ -503,15 +503,15 @@ function generateDocument(
    * a few surgical regex substitutions.
    */
 
-  const CIPHER_FROM_EXPR =
-    "[...Array(10).keys()].join``+(5417839335179).toString(20)+(407936611177169).toString(30)+(1867590395).toString(36)"
-      .replace(/\.toString\b/g, ident => `[${GLOBAL_VAR}[${quote("'")}]]`)
-      .replace(/\b(?<num>\d+)\b/g, num => `+(${encodeString(num)})`)
-      .replace("Array", `[][${GLOBAL_VAR}.$]`)
-      .replace(/\.(?<ident>keys|join)\b/g, ident => {
-        ident = ident.replace(/^\./, "");
-        return `[${GLOBAL_VAR}[${quote(IDENT_SET[ident])}]]`;
-      });
+  const CIPHER_FROM_EXPR = "[...Array(36).keys()].map(a=>a.toString(36)).join``"
+    .replace(/\.toString\b/g, ident => `[${GLOBAL_VAR}[${quote("'")}]]`)
+    .replace(/\b(?<num>\d+)\b/g, num => `+(${encodeString(num)})`)
+    .replace("Array", `[][${GLOBAL_VAR}.$]`)
+    .replace(/\ba\b/g, "_" + GLOBAL_VAR)
+    .replace(/\.(?<ident>keys|map|join)\b/g, ident => {
+      ident = ident.replace(/^\./, "");
+      return `[${GLOBAL_VAR}[${quote(IDENT_SET[ident])}]]`;
+    });
 
   const ENCODING_MACRO =
     "a=(a=>a.split`,`.map(a=>parseInt([...a].map(a=>CIPHER_FROM[CIPHER_TO.indexOf(a)]).join``,+(31))).map(a=>String.fromCharCode(a)).join``)"
@@ -615,6 +615,14 @@ function generateDocument(
   const GROUPS = [...text.matchAll(REGEXP)]
     .map(({groups}) => Object.entries(groups).filter(([, value]) => !!value))
     .flat(1);
+
+  const testRegex = str => {
+    try {
+      return eval(`/${str}/`) && true;
+    } catch {
+      return false;
+    }
+  };
 
   const EXPRESSION = GROUPS.map(([group, substring]) => {
     switch (group) {
