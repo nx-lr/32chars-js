@@ -8,7 +8,7 @@ const print = console.log;
 const text = fs.readFileSync("./input.txt", "utf8");
 
 const BUILTINS =
-  /\b(Infinity|NaN|undefined|globalThis|thiseval|isFinite|isNaN|parseFloat|parseInt|encodeURI|encodeURIComponent|decodeURI|decodeURIComponent|escape|unescape|Object|Function|Boolean|Symbol|Number|BigInt|Math|Date|String|RegExp|Array|Int8Array|Uint8Array|Uint8ClampedArray|Int16Array|Uint16Array|Int32Array|Uint32Array|Float32Array|Float64Array|BigInt64Array|BigUint64Array|Map|Set|WeakMap|WeakSet|ArrayBuffer|SharedArrayBuffer|Atomics|DataView|JSON|Promise|Generator|GeneratorFunction|AsyncFunction|AsyncGenerator|AsyncGeneratorFunction|Reflect|Proxy|Intl|WebAssembly)\b/;
+  /\b(Infinity|NaN|undefined|globalThis|this|eval|isFinite|isNaN|parseFloat|parseInt|encodeURI|encodeURIComponent|decodeURI|decodeURIComponent|escape|unescape|Object|Function|Boolean|Symbol|Number|BigInt|Math|Date|String|RegExp|Array|Int8Array|Uint8Array|Uint8ClampedArray|Int16Array|Uint16Array|Int32Array|Uint32Array|Float32Array|Float64Array|BigInt64Array|BigUint64Array|Map|Set|WeakMap|WeakSet|ArrayBuffer|SharedArrayBuffer|Atomics|DataView|JSON|Promise|Generator|GeneratorFunction|AsyncFunction|AsyncGenerator|AsyncGeneratorFunction|Reflect|Proxy|Intl|WebAssembly)\b/;
 
 const REGEXPS = {
   space: / +/g,
@@ -499,9 +499,7 @@ function generateDocument(
    * array elements, which are the ciphered digit substrings.
    * When `.toString` is called, the commas come in, therefore
    * there's no need to explicitly write `.join(',')`.
-   */
-
-  /**
+   *
    * This makes it a heck ton easier to encode expressions with just
    * a few surgical regex substitutions.
    */
