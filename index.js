@@ -295,8 +295,7 @@ function generateDocument(
     repeat: "*",
     split: "|",
     indexOf: "#",
-    values: "~",
-    source: "=",
+    source: "`",
   };
 
   RESULT += ";" + encodeIdentifiers(IDENT_SET2);
@@ -320,7 +319,7 @@ function generateDocument(
     eval: "=",
     escape: ">",
     unescape: "<",
-    parseInt: "+",
+    parseInt: "~",
     parseFloat: '"',
   };
 
@@ -523,7 +522,7 @@ function generateDocument(
       .replace("CIPHER_TO", quote(CIPHER_TO))
       .replace("String", `${quote("")}[${GLOBAL_VAR}.$]`)
       .replace(/\d+/, match => encodeString(match))
-      .replace("parseInt", `${GLOBAL_VAR}[${quote("+")}]`)
+      .replace("parseInt", `${GLOBAL_VAR}[${quote("~")}]`)
       .replace(/\ba\b/g, "_" + GLOBAL_VAR)
       .replace(/\.(?<ident>split|map|indexOf|join|fromCharCode)\b/g, ident => {
         ident = ident.replace(/^\./, "");
@@ -592,9 +591,10 @@ function generateDocument(
       |> %.join``;
   })();
 
-  const WORD_FREQUENCIES =
+  const WORD_LIST =
     TEXT.match(/\b[A-Za-z]{2,}\b/g) ?? []
     |> Object.entries(_.countBy(%))
+    |> %.filter(([a]) => !Object.keys(IDENT_SET).includes(a))
     |> %.sort(([, a], [, b]) => b - a)
     |> %.map(([word]) => [word, keyGen.next().value])
     |> Object.fromEntries(%);
@@ -602,7 +602,7 @@ function generateDocument(
   RESULT +=
     ";" +
     `${GLOBAL_VAR}={...${GLOBAL_VAR},` +
-    Object.entries(WORD_FREQUENCIES).map(
+    Object.entries(WORD_LIST).map(
       ([word, key]) =>
         `${quote(key)}:${GLOBAL_VAR}[+!${quote("")}](${quote(base31(word))})`
     ) +
@@ -639,7 +639,8 @@ function generateDocument(
       case "letter":
         return encodeString(substring);
       case "word":
-        let key = WORD_FREQUENCIES[substring];
+        let key = WORD_LIST[substring];
+        if (typeof IDENT_SET[substring] == "string") key = IDENT_SET[substring];
         return `${GLOBAL_VAR}[${quote(key)}]`;
       case "default":
         const encoded = base31(substring);
