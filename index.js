@@ -658,9 +658,13 @@ function generateDocument(
 
   RESULT += ";" + `_${GLOBAL_VAR}=${EXPRESSION}`;
 
-  // Map groups
+  // Export
   RESULT +=
-    ";" + `module[${quote("exports")}][${quote("result")}]=_` + GLOBAL_VAR;
+    ";" +
+    "module" +
+    `[${quote("exports")}]` +
+    `[${quote("result")}]=_` +
+    GLOBAL_VAR;
 
   return {
     result: RESULT,
