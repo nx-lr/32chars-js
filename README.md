@@ -89,8 +89,8 @@ Now we have almost the entire lowercase alphabet save for a few and about half o
 
 Using the strings I made, I define a pair of functions that turn arbitrary UTF-16 sequences into a sequence of symbol characters. (The decoder function is ciphered). The code points are converted into base 31 and its digits ciphered using the 31 symbol characters, leaving the comma to separate each UTF-16 code unit.
 
-Words that repeat themselves throughout the program are captured, encoded and assigned new keys to the same global object, so that they can be referenced in the string later on. Exceptions to this include all the words already defined, including the single character strings, primitives as strings, and the property and method strings which have been defined already.
+Words that repeat themselves throughout the program are captured, encoded and assigned new keys to the same global object, ranked based on decreasing frequency and given a predefined key based on a custom generator function so that they can be referenced in the string later on. Exceptions to this include the single character strings, stringified primitives and literals, and the property and method strings which have been defined already.
 
-Sequences of ASCII symbols are included literally in the output. A regular expression splits and tokenizes the input string into these categories, and then joins them together with a `+` which is the string concatenation operator. 
+Sequences of ASCII symbols are included literally in the output. A regular expression splits and tokenizes the input string into these categories, and then joins them together with a `+` which is the string concatenation operator.
 
 While the output does have some letters and symbols, I left them there mostly for debugging.
