@@ -64,16 +64,17 @@ function generateDocument(
 
   let count = 0;
   const quote = string => do {
+    const single = string.match(/'/g)?.length || 0,
+      double = string.match(/"/g)?.length || 0,
+      backtick = !/\$\{|`/.test(string) && /['"]/.test(string),
+      singleOrDouble = /single|double/i.test(quote);
     let choice = do {
-      if (/single|double/.test(QUOTE)) QUOTE;
-      else {
-        const single = string.match(/'/g)?.length || 0,
-          double = string.match(/"/g)?.length || 0,
-          backtick = !/\${|`/.test(string) && /['"]/.test(string);
+      if (/only/.test(QUOTE) && singleOrDouble) choice.split` `[0];
+      else if (singleOrDouble) {
         if (single < double) "single";
-        if (single > double) "double";
-        else ["single", "double"][count++ % 2];
-      }
+        else if (single > double) "double";
+        else QUOTE.toLowerCase().trim();
+      } else ["single", "double"][count++ % 2];
     };
     jsesc(string, {quotes: choice, wrap: true});
   };
