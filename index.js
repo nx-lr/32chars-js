@@ -295,6 +295,8 @@ function generateDocument(
     repeat: "*",
     split: "|",
     indexOf: "#",
+    values: "~",
+    source: "=",
   };
 
   RESULT += ";" + encodeIdentifiers(IDENT_SET2);
@@ -319,6 +321,7 @@ function generateDocument(
     escape: ">",
     unescape: "<",
     parseInt: "+",
+    parseFloat: '"',
   };
 
   const RES_FUNCTIONS_1 =
@@ -424,7 +427,7 @@ function generateDocument(
     ].map(x => x.join`:`) +
     "}";
 
-  const IDENT_SET3 = {fromCharCode: "@", keys: "&", values: "~", source: "="};
+  const IDENT_SET3 = {fromCharCode: "@", keys: "&"};
   RESULT += ";" + encodeIdentifiers(IDENT_SET3);
 
   /**
@@ -636,7 +639,7 @@ function generateDocument(
       case "letter":
         return encodeString(substring);
       case "word":
-        const key = WORD_FREQUENCIES[substring];
+        let key = WORD_FREQUENCIES[substring];
         return `${GLOBAL_VAR}[${quote(key)}]`;
       case "default":
         const encoded = base31(substring);
@@ -665,8 +668,9 @@ function generateDocument(
 STATS
 =====
 Input length: ${TEXT.length}
-Output length: ${RESULT.length}
-Ratio: ${RESULT.length / TEXT.length}`,
+Expression length: ${EXPRESSION.length}
+Ratio: ${EXPRESSION.length / TEXT.length}
+Output length: ${RESULT.length}`,
   };
 }
 
