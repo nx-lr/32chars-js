@@ -11,13 +11,13 @@ const BUILTINS =
   /\b(Infinity|NaN|undefined|globalThis|thiseval|isFinite|isNaN|parseFloat|parseInt|encodeURI|encodeURIComponent|decodeURI|decodeURIComponent|escape|unescape|Object|Function|Boolean|Symbol|Number|BigInt|Math|Date|String|RegExp|Array|Int8Array|Uint8Array|Uint8ClampedArray|Int16Array|Uint16Array|Int32Array|Uint32Array|Float32Array|Float64Array|BigInt64Array|BigUint64Array|Map|Set|WeakMap|WeakSet|ArrayBuffer|SharedArrayBuffer|Atomics|DataView|JSON|Promise|Generator|GeneratorFunction|AsyncFunction|AsyncGenerator|AsyncGeneratorFunction|Reflect|Proxy|Intl|WebAssembly)\b/;
 
 const REGEXPS = {
-  space: / +/,
-  constant: /\b(true|false|Infinity|NaN|undefined)\b/,
-  constructor: /\b(Array|Object|String|Number|Boolean|RegExp|Function)\b/,
-  word: /\b[A-Za-z]{2,}\b/,
-  letter: /\b[a-zA-FINORSU\d]\b/,
-  symbol: /[!"#$%&'()*+,\-./:;<=>?@\[\\\]^_`{|}~]+/,
-  default: /[^!"#$%&'()*+,\-./:;<=>?@\[\\\]^_`{|}~ ]+/,
+  space: / +/g,
+  constant: /\b(true|false|Infinity|NaN|undefined)\b/g,
+  constructor: /\b(Array|Object|String|Number|Boolean|RegExp|Function)\b/g,
+  word: /\b([GHJ-MPQTV-Z]|[A-Za-z]{2,})\b/g,
+  letter: /\b[a-zA-FINORSU\d]\b/g,
+  symbol: /[!"#$%&'()*+,\-./:;<=>?@\[\\\]^_`{|}~]+/g,
+  default: /[^!"#$%&'()*+,\-./:;<=>?@\[\\\]^_`{|}~ ]+/g,
 };
 
 /**
@@ -528,14 +528,14 @@ function generateDocument(
         ident = ident.replace(/^\./, "");
         return `[${GLOBAL_VAR}[${quote(IDENT_SET[ident])}]]`;
       })
-      .replace("CIPHER_FROM", `${GLOBAL_VAR}[+![]]`);
+      .replace("CIPHER_FROM", `${GLOBAL_VAR}[+!${quote("")}]`);
 
   RESULT +=
     ";" +
     `${GLOBAL_VAR}={...${GLOBAL_VAR},` +
     [
-      ["[+![]]", CIPHER_FROM_EXPR], // 0
-      [`[+!${quote("")}]`, ENCODING_MACRO], // 1
+      [`[+!${quote("")}]`, CIPHER_FROM_EXPR], // 0
+      [`[+![]]`, ENCODING_MACRO], // 1
     ].map(x => x.join`:`) +
     "}";
 
@@ -592,7 +592,7 @@ function generateDocument(
   })();
 
   const WORD_LIST =
-    TEXT.match(/\b[A-Za-z]{2,}\b/g) ?? []
+    TEXT.match(REGEXPS.word) ?? []
     |> Object.entries(_.countBy(%))
     |> %.filter(([a]) => !Object.keys(IDENT_SET).includes(a))
     |> %.sort(([, a], [, b]) => b - a)
@@ -604,7 +604,7 @@ function generateDocument(
     `${GLOBAL_VAR}={...${GLOBAL_VAR},` +
     Object.entries(WORD_LIST).map(
       ([word, key]) =>
-        `${quote(key)}:${GLOBAL_VAR}[+!${quote("")}](${quote(base31(word))})`
+        `${quote(key)}:${GLOBAL_VAR}[+![]](${quote(base31(word))})`
     ) +
     "}";
 
@@ -644,7 +644,7 @@ function generateDocument(
         return `${GLOBAL_VAR}[${quote(key)}]`;
       case "default":
         const encoded = base31(substring);
-        return `${GLOBAL_VAR}[+!${quote("")}](${quote(encoded)})`;
+        return `${GLOBAL_VAR}[+![]](${quote(encoded)})`;
       case "space":
         const {length} = substring;
         const encodedLen = encodeString(length);
