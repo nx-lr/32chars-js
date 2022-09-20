@@ -228,7 +228,7 @@ function generateDocument(
     Object.entries(CHARSET_2_DIFF).map(
       ([letter, [, , expansion]]) =>
         `${quote(encodeLetter(letter))}:${expansion}`
-    ).join`,` +
+    ) +
     "}";
 
   /**
@@ -281,7 +281,7 @@ function generateDocument(
       .map(([ident, key]) => [key, encodeString(ident)])
       .map(
         ([key, expr]) => `${isValidIdentifier(key) ? key : quote(key)}:${expr}`
-      ).join`,` +
+      ) +
     "}";
 
   RESULT += ";" + encodeIdentifiers(IDENT_SET1);
@@ -320,24 +320,6 @@ function generateDocument(
     parseInt: "+",
   };
 
-  /**
-   * We would need to get the method `toString` by getting the `name`
-   * of the `String` constructor, for us to retrieve the rest of the
-   * alphabet, and use to retrieve words from 64-bit float numbers.
-   *
-   * `U` is created from calling `toString` prototype on an empty object.
-   *
-   * @example
-   * Object.toString.call().toString()
-   * @end
-   *
-   * We would use `U` and `C` to form the method name `toUpperCase`,
-   * to retrieve the remaining uppercase letters.
-   *
-   * We would also form the `Date` and `Buffer` constructors here for
-   * future use.
-   */
-
   const RES_FUNCTIONS_1 =
     `${GLOBAL_VAR}={...${GLOBAL_VAR},` +
     Object.entries(GLOBAL_FUNC).map(
@@ -349,22 +331,16 @@ function generateDocument(
         `${GLOBAL_VAR}._+${GLOBAL_VAR}[${quote("-")}]+${encodeString(ident)}` +
         ")" +
         "()"
-    ).join`,` +
+    ) +
     "}";
 
   RESULT += ";" + RES_FUNCTIONS_1;
 
-  // toString
-  const TO_STRING = "'";
-
-  RESULT +=
-    ";" +
-    `${GLOBAL_VAR}[${quote("'")}]=` +
-    encodeString("to") +
-    "+" +
-    `${quote("")}[${GLOBAL_VAR}.$][${GLOBAL_VAR}[${quote("?")}]]`;
-
   /**
+   * We would need to get the method `toString` by getting the `name`
+   * of the `String` constructor, for us to retrieve the rest of the
+   * alphabet, and use to retrieve words from 64-bit float numbers.
+   *
    * We would use the escape function to get the letters C and D
    * by escaping it as a URL and then getting the last digit of
    * the codepoint which is always uppercase.
@@ -378,74 +354,76 @@ function generateDocument(
    * @example
    * $.C = escape(',')[2]
    * $.D = escape(',')[2]
+   * @end
+   *
    */
 
   RESULT +=
     ";" +
-    `${GLOBAL_VAR}[${quote(encodeLetter("C"))}]=` +
-    `${GLOBAL_VAR}[${quote(">")}]` +
-    `(${quote("<")})` +
-    `[${GLOBAL_VAR}.${encodeDigit(2)}]`;
-
-  RESULT +=
-    ";" +
-    `${GLOBAL_VAR}[${quote(encodeLetter("D"))}]=` +
-    `${GLOBAL_VAR}[${quote(">")}]` +
-    `(${quote("=")})` +
-    `[${GLOBAL_VAR}.${encodeDigit(2)}]`;
+    `${GLOBAL_VAR}={...${GLOBAL_VAR},` +
+    [
+      [
+        quote("'"), // toString
+        `${encodeString("to")}+` +
+          `${quote("")}[${GLOBAL_VAR}.$]` +
+          `[${GLOBAL_VAR}[${quote("?")}]]`,
+      ],
+      [
+        quote(encodeLetter("C")), // C
+        `${GLOBAL_VAR}[${quote(">")}]` +
+          `(${quote("<")})` +
+          `[${GLOBAL_VAR}.${encodeDigit(2)}]`,
+      ],
+      [
+        quote(encodeLetter("D")), // D
+        `${GLOBAL_VAR}[${quote(">")}]` +
+          `(${quote("=")})` +
+          `[${GLOBAL_VAR}.${encodeDigit(2)}]`,
+      ],
+    ].map(x => x.join`:`) +
+    "}";
 
   /**
-   * U is retrieved from the following formula:
+   *
+   * `U` is created from calling `toString` prototype on an empty object.
    *
    * @example
-   * Object.toString.call().toString()
+   * Object.toString.call().toString()[8]
    * `${{}.toString.call()}`[8]
    * @end
    *
    * We would use `U` and `C` to form the method name `toUpperCase`,
    * to retrieve the remaining uppercase letters.
-   */
-
-  RESULT +=
-    ";" +
-    `${GLOBAL_VAR}[${quote(encodeLetter("U"))}]=` +
-    `\`\${{}[${GLOBAL_VAR}[${quote("'")}]][${GLOBAL_VAR}[${quote("!")}]]()}\`` +
-    `[${GLOBAL_VAR}.${encodeDigit(8)}]`;
-
-  /**
-   * We will get the remainder of the ASCII alphabet, so to make it
-   * vastly easier to form ASCII-based identifiers very soon.
+   *
+   * We would also form the `Date` and `Buffer` constructors here for
+   * future use.
+   *
+   * The four other letters we would need to generate are the five lowercase
+   * letters h, k, q, w and z, also using the toString method, but this
+   * time they are converted from numbers.
    */
 
   const CIPHER_FROM = "0123456789abcdefghijklmnopqrstuvwxyz";
 
-  // Remaining characters
-  const CHARSET_3 = [...Object.keys(CHARSET_2), ..."CDU"]
-    .filter(char => !!char.trim())
-    .sort();
+  RESULT +=
+    ";" +
+    `${GLOBAL_VAR}={...${GLOBAL_VAR},` +
+    [
+      [
+        quote(encodeLetter("U")), // C
+        `\`\${{}[${GLOBAL_VAR}[${quote("'")}]]` +
+          `[${GLOBAL_VAR}[${quote("!")}]]()}\`` +
+          `[${GLOBAL_VAR}.${encodeDigit(8)}]`,
+      ],
+      ...[..."hkqwz"].map(letter => [
+        quote(encodeLetter(letter)),
+        `(+(${encodeString(CIPHER_FROM.indexOf(letter))}))` +
+          `[${GLOBAL_VAR}[${quote("'")}]](${encodeString(36)})`,
+      ]),
+    ].map(x => x.join`:`) +
+    "}";
 
-  /**
-   * We will remove numeric characters as they are already defined
-   * in the global object, and add these remaining letters one by
-   * one.
-   *
-   * This makes it a heck ton easier to encode macros with just
-   * a few surgical substitutions with regular expressions.
-   */
-
-  _.difference(
-    [...CIPHER_FROM].filter(x => !V.isNumeric(x)),
-    CHARSET_3
-  );
-
-  for (const letter of "hkqwz")
-    RESULT +=
-      ";" +
-      `${GLOBAL_VAR}[${quote(encodeLetter(letter))}]=` +
-      `(+(${encodeString(CIPHER_FROM.indexOf(letter))}))` +
-      `[${GLOBAL_VAR}[${quote("'")}]](${encodeString(36)})`;
-
-  const IDENT_SET3 = {fromCharCode: "@"};
+  const IDENT_SET3 = {fromCharCode: "@", keys: "&", values: "~"};
   RESULT += ";" + encodeIdentifiers(IDENT_SET3);
 
   /**
@@ -520,6 +498,21 @@ function generateDocument(
    * there's no need to explicitly write `.join(',')`.
    */
 
+  /**
+   * This makes it a heck ton easier to encode expressions with just
+   * a few surgical regex substitutions.
+   */
+
+  const CIPHER_FROM_EXPR =
+    "[...Array(10).keys()].join``+(5417839335179).toString(20)+(407936611177169).toString(30)+(1867590395).toString(36)"
+      .replace(/\.toString\b/g, ident => `[${GLOBAL_VAR}[${quote("'")}]]`)
+      .replace(/\b(?<num>\d+)\b/g, num => `+(${encodeString(num)})`)
+      .replace("Array", `[][${GLOBAL_VAR}.$]`)
+      .replace(/\.(?<ident>keys|join)\b/g, ident => {
+        ident = ident.replace(/^\./, "");
+        return `[${GLOBAL_VAR}[${quote(IDENT_SET[ident])}]]`;
+      });
+
   const ENCODING_MACRO =
     "a=(a=>a.split`,`.map(a=>parseInt([...a].map(a=>CIPHER_FROM[CIPHER_TO.indexOf(a)]).join``,+(31))).map(a=>String.fromCharCode(a)).join``)"
       .replace(/^\w=|;$/g, "")
@@ -532,11 +525,16 @@ function generateDocument(
         ident = ident.replace(/^\./, "");
         return `[${GLOBAL_VAR}[${quote(IDENT_SET[ident])}]]`;
       })
-      .replace("CIPHER_FROM", `${GLOBAL_VAR}[+![]]`)
-      .replace(/^/, `${GLOBAL_VAR}[+!${quote("")}]=`);
+      .replace("CIPHER_FROM", `${GLOBAL_VAR}[+![]]`);
 
-  RESULT += ";" + `${GLOBAL_VAR}[+![]]=${encodeString(CIPHER_FROM)}`;
-  RESULT += ";" + ENCODING_MACRO;
+  RESULT +=
+    ";" +
+    `${GLOBAL_VAR}={...${GLOBAL_VAR},` +
+    [
+      ["[+![]]", CIPHER_FROM_EXPR], // 0
+      [`[+!${quote("")}]`, ENCODING_MACRO], // 1
+    ].map(x => x.join`:`) +
+    "}";
 
   /**
    * UTF-16 STRINGS
@@ -603,7 +601,7 @@ function generateDocument(
     Object.entries(WORD_FREQUENCIES).map(
       ([word, key]) =>
         `${quote(key)}:${GLOBAL_VAR}[+!${quote("")}](${quote(base31(word))})`
-    ).join`,` +
+    ) +
     "}";
 
   /**
@@ -667,5 +665,7 @@ const {result, stats} = generateDocument(text, "_", {
   STRICT_MODE: true,
   QUOTE: "single",
 });
+
+console.log(stats);
 
 fs.writeFileSync("./output.js", result);
