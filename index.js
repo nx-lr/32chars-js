@@ -67,7 +67,7 @@ function generateDocument(
     const single = string.match(/'/g)?.length || 0,
       double = string.match(/"/g)?.length || 0,
       backtick = !/\$\{|`/.test(string) && /['"]/.test(string),
-      singleOrDouble = /single|double/i.test(quote);
+      singleOrDouble = /single|double/i.test(QUOTE);
     let choice = do {
       if (/only/.test(QUOTE) && singleOrDouble) choice.split` `[0];
       else if (singleOrDouble) {
