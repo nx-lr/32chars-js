@@ -505,8 +505,7 @@ function generateDocument(
    */
 
   const ENCODING_MACRO =
-    "a=(a=>a.split`,`.map(a=>parseInt([...a].map(a=>[...Array(+(36)).keys()].map(a=>a.toString(36))[CIPHER_TO.indexOf(a)]).join``,31)).map(a=>String.fromCharCode(a)).join``)"
-      .replace(/^\w=|;$/g, "")
+    "a=>a.split`,`.map(a=>parseInt([...a].map(a=>[...Array(+(31)).keys()].map(a=>a.toString(31))[CIPHER_TO.indexOf(a)]).join``,31)).map(a=>String.fromCharCode(a)).join``"
       .replace("CIPHER_TO", quote(CIPHER_TO))
       .replace(/\.toString\b/g, ident => `[${GLOBAL_VAR}[${quote("'")}]]`)
       .replace("Array", `[][${GLOBAL_VAR}.$]`)
@@ -519,13 +518,7 @@ function generateDocument(
         return `[${GLOBAL_VAR}[${quote(IDENT_SET[p1])}]]`;
       });
 
-  RESULT +=
-    ";" +
-    `${GLOBAL_VAR}={...${GLOBAL_VAR},` +
-    [
-      [`[+![]]`, ENCODING_MACRO], // 0
-    ].map(x => x.join`:`) +
-    "}";
+  RESULT += ";" + `${GLOBAL_VAR}[+![]]=${ENCODING_MACRO}`;
 
   /**
    * UTF-16 STRINGS
