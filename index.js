@@ -44,13 +44,13 @@ function encodeText(
     |> %.join`|`;
   REGEXP = RegExp(REGEXP, "g");
 
+  // Test whether an identifier can be made into a variable
   const checkIdentifier = (ident: string): boolean =>
     isValidIdentifier(ident) && !BUILTINS.test(ident);
-  // Test whether an identifier can be made into a variable
   if (!checkIdentifier(GLOBAL_VAR))
     throw new Error(`Invalid global variable: ${quote(GLOBAL_VAR)}`);
-  // Reject stings above the length of 2^29 to avoid going over the max string limit
 
+  // Reject strings above the length of 2^29 to avoid going over the max string limit
   const MAX_STRING_LENGTH = 536870888,
     enUS = Intl.NumberFormat("en-us");
   if (TEXT.length > MAX_STRING_LENGTH)
