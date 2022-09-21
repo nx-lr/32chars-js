@@ -9,7 +9,7 @@ const print = console.log;
 const text = fs.readFileSync("./input.txt", "utf8");
 
 /**
- * JinxScript is a substitution encoding scheme that goes through three phases:
+ * VoidScript is a substitution encoding scheme that goes through three phases:
  *
  * - Initialization, where characters and values are assigned to variables;
  * - Substitution, where the variables are used to construct strings;
@@ -659,7 +659,7 @@ Output length: ${enUS.format(RESULT.length)}`,
 
 const {result, stats} = encodeText(text, "_", {
   STRICT_MODE: true,
-  QUOTE_STYLE: "cycle single",
+  QUOTE_STYLE: "single",
 });
 
 print(stats);
