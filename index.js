@@ -3,6 +3,7 @@ import _ from "lodash";
 import fs from "fs";
 import isValidIdentifier from "is-valid-identifier";
 import jsesc from "jsesc";
+import XRegExp from "xregexp";
 
 const print = console.log;
 const text = fs.readFileSync("./input.txt", "utf8");
@@ -26,8 +27,8 @@ function encodeText(
   const REGEXPS = {
     constant: /\b(true|false|Infinity|NaN|undefined)\b/g,
     constructor: /\b(Array|Object|String|Number|Boolean|RegExp|Function)\b/g,
-    word: /\b([GHJ-MPQTV-Z]|[A-Za-z]{2,})\b/g,
-    letter: /\b[a-zA-FINORSU\d]\b/g,
+    word: XRegExp(String.raw`\b([GHJ-MPQTV-Z]|[\pL\pN]{2,})\b`, "g"),
+    letter: /\b[\da-zA-FINORSU]\b/g,
     symbol: /[!"#$%&'()*+,\-./:;<=>?@\[\\\]^_`{|}~]+/g,
     unicode: /[^!"#$%&'()*+,\-./:;<=>?@\[\\\]^_`{|}~ ]+/g,
   };
@@ -658,6 +659,6 @@ const {result, stats} = encodeText(text, "_", {
   QUOTE_STYLE: "single",
 });
 
-console.log(stats);
+print(stats);
 
 fs.writeFileSync("./output.js", result);
