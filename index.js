@@ -101,18 +101,18 @@ function encodeText(
    * slightly longer.
    */
 
-  const LETTERS = `abcdefghijklmnopqrstuvwxyz`;
-  const CIPHER = `;.!:_-,?/'*+#%&^"|~$=<>\`@\\`;
+  const LETTERS = "abcdefghijklmnopqrstuvwxyz";
+  const CIPHER = ";.!:_-,?/'*+#%&^\"|~$=<>`@\\";
   const SPACE = "-";
 
-  const encodeLetter = (char: Lowercase | Uppercase) =>
+  const encodeLetter = (char: Lower | Upper) =>
     (V.isUpperCase(char) ? "$" : "_") +
     (char.toLowerCase() |> LETTERS.indexOf(%) |> CIPHER[%]);
 
   const encodeDigit = (number: string | number) =>
-    +number
-    |> %.toString(2).padStart(3, 0)
-    |> %.replace(/(?<$0>0)|(?<$1>1)/g, ($0, $1) => ($0 == 1 ? "$" : "_"));
+    [...(+number).toString(2).padStart(3, 0)].map(match =>
+      match == 1 ? "$" : "_"
+    ).join``;
 
   /**
    * @example
@@ -140,7 +140,7 @@ function encodeText(
    */
 
   // The separator is a semicolon, not a comma.
-  let RESULT = `${STRICT_MODE ? `let _${GLOBAL_VAR},` : ""}${GLOBAL_VAR}=~[];`;
+  let RESULT = `${STRICT_MODE ? `var _${GLOBAL_VAR},` : ""}${GLOBAL_VAR}=~[];`;
 
   // STEP 1
   const CHARSET_1 = {};
@@ -155,7 +155,7 @@ function encodeText(
     |> %.map((digit: number) => [
       `${encodeDigit(digit)}:\`\${++${GLOBAL_VAR}}\``,
       Object.entries(CHARSET_1)
-      |> %.filter(([, [, val: number]]) => val == digit)
+      |> %.filter(([, [, val]]) => val == digit)
       |> %.map(([char, [lit]]) => {
         const key = quote(encodeLetter(char));
         return `${key}:\`\${${lit}}\`[${GLOBAL_VAR}]`;
@@ -226,9 +226,7 @@ function encodeText(
   }
 
   const objectDifference = (x: object, y: object) =>
-    Object.fromEntries(
-      _.difference(Object.keys(x), Object.keys(y)).map(z => [z, x[z]])
-    );
+    Object.fromEntries(_.difference(_.keys(x), _.keys(y)).map(z => [z, x[z]]));
   const CHARSET_2_DIFF = objectDifference(CHARSET_2, CHARSET_1);
 
   const RES_CHARSET_2 =
@@ -606,9 +604,9 @@ function encodeText(
 
   const EXPRESSION = `[${TEXT.split` `.map(substring => {
     return [...substring.matchAll(REGEXP)].map(match => {
-      const [group, substring] = Object.entries(match.groups || {}).filter(
-        ([, value]) => !!value
-      )[0] || ["", ""];
+      const [group, substring] = Object.entries(match.groups).filter(
+        ([, val]) => val != null
+      )[0];
       switch (group) {
         case "constant":
           return `\`\${${CONSTANTS[substring]}}\``;
