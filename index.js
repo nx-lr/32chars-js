@@ -7,32 +7,6 @@ import jsesc from "jsesc";
 const print = console.log;
 const text = fs.readFileSync("./input.txt", "utf8");
 
-const BUILTINS =
-  /\b(module|exports|Infinity|NaN|undefined|globalThis|this|eval|isFinite|isNaN|parseFloat|parseInt|encodeURI|encodeURIComponent|decodeURI|decodeURIComponent|escape|unescape|Object|Function|Boolean|Symbol|Number|BigInt|Math|Date|String|RegExp|Array|Int8Array|Uint8Array|Uint8ClampedArray|Int16Array|Uint16Array|Int32Array|Uint32Array|Float32Array|Float64Array|BigInt64Array|BigUint64Array|Map|Set|WeakMap|WeakSet|ArrayBuffer|SharedArrayBuffer|Atomics|DataView|JSON|Promise|Generator|GeneratorFunction|AsyncFunction|AsyncGenerator|AsyncGeneratorFunction|Reflect|Proxy|Intl|WebAssembly)\b/;
-
-const REGEXPS = {
-  constant: /\b(true|false|Infinity|NaN|undefined)\b/g,
-  constructor: /\b(Array|Object|String|Number|Boolean|RegExp|Function)\b/g,
-  word: /\b([GHJ-MPQTV-Z]|[A-Za-z]{2,})\b/g,
-  letter: /\b[a-zA-FINORSU\d]\b/g,
-  symbol: /[!"#$%&'()*+,\-./:;<=>?@\[\\\]^_`{|}~]+/g,
-  unicode: /[^!"#$%&'()*+,\-./:;<=>?@\[\\\]^_`{|}~ ]+/g,
-};
-
-/**
- * This regular expression splits the text into runs.
- * The literal space is ignored since it is the most used
- * character in plain text.
- */
-
-let REGEXP =
-  Object.entries(REGEXPS)
-  |> %.map(([key, {source}]) => `(?<${key}>${source})`)
-  |> %.join`|`;
-REGEXP = RegExp(REGEXP, "g");
-
-module.exports.REGEXP = REGEXP;
-
 /**
  * JinxScript is a substitution encoding scheme that goes through three phases:
  *
@@ -41,20 +15,50 @@ module.exports.REGEXP = REGEXP;
  * - Execution, where the constructed code is evaluated and executed.
  */
 
-const NODE_MAX_STRING_LENGTH = 536870888;
 function encodeText(
   TEXT,
   GLOBAL_VAR,
   {STRICT_MODE = false, QUOTE_STYLE = ""} = {}
 ) {
+  const BUILTINS =
+    /\b(module|exports|Infinity|NaN|undefined|globalThis|this|eval|isFinite|isNaN|parseFloat|parseInt|encodeURI|encodeURIComponent|decodeURI|decodeURIComponent|escape|unescape|Object|Function|Boolean|Symbol|Number|BigInt|Math|Date|String|RegExp|Array|Int8Array|Uint8Array|Uint8ClampedArray|Int16Array|Uint16Array|Int32Array|Uint32Array|Float32Array|Float64Array|BigInt64Array|BigUint64Array|Map|Set|WeakMap|WeakSet|ArrayBuffer|SharedArrayBuffer|Atomics|DataView|JSON|Promise|Generator|GeneratorFunction|AsyncFunction|AsyncGenerator|AsyncGeneratorFunction|Reflect|Proxy|Intl|WebAssembly)\b/;
+
+  const REGEXPS = {
+    constant: /\b(true|false|Infinity|NaN|undefined)\b/g,
+    constructor: /\b(Array|Object|String|Number|Boolean|RegExp|Function)\b/g,
+    word: /\b([GHJ-MPQTV-Z]|[A-Za-z]{2,})\b/g,
+    letter: /\b[a-zA-FINORSU\d]\b/g,
+    symbol: /[!"#$%&'()*+,\-./:;<=>?@\[\\\]^_`{|}~]+/g,
+    unicode: /[^!"#$%&'()*+,\-./:;<=>?@\[\\\]^_`{|}~ ]+/g,
+  };
+
+  /**
+   * This regular expression splits the text into runs.
+   * The literal space is ignored since it is the most used
+   * character in plain text.
+   */
+
+  let REGEXP =
+    Object.entries(REGEXPS)
+    |> %.map(([key, {source}]) => `(?<${key}>${source})`)
+    |> %.join`|`;
+  REGEXP = RegExp(REGEXP, "g");
+
   const checkIdentifier = (ident: string): boolean =>
     isValidIdentifier(ident) && !BUILTINS.test(ident);
   // Test whether an identifier can be made into a variable
   if (!checkIdentifier(GLOBAL_VAR))
     throw new Error(`Invalid global variable: ${quote(GLOBAL_VAR)}`);
-  // Reject stings above
-  if (TEXT.length > 2e8)
-    throw new Error(`Max input string can only be up to ${2e8} chars long`);
+  // Reject stings above the length of 2^29 to avoid going over the max string limit
+
+  const MAX_STRING_LENGTH = 536870888,
+    enUS = Intl.NumberFormat("en-us");
+  if (TEXT.length > MAX_STRING_LENGTH)
+    throw new Error(
+      `Input string can only be up to ${enUS.format(
+        NODE_MAX_LENGTH
+      )} characters long`
+    );
 
   /**
    * Encase a string in literal quotes; finding the shortest
@@ -69,8 +73,8 @@ function encodeText(
   let count = 0;
   const quote = string => do {
     const single = string.match(/'/g)?.length || 0,
-      double = string.match(/"/g)?.length || 0,
-      backtick = !/\$\{|`/.test(string) && /['"]/.test(string);
+      double = string.match(/"/g)?.length || 0;
+    const backtick = !/\$\{|`/.test(string) && /['"]/.test(string);
     let choice = do {
       const singleOrDouble = /\b(single|double)\b/i.test(QUOTE_STYLE),
         only = /\bbonly\b/i.test(QUOTE_STYLE);
@@ -324,7 +328,6 @@ function encodeText(
     escape: ">",
     unescape: "<",
     parseInt: "~",
-    parseFloat: '"',
   };
 
   const RES_FUNCTIONS_1 =
@@ -362,7 +365,6 @@ function encodeText(
    * $.C = escape(',')[2]
    * $.D = escape(',')[2]
    * @end
-   *
    */
 
   RESULT +=
@@ -430,7 +432,7 @@ function encodeText(
     ].map(x => x.join`:`) +
     "}";
 
-  const IDENT_SET3 = {fromCharCode: "@", keys: "&"};
+  const IDENT_SET3 = {fromCharCode: "@", keys: "&", toUpperCase: '"'};
   RESULT += ";" + encodeIdentifiers(IDENT_SET3);
 
   /**
@@ -638,8 +640,6 @@ function encodeText(
     `[${quote("exports")}]` +
     `[${quote("result")}]=_` +
     GLOBAL_VAR;
-
-  const enUS = Intl.NumberFormat("en-us");
 
   return {
     result: RESULT,
