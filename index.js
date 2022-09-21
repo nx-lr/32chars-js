@@ -77,15 +77,17 @@ function encodeText(
       double = string.match(/"/g)?.length || 0;
     const backtick = !/\$\{|`/.test(string) && /['"]/.test(string);
     let choice = do {
-      const singleOrDouble = /\b(single|double)\b/i.test(QUOTE_STYLE),
-        only = /\bbonly\b/i.test(QUOTE_STYLE);
-      if (singleOrDouble && only) {
+      const singleOrDouble = /\b(single|double)\b/i.test(QUOTE_STYLE);
+      if (singleOrDouble && /\bbonly\b/i.test(QUOTE_STYLE)) {
         QUOTE_STYLE.match(/\b(single|double)\b/i)[0].toLowerCase();
+      } else if (/\bcycle\b/.test(QUOTE_STYLE)) {
+        if (/\bsingle\b/i.test(QUOTE_STYLE)) ["single", "double"][count++ % 2];
+        else ["double", "single"][count++ % 2];
       } else if (singleOrDouble) {
         if (single < double) "single";
         else if (single > double) "double";
         else QUOTE_STYLE.toLowerCase().trim();
-      } else ["single", "double"][count++ % 2];
+      } else Math.random() > 0.5 ? "double" : "single";
     };
     jsesc(string, {quotes: choice, wrap: true});
   };
@@ -656,7 +658,7 @@ Output length: ${enUS.format(RESULT.length)}`,
 
 const {result, stats} = encodeText(text, "_", {
   STRICT_MODE: true,
-  QUOTE_STYLE: "single",
+  QUOTE_STYLE: "random",
 });
 
 print(stats);
