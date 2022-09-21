@@ -59,6 +59,7 @@
     "@bloomberg/record-tuple-polyfill": "^0.0.3",
     "chance": "^1.1.7",
     "cli-highlight": "^2.1.11",
+    "huffman-ts": "^0.1.3",
     "is-valid-identifier": "^2.0.2",
     "itt": "^0.7.3",
     "jsesc": "^2.5.2",
@@ -66,7 +67,10 @@
     "prettier": "^2.7.1",
     "punycode": "^2.1.1",
     "uglify-js": "^3.17.0",
-    "voca": "^1.4.0"
+    "utf8": "^3.0.0",
+    "voca": "^1.4.0",
+    "wtf-8": "^1.0.1",
+    "xregexp": "^5.1.1"
   },
   "description": "A better version of jjencode using all ASCII symbol characters, and modern JavaScript syntax. This CLI-based program is STRICTLY for experimentation ONLY and SHALL NEVER be used for production or generation of malicious code.",
   "directories": {
