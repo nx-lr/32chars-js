@@ -22,7 +22,68 @@ function encodeText(
   {STRICT_MODE = false, QUOTE_STYLE = ""} = {}
 ) {
   const BUILTINS =
-    /\b(module|exports|Infinity|NaN|undefined|globalThis|this|eval|isFinite|isNaN|parseFloat|parseInt|encodeURI|encodeURIComponent|decodeURI|decodeURIComponent|escape|unescape|Object|Function|Boolean|Symbol|Number|BigInt|Math|Date|String|RegExp|Array|Int8Array|Uint8Array|Uint8ClampedArray|Int16Array|Uint16Array|Int32Array|Uint32Array|Float32Array|Float64Array|BigInt64Array|BigUint64Array|Map|Set|WeakMap|WeakSet|ArrayBuffer|SharedArrayBuffer|Atomics|DataView|JSON|Promise|Generator|GeneratorFunction|AsyncFunction|AsyncGenerator|AsyncGeneratorFunction|Reflect|Proxy|Intl|WebAssembly)\b/;
+    [
+      "module",
+      "exports",
+      "Infinity",
+      "NaN",
+      "undefined",
+      "globalThis",
+      "this",
+      "eval",
+      "isFinite",
+      "isNaN",
+      "parseFloat",
+      "parseInt",
+      "encodeURI",
+      "encodeURIComponent",
+      "decodeURI",
+      "decodeURIComponent",
+      "escape",
+      "unescape",
+      "Object",
+      "Function",
+      "Boolean",
+      "Symbol",
+      "Number",
+      "BigInt",
+      "Math",
+      "Date",
+      "String",
+      "RegExp",
+      "Array",
+      "Int8Array",
+      "Uint8Array",
+      "Uint8ClampedArray",
+      "Int16Array",
+      "Uint16Array",
+      "Int32Array",
+      "Uint32Array",
+      "Float32Array",
+      "Float64Array",
+      "BigInt64Array",
+      "BigUint64Array",
+      "Map",
+      "Set",
+      "WeakMap",
+      "WeakSet",
+      "ArrayBuffer",
+      "SharedArrayBuffer",
+      "Atomics",
+      "DataView",
+      "JSON",
+      "Promise",
+      "Generator",
+      "GeneratorFunction",
+      "AsyncFunction",
+      "AsyncGenerator",
+      "AsyncGeneratorFunction",
+      "Reflect",
+      "Proxy",
+      "Intl",
+      "WebAssembly",
+    ]
+    |> RegExp("^\\b(" + %.join`|` + ")\\b$");
 
   const REGEXPS = {
     constant: /\b(true|false|Infinity|NaN|undefined)\b/g,
@@ -47,7 +108,7 @@ function encodeText(
 
   // Test whether an identifier can be made into a variable
   const checkIdentifier = (ident: string): boolean =>
-    isValidIdentifier(ident) && !BUILTINS.test(ident);
+    (ident = ident.trim()) && isValidIdentifier(ident) && !BUILTINS.test(ident);
   if (!checkIdentifier(GLOBAL_VAR))
     throw new Error(`Invalid global variable: ${quote(GLOBAL_VAR)}`);
 
@@ -515,7 +576,10 @@ function encodeText(
    */
 
   const ENCODING_MACRO =
-    "a=>a.split`,`.map(a=>parseInt([...a].map(a=>[...Array(+(31)).keys()].map(a=>a.toString(31))[CIPHER_TO.indexOf(a)]).join``,31)).map(a=>String.fromCharCode(a)).join``"
+    "a=>a.split`,`.map(a=>parseInt([...a].map\
+      (a=>[...Array(+(31)).keys()].map(a=>a.toString(31))\
+      [CIPHER_TO.indexOf(a)]).join``,31))\
+      .map(a=>String.fromCharCode(a)).join``"
       .replace("CIPHER_TO", quote(CIPHER_TO))
       .replace(/\.toString\b/g, ident => `[${GLOBAL_VAR}[${quote("'")}]]`)
       .replace("Array", `[][${GLOBAL_VAR}.$]`)
