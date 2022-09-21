@@ -513,10 +513,10 @@ function generateDocument(
       .replace(/\b\d+\b/g, match => encodeString(match))
       .replace("parseInt", `${GLOBAL_VAR}[${quote("~")}]`)
       .replace(/\ba\b/g, "_" + GLOBAL_VAR)
-      .replace(/\.\b(keys|split|map|indexOf|join|fromCharCode)\b/g, p1 => {
-        p1 = p1.replace(/^\./, "");
-        return `[${GLOBAL_VAR}[${quote(IDENT_SET[p1])}]]`;
-      });
+      .replace(
+        /\.\b(keys|split|map|indexOf|join|fromCharCode)\b/g,
+        p1 => `[${GLOBAL_VAR}[${quote(IDENT_SET[p1.slice(1)])}]]`
+      );
 
   RESULT += ";" + `${GLOBAL_VAR}[+![]]=${ENCODING_MACRO}`;
 
