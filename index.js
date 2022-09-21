@@ -8,16 +8,15 @@ const print = console.log;
 const text = fs.readFileSync("./input.txt", "utf8");
 
 const BUILTINS =
-  /\b(Infinity|NaN|undefined|globalThis|this|eval|isFinite|isNaN|parseFloat|parseInt|encodeURI|encodeURIComponent|decodeURI|decodeURIComponent|escape|unescape|Object|Function|Boolean|Symbol|Number|BigInt|Math|Date|String|RegExp|Array|Int8Array|Uint8Array|Uint8ClampedArray|Int16Array|Uint16Array|Int32Array|Uint32Array|Float32Array|Float64Array|BigInt64Array|BigUint64Array|Map|Set|WeakMap|WeakSet|ArrayBuffer|SharedArrayBuffer|Atomics|DataView|JSON|Promise|Generator|GeneratorFunction|AsyncFunction|AsyncGenerator|AsyncGeneratorFunction|Reflect|Proxy|Intl|WebAssembly)\b/;
+  /\b(module|exports|Infinity|NaN|undefined|globalThis|this|eval|isFinite|isNaN|parseFloat|parseInt|encodeURI|encodeURIComponent|decodeURI|decodeURIComponent|escape|unescape|Object|Function|Boolean|Symbol|Number|BigInt|Math|Date|String|RegExp|Array|Int8Array|Uint8Array|Uint8ClampedArray|Int16Array|Uint16Array|Int32Array|Uint32Array|Float32Array|Float64Array|BigInt64Array|BigUint64Array|Map|Set|WeakMap|WeakSet|ArrayBuffer|SharedArrayBuffer|Atomics|DataView|JSON|Promise|Generator|GeneratorFunction|AsyncFunction|AsyncGenerator|AsyncGeneratorFunction|Reflect|Proxy|Intl|WebAssembly)\b/;
 
 const REGEXPS = {
-  space: / +/g,
   constant: /\b(true|false|Infinity|NaN|undefined)\b/g,
   constructor: /\b(Array|Object|String|Number|Boolean|RegExp|Function)\b/g,
   word: /\b([GHJ-MPQTV-Z]|[A-Za-z]{2,})\b/g,
   letter: /\b[a-zA-FINORSU\d]\b/g,
   symbol: /[!"#$%&'()*+,\-./:;<=>?@\[\\\]^_`{|}~]+/g,
-  default: /[^!"#$%&'()*+,\-./:;<=>?@\[\\\]^_`{|}~ ]+/g,
+  unicode: /[^!"#$%&'()*+,\-./:;<=>?@\[\\\]^_`{|}~ ]+/g,
 };
 
 /**
@@ -42,15 +41,20 @@ module.exports.REGEXP = REGEXP;
  * - Execution, where the constructed code is evaluated and executed.
  */
 
+const NODE_MAX_STRING_LENGTH = 536870888;
 function generateDocument(
   TEXT,
   GLOBAL_VAR,
-  {STRICT_MODE = false, QUOTE = ""} = {}
+  {STRICT_MODE = false, QUOTE_STYLE = ""} = {}
 ) {
   const checkIdentifier = (ident: string): boolean =>
     isValidIdentifier(ident) && !BUILTINS.test(ident);
+  // Test whether an identifier can be made into a variable
   if (!checkIdentifier(GLOBAL_VAR))
     throw new Error(`Invalid global variable: ${quote(GLOBAL_VAR)}`);
+  // Reject stings above
+  if (TEXT.length > 2e8)
+    throw new Error(`Max input string can only be up to ${2e8} chars long`);
 
   /**
    * Encase a string in literal quotes; finding the shortest
@@ -66,14 +70,14 @@ function generateDocument(
   const quote = string => do {
     const single = string.match(/'/g)?.length || 0,
       double = string.match(/"/g)?.length || 0,
-      backtick = !/\$\{|`/.test(string) && /['"]/.test(string),
-      singleOrDouble = /single|double/i.test(QUOTE);
+      backtick = !/\$\{|`/.test(string) && /['"]/.test(string);
     let choice = do {
-      if (/only/.test(QUOTE) && singleOrDouble) choice.split` `[0];
-      else if (singleOrDouble) {
+      if (/single|double/i.test(QUOTE_STYLE) && /only/i.test(QUOTE_STYLE))
+        QUOTE_STYLE.match(/single|double/i)[0].toLowerCase();
+      else if (/single|double/i.test(QUOTE_STYLE)) {
         if (single < double) "single";
         else if (single > double) "double";
-        else QUOTE.toLowerCase().trim();
+        else QUOTE_STYLE.toLowerCase().trim();
       } else ["single", "double"][count++ % 2];
     };
     jsesc(string, {quotes: choice, wrap: true});
@@ -597,38 +601,33 @@ function generateDocument(
    * with empty arrays.
    */
 
-  const GROUPS = [...text.matchAll(REGEXP)]
-    .map(({groups}) => Object.entries(groups).filter(([, value]) => !!value))
-    .flat(1);
-
-  const EXPRESSION = GROUPS.map(([group, substring]) => {
-    switch (group) {
-      case "constant":
-        return `\`\${${CONSTANTS[substring]}}\``;
-      case "constructor":
-        return `${
-          CONSTRUCTORS[substring]
-        }[${GLOBAL_VAR}.$][${GLOBAL_VAR}[${quote("?")}]]`;
-      case "letter":
-        return encodeString(substring);
-      case "word":
-        let key = WORD_LIST[substring];
-        if (typeof IDENT_SET[substring] == "string") key = IDENT_SET[substring];
-        return `${GLOBAL_VAR}[${quote(key)}]`;
-      case "default":
-        const encoded = base31(substring);
-        return `${GLOBAL_VAR}[+![]](${quote(encoded)})`;
-      case "space":
-        const {length} = substring;
-        const encodedLen = encodeString(length);
-        return length == 1
-          ? `${GLOBAL_VAR}[${quote("-")}]`
-          : `${GLOBAL_VAR}[${quote("-")}][${GLOBAL_VAR}[${quote("*")}]]` +
-              `(${encodedLen})`;
-      case "symbol":
-        return quote(substring);
-    }
-  }).join`+`;
+  const EXPRESSION = `[${TEXT.split` `.map(substring => {
+    return [...substring.matchAll(REGEXP)].map(match => {
+      const [group, substring] = Object.entries(match.groups || {}).filter(
+        ([, value]) => !!value
+      )[0] || ["", ""];
+      switch (group) {
+        case "constant":
+          return `\`\${${CONSTANTS[substring]}}\``;
+        case "constructor":
+          return `${
+            CONSTRUCTORS[substring]
+          }[${GLOBAL_VAR}.$][${GLOBAL_VAR}[${quote("?")}]]`;
+        case "letter":
+          return encodeString(substring);
+        case "word":
+          let key = WORD_LIST[substring];
+          if (typeof IDENT_SET[substring] == "string")
+            key = IDENT_SET[substring];
+          return `${GLOBAL_VAR}[${quote(key)}]`;
+        case "unicode":
+          const encoded = base31(substring);
+          return `${GLOBAL_VAR}[+![]](${quote(encoded)})`;
+        default:
+          return quote(substring);
+      }
+    }).join`+`;
+  })}][${GLOBAL_VAR}[${quote("%")}]](${GLOBAL_VAR}[${quote("-")}])`;
 
   RESULT += ";" + `_${GLOBAL_VAR}=${EXPRESSION}`;
 
@@ -640,21 +639,23 @@ function generateDocument(
     `[${quote("result")}]=_` +
     GLOBAL_VAR;
 
+  const enUS = Intl.NumberFormat("en-us");
+
   return {
     result: RESULT,
     stats: `=====
 STATS
 =====
-Input length: ${TEXT.length}
-Expression length: ${EXPRESSION.length}
+Input length: ${enUS.format(TEXT.length)}
+Expression length: ${enUS.format(EXPRESSION.length)}
 Ratio: ${EXPRESSION.length / TEXT.length}
-Output length: ${RESULT.length}`,
+Output length: ${enUS.format(RESULT.length)}`,
   };
 }
 
 const {result, stats} = generateDocument(text, "_", {
   STRICT_MODE: true,
-  QUOTE: "single",
+  QUOTE_STYLE: "double-only",
 });
 
 console.log(stats);
