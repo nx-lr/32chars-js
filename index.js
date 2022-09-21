@@ -76,6 +76,7 @@ function encodeText(
     const single = string.match(/'/g)?.length || 0,
       double = string.match(/"/g)?.length || 0;
     const backtick = !/\$\{|`/.test(string) && /['"]/.test(string);
+
     let choice = do {
       const singleOrDouble = /\b(single|double)\b/i.test(QUOTE_STYLE);
       if (singleOrDouble && /\bbonly\b/i.test(QUOTE_STYLE)) {
