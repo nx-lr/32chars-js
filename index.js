@@ -42,7 +42,7 @@ module.exports.REGEXP = REGEXP;
  */
 
 const NODE_MAX_STRING_LENGTH = 536870888;
-function generateDocument(
+function encodeText(
   TEXT,
   GLOBAL_VAR,
   {STRICT_MODE = false, QUOTE_STYLE = ""} = {}
@@ -653,9 +653,9 @@ Output length: ${enUS.format(RESULT.length)}`,
   };
 }
 
-const {result, stats} = generateDocument(text, "_", {
+const {result, stats} = encodeText(text, "_", {
   STRICT_MODE: true,
-  QUOTE_STYLE: "double-only",
+  QUOTE_STYLE: "single",
 });
 
 console.log(stats);
