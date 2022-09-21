@@ -504,36 +504,26 @@ function generateDocument(
    * a few surgical regex substitutions.
    */
 
-  const CIPHER_FROM_EXPR = "[...Array(36).keys()].map(a=>a.toString(36)).join``"
-    .replace(/\.toString\b/g, ident => `[${GLOBAL_VAR}[${quote("'")}]]`)
-    .replace(/\b(?<num>\d+)\b/g, num => `+(${encodeString(num)})`)
-    .replace("Array", `[][${GLOBAL_VAR}.$]`)
-    .replace(/\ba\b/g, "_" + GLOBAL_VAR)
-    .replace(/\.(?<ident>keys|map|join)\b/g, ident => {
-      ident = ident.replace(/^\./, "");
-      return `[${GLOBAL_VAR}[${quote(IDENT_SET[ident])}]]`;
-    });
-
   const ENCODING_MACRO =
-    "a=(a=>a.split`,`.map(a=>parseInt([...a].map(a=>CIPHER_FROM[CIPHER_TO.indexOf(a)]).join``,+(31))).map(a=>String.fromCharCode(a)).join``)"
+    "a=(a=>a.split`,`.map(a=>parseInt([...a].map(a=>[...Array(+(36)).keys()].map(a=>a.toString(36))[CIPHER_TO.indexOf(a)]).join``,31)).map(a=>String.fromCharCode(a)).join``)"
       .replace(/^\w=|;$/g, "")
       .replace("CIPHER_TO", quote(CIPHER_TO))
+      .replace(/\.toString\b/g, ident => `[${GLOBAL_VAR}[${quote("'")}]]`)
+      .replace("Array", `[][${GLOBAL_VAR}.$]`)
       .replace("String", `${quote("")}[${GLOBAL_VAR}.$]`)
-      .replace(/\d+/, match => encodeString(match))
+      .replace(/\b\d+\b/g, match => encodeString(match))
       .replace("parseInt", `${GLOBAL_VAR}[${quote("~")}]`)
       .replace(/\ba\b/g, "_" + GLOBAL_VAR)
-      .replace(/\.(?<ident>split|map|indexOf|join|fromCharCode)\b/g, ident => {
-        ident = ident.replace(/^\./, "");
-        return `[${GLOBAL_VAR}[${quote(IDENT_SET[ident])}]]`;
-      })
-      .replace("CIPHER_FROM", `${GLOBAL_VAR}[+!${quote("")}]`);
+      .replace(/\.\b(keys|split|map|indexOf|join|fromCharCode)\b/g, p1 => {
+        p1 = p1.replace(/^\./, "");
+        return `[${GLOBAL_VAR}[${quote(IDENT_SET[p1])}]]`;
+      });
 
   RESULT +=
     ";" +
     `${GLOBAL_VAR}={...${GLOBAL_VAR},` +
     [
-      [`[+!${quote("")}]`, CIPHER_FROM_EXPR], // 0
-      [`[+![]]`, ENCODING_MACRO], // 1
+      [`[+![]]`, ENCODING_MACRO], // 0
     ].map(x => x.join`:`) +
     "}";
 
@@ -617,14 +607,6 @@ function generateDocument(
   const GROUPS = [...text.matchAll(REGEXP)]
     .map(({groups}) => Object.entries(groups).filter(([, value]) => !!value))
     .flat(1);
-
-  const testRegex = str => {
-    try {
-      return eval(`/${str}/`) && true;
-    } catch {
-      return false;
-    }
-  };
 
   const EXPRESSION = GROUPS.map(([group, substring]) => {
     switch (group) {
