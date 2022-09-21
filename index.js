@@ -72,12 +72,11 @@ function encodeText(
       double = string.match(/"/g)?.length || 0,
       backtick = !/\$\{|`/.test(string) && /['"]/.test(string);
     let choice = do {
-      if (
-        /\b(single|double)\b/i.test(QUOTE_STYLE) &&
-        /\bonly\b/i.test(QUOTE_STYLE)
-      ) {
+      const singleOrDouble = /\b(single|double)\b/i.test(QUOTE_STYLE),
+        only = /\bbonly\b/i.test(QUOTE_STYLE);
+      if (singleOrDouble && only) {
         QUOTE_STYLE.match(/\b(single|double)\b/i)[0].toLowerCase();
-      } else if (/\b(single|double)\b/i.test(QUOTE_STYLE)) {
+      } else if (singleOrDouble) {
         if (single < double) "single";
         else if (single > double) "double";
         else QUOTE_STYLE.toLowerCase().trim();
