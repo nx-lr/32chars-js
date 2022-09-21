@@ -81,7 +81,7 @@ function encodeText(
       const singleOrDouble = /\b(single|double)\b/i.test(QUOTE_STYLE);
       if (singleOrDouble && /\bbonly\b/i.test(QUOTE_STYLE)) {
         QUOTE_STYLE.match(/\b(single|double)\b/i)[0].toLowerCase();
-      } else if (/\bcycle\b/.test(QUOTE_STYLE)) {
+      } else if (/\bcycle\b/i.test(QUOTE_STYLE)) {
         if (/\bsingle\b/i.test(QUOTE_STYLE)) ["single", "double"][count++ % 2];
         else ["double", "single"][count++ % 2];
       } else if (singleOrDouble) {
@@ -659,7 +659,7 @@ Output length: ${enUS.format(RESULT.length)}`,
 
 const {result, stats} = encodeText(text, "_", {
   STRICT_MODE: true,
-  QUOTE_STYLE: "random",
+  QUOTE_STYLE: "cycle single",
 });
 
 print(stats);
