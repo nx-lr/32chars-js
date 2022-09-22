@@ -58,8 +58,10 @@ You don't have to worry too much about code size because there is a lot of repet
 
 No for most cases, except for small inputs of probably a few thousand words. Since there are many tokens in the output, it would probably break your formatter or minifier or whatever is used to display your result.
 
-## Future enhancements
+## Fixes and bugs
 
+- Turn the source code into a CLI application
+- Refactor obfuscator function to work with the new `options` object
 - Add support for:
   - Template string quoting
   - Template string interpolation
