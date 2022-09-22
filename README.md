@@ -54,7 +54,7 @@ Words, numbers and other alphanumerics are encoded once and stored in the global
 
 You don't have to worry too much about code size because there is a lot of repetition and only 32 characters.
 
-#### Can I run a minifier such as UglifyJS or Google Closure Compiler on the obfuscated output?
+#### Can I run a minifier or prettifier such as Prettier or UglifyJS on the obfuscated output?
 
 No for most cases, except for small inputs of probably a few thousand words. Since there are many tokens in the output, it would probably break your formatter or minifier or whatever is used to display your result.
 
