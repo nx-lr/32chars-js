@@ -103,7 +103,7 @@
     "trailingComma": "es5"
   },
   "scripts": {
-    "test": "babel-node index.js && node test.js",
+    "test": "babel-node src/obfuscate.js && node test.js",
     "build": "npx babel src -d dist && uglifyjs dist/obfuscate.js -o dist/obfuscate.min.js -c -m"
   },
   "version": "1.0.0"
