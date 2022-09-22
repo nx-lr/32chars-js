@@ -82,8 +82,7 @@ function encodeText(
       "Proxy",
       "Intl",
       "WebAssembly",
-    ]
-    |> RegExp("^\\b(" + %.join`|` + ")\\b$");
+    ] |> RegExp("^\\b(" + %.sort().join`|` + ")\\b$");
 
   const REGEXPS = {
     constant: /\b(true|false|Infinity|NaN|undefined)\b/g,
@@ -577,9 +576,9 @@ function encodeText(
 
   const ENCODING_MACRO =
     "a=>a.split`,`.map(a=>parseInt([...a].map\
-      (a=>[...Array(+(31)).keys()].map(a=>a.toString(31))\
-      [CIPHER_TO.indexOf(a)]).join``,31))\
-      .map(a=>String.fromCharCode(a)).join``"
+(a=>[...Array(+(31)).keys()].map(a=>a.toString(31))\
+[CIPHER_TO.indexOf(a)]).join``,31))\
+.map(a=>String.fromCharCode(a)).join``"
       .replace("CIPHER_TO", quote(CIPHER_TO))
       .replace(/\.toString\b/g, ident => `[${GLOBAL_VAR}[${quote("'")}]]`)
       .replace("Array", `[][${GLOBAL_VAR}.$]`)
