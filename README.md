@@ -1,14 +1,12 @@
 # VoidScript
 
-VoidScript is a minimal JavaScript obfuscator that encodes JavaScript or any piece of text into heavily obfuscated JavaScript code, completely devoid of all numbers and letters. This project is the spiritual successor to Yosuke Hasegawa's [jjencode](https://utf-8.jp/public/jjencode.html) and the polar opposite of [JSF\*ck](https://github.com/aemkei/jsfuck).
+VoidScript is a minimal JavaScript obfuscator that encodes JavaScript or any piece of text into heavily obfuscated JavaScript code, completely devoid of all numbers and letters.
 
-Another difference being that it uses modern (ES6) syntax and features, such as string interpolation and calculated object properties.
+This project is the spiritual successor to Yosuke Hasegawa's [jjencode](https://utf-8.jp/public/jjencode.html) and the polar opposite of [JSF\*ck](https://github.com/aemkei/jsfuck).
 
-Decoding it is super easy, just paste the output and run it in a terminal.
+This version also uses modern (ES6) syntax and features, such as string interpolation, tagged templates and calculated properties, to significantly shorten the generated output.
 
-This project is almost finished and is yet in the process of being converted into a CLI and Node API.
-
-A second project, titled ChaosScript, will be made in the near future.
+This project is almost finished and is yet in the process of being converted into a CLI and Node API. A second project, titled ChaosScript, will be made in the near future.
 
 ## Key features
 
