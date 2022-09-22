@@ -60,7 +60,10 @@ No for most cases, except for small inputs of probably a few thousand words. Sin
 
 ## Future enhancements
 
-- Template strings would cause output to break, since they are not allowed as object keys. A fix would be to wrap them in `[]`.
+- Add support for:
+  - Template string quoting
+  - Template string interpolation
+  - Array joining (commas are excluded because of `toString()`)
 
 ## Installation
 
