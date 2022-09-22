@@ -1,6 +1,6 @@
-# VoidScript
+# PunkScript
 
-VoidScript is a minimal JavaScript obfuscator that encodes JavaScript or any piece of text into heavily obfuscated JavaScript code, completely devoid of all numbers and letters.
+PunkScript is a minimal JavaScript obfuscator that encodes JavaScript or any piece of text into heavily obfuscated JavaScript code, completely devoid of all numbers and letters.
 
 This project is the spiritual successor to Yosuke Hasegawa's [jjencode](https://utf-8.jp/public/jjencode.html) and the polar opposite of [JSF\*ck](https://github.com/aemkei/jsfuck).
 
@@ -18,17 +18,15 @@ This project is almost finished and is yet in the process of being converted int
   - smart-quote (Prettier-style)
   - random-quoting
 - Fast-as-possible encoding
-  - [1,167,707 characters](https://raw.githubusercontent.com/nxltm/VoidScript/main/input.txt)
-  - [3,022,630 char output](https://raw.githubusercontent.com/nxltm/VoidScript/main/output.js) - 2,544,260 expression output
+  - [1,167,707 characters](https://raw.githubusercontent.com/nxltm/PunkScript/main/input.txt)
+  - [3,022,630 char output](https://raw.githubusercontent.com/nxltm/PunkScript/main/output.js) - 2,544,260 expression output
   - 2.18 I/O ratio
   - 3.548s fastest runtime
 - Generated code can be run even on a browser!
 
 ## Disclaimer
 
-**ONLY OBFUSCATE THINGS THAT BELONG TO YOU**. This repository and command line program shall not be used nor intended for malicious purposes, including scripting attacks, since it is a code obfuscator and can bypass most filters.
-
-I strongly urge you **NOT** to use this program to generate ANY malicious JavaScript code, or run programs that would otherwise generate such code.
+**ONLY OBFUSCATE THINGS THAT BELONG TO YOU**. This repository and command line program shall not be used nor intended for malicious purposes, including scripting attacks, since it is a code obfuscator and can bypass most filters. I strongly urge you **NOT** to use this program to generate ANY malicious JavaScript code, or run programs that would otherwise generate such code.
 
 This program shall ONLY be used for experimental, educational and privacy purposes. **I am absolutely NOT responsible for any damage caused by the generated code or the program itself.**
 
@@ -92,8 +90,8 @@ From `node_modules`:
 ## Usage
 
 ```js
-const VoidScript = require("void-script")
-var obfuscatedResult = VoidScript.encode(
+const PunkScript = require("void-script")
+var obfuscatedResult = PunkScript.encode(
   "a=>a.split`,`.map(a=>parseInt([...a].map\
 (a=>[...Array(+(31)).keys()].map(a=>a.toString(31))\
 [CIPHER_TO.indexOf(a)]).join``,31))\
@@ -108,7 +106,7 @@ Yes, this statement is built programmatically.
 var __,_=~[];_={___:`${++_}`,'_$':`${!''}`[_],'_-':`${![]}`[_],'$/':`${!''/![]}`[_],'$%':`${+{}}`[_],__$:`${++_}`,'_|':`${!''}`[_],'_;':`${![]}`[_],'_%':`${[][[]]}`[_],'_&':`${{}}`[_],_$_:`${++_}`,'_=':`${!''}`[_],'_+':`${![]}`[_],'_:':`${[][[]]}`[_],'_.':`${{}}`[_],_$$:`${++_}`,'__':`${!''}`[_],'_~':`${![]}`[_],"_'":`${{}}`[_],$__:`${++_}`,$_$:`${++_}`,'_/':`${[][[]]}`[_],'_!':`${{}}`[_],$$_:`${++_}`,$$$:`${++_}`,'_@':`${!''/![]}`[_],'-':`${{}}`[_],$___:`${++_}`,'$&':`${{}}`[_],$__$:`${++_}`};_={..._,'+':_['_!']+_['_&']+_['_%']+_['_!']+_['_;']+_._$,'!':_['_!']+_['_;']+_['_+']+_['_+'],'%':_["_'"]+_['_&']+_['_/']+_['_%'],'/':_['_~']+_['_+']+_['_/']+_['_!']+_.__,_:_['_|']+_.__+_._$+_['_=']+_['_|']+_['_%'],$:_['_!']+_['_&']+_['_%']+_['_~']+_._$+_['_|']+_['_=']+_['_!']+_._$+_['_&']+_['_|']};_={..._,'$;':`${[][_.$]}`[_.$__$],'_<':`${[][_.$]}`[_._$_+_.$__],'$~':`${''[_.$]}`[_.$__$],'_,':`${''[_.$]}`[_.__$+_.$__],'_#':`${(~[])[_.$]}`[_.__$+_.__$],'$.':`${(![])[_.$]}`[_.$__$],'$|':`${/./[_.$]}`[_.$__$],'$_':`${/./[_.$]}`[_.__$+_._$_],'_`':`${/./[_.$]}`[_.__$+_._$$],'_^':`${/./[_.$]}`[_.__$+_.$__],'$-':`${(()=>{})[_.$]}`[_.$__$]};_={..._,'?':_['_%']+_['_;']+_['_#']+_.__,'^':_['_#']+_['_;']+_['_^'],':':_['_|']+_.__+_['_^']+_['_+']+_['_;']+_['_!']+_.__,'*':_['_|']+_.__+_['_^']+_.__+_['_;']+_._$,'|':_['_~']+_['_^']+_['_+']+_['_/']+_._$,'#':_['_/']+_['_%']+_['_:']+_.__+_['_`']+_['$&']+_['_-'],'`':_['_~']+_['_&']+_['_=']+_['_|']+_['_!']+_.__};_={..._,'=':(()=>{})[_.$](_._+_['-']+_.__+_['_<']+_['_;']+_['_+'])(),'>':(()=>{})[_.$](_._+_['-']+_.__+_['_~']+_['_!']+_['_;']+_['_^']+_.__)(),'<':(()=>{})[_.$](_._+_['-']+_['_=']+_['_%']+_.__+_['_~']+_['_!']+_['_;']+_['_^']+_.__)(),'~':(()=>{})[_.$](_._+_['-']+_['_^']+_['_;']+_['_|']+_['_~']+_.__+_['$/']+_['_%']+_._$)()};_={..._,"'":_._$+_['_&']+''[_.$][_['?']],'$!':_['>']('<')[_._$_],'$:':_['>']('=')[_._$_]};_={..._,'$=':`${{}[_["'"]][_['!']]()}`[_.$___],'_?':(+(_.__$+_.$$$))[_["'"]](_._$$+_.$$_),'_*':(+(_._$_+_.___))[_["'"]](_._$$+_.$$_),'_"':(+(_._$_+_.$$_))[_["'"]](_._$$+_.$$_),'_>':(+(_._$$+_._$_))[_["'"]](_._$$+_.$$_),'_\\':(+(_._$$+_.$_$))[_["'"]](_._$$+_.$$_)};_={..._,'@':_['_-']+_['_|']+_['_&']+_['_#']+_['$!']+_['_?']+_['_;']+_['_|']+_['$!']+_['_&']+_['_:']+_.__,'&':_['_*']+_.__+_['_@']+_['_~'],'"':_._$+_['_&']+_['$=']+_['_^']+_['_^']+_.__+_['_|']+_['$!']+_['_;']+_['_~']+_.__};_[+![]]=__=>__[_['|']]`,`[_['^']](__=>_['~']([...__][_['^']](__=>[...[][_.$](+(_._$$+_.__$))[_['&']]()][_['^']](__=>__[_["'"]](_._$$+_.__$))['_.:;!?*+^-=<>~\'"/|#$%&@{}()[]`\\'[_['#']](__)])[_['%']]``,_._$$+_.__$))[_['^']](__=>''[_.$][_['@']](__))[_['%']]``;_={..._,'(':_[+![]]('.%,.#'),')':_[+![]](';$,;!,;&,;@,;^,:<,;|,;{'),'[':_[+![]](':;,;&,;&,;!,;]'),']':_[+![]](';{,;#,:&,;{,;&,;>,;|,;='),'{':_[+![]](':?,:<,:#,:=,:+,:%'),'}':_[+![]](':@'),'..':_[+![]](':&,;{,;&,;>,;|,;=')};__=[_['_;']+'=>'+_['_;']+'.'+_['|']+'`,`.'+_['^']+'('+_['_;']+'=>'+_[')']+'([...'+_['_;']+'].'+_['^']+'('+_['_;']+'=>[...'+[][_.$][_['?']]+'(+('+_['(']+')).'+_['&']+'()].'+_['^']+'('+_['_;']+'=>'+_['_;']+'.'+_[']']+'('+_['(']+'))['+_['{']+'_'+_['}']+_[+![]](':|')+'.'+_['#']+'('+_['_;']+')]).'+_['%']+'``,'+_['(']+')).'+_['^']+'('+_['_;']+'=>'+''[_.$][_['?']]+'.'+_['@']+'('+_['_;']+')).'+_['%']+'``'][_['%']](_['-']);module['exports']['result']=__
 ```
 
-VoidScript has only one function `encode(text, options)`, which returns a `String` containing the obfuscated code.
+PunkScript has only one function `encode(text, options)`, which returns a `String` containing the obfuscated code.
 
 #### Options
 
@@ -149,15 +147,15 @@ String options are case-insensitive.
 
 ## How it works
 
-Like JJEncode, VoidScript is a substitution encoding scheme that goes through three phases:
+Like JJEncode, PunkScript is a substitution encoding scheme that goes through three phases:
 
 - Initialization, where characters and values are assigned to variables;
 - Substitution, where the variables are used to construct strings;
 - Execution, where the constructed code is evaluated and executed.
 
-You may want to read [this article](https://blog.korelogic.com/blog/2015/01/12/javascript_deobfuscation) explaining how the original jjencode works, along with the main key differences between VoidScript and jjencode.
+You may want to read [this article](https://blog.korelogic.com/blog/2015/01/12/javascript_deobfuscation) explaining how the original jjencode works, along with the main key differences between PunkScript and jjencode.
 
-The entire file is generated with the same [program I made](https://github.com/nxltm/VoidScript/blob/main/obfuscator.js); do take note I used experimental JavaScript syntax, which is run using a special BabelJS configuration (see `package.json`).
+The entire file is generated with the same [program I made](https://github.com/nxltm/PunkScript/blob/main/obfuscator.js); do take note I used experimental JavaScript syntax, which is run using a special BabelJS configuration (see `package.json`).
 
 ---
 
@@ -165,7 +163,7 @@ The obfuscator/encoder works by heavily abusing JavaScript's weird quirks, inclu
 
 It's weird enough that you could write an entire valid JavaScript program or virtually any piece of text with as little as six characters. This project uses a substantial character pool of 32, which are the symbol and punctuation characters in ASCII, nothing more, nothing less.
 
-This program is a superset of jjencode in that regard and many concepts behind jjencode have also been adopted in VoidScript. There is a single global variable (default `$`) which stores strings and functions, with a second storing the encoded input string as an obfuscated JavaScript expression.
+This program is a superset of jjencode in that regard and many concepts behind jjencode have also been adopted in PunkScript. There is a single global variable (default `$`) which stores strings and functions, with a second storing the encoded input string as an obfuscated JavaScript expression.
 
 Both are essentially a substitution encoding that goes through two phases: initialization, where characters and substrings are assigned to values, and substitution, where the variables are used to construct back the input string. There might be a third phase, execution, which is done by passing the code (evaluating to a string) to the Function constructor to be executed as JavaScript.
 
