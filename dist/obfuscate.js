@@ -550,9 +550,9 @@ function encodeText(TEXT, GLOBAL_VAR) {
 
 
   var ENCODING_MACRO = "a=>a.split`,`.map(a=>parseInt([...a].map\
-      (a=>[...Array(+(31)).keys()].map(a=>a.toString(31))\
-      [CIPHER_TO.indexOf(a)]).join``,31))\
-      .map(a=>String.fromCharCode(a)).join``".replace(/\s+/g, "").replace("CIPHER_TO", quote(CIPHER_TO)).replace(/\.toString\b/g, function (ident) {
+(a=>[...Array(+(31)).keys()].map(a=>a.toString(31))\
+[CIPHER_TO.indexOf(a)]).join``,31))\
+.map(a=>String.fromCharCode(a)).join``".replace("CIPHER_TO", quote(CIPHER_TO)).replace(/\.toString\b/g, function (ident) {
     return "[".concat(GLOBAL_VAR, "[").concat(quote("'"), "]]");
   }).replace("Array", "[][".concat(GLOBAL_VAR, ".$]")).replace("String", "".concat(quote(""), "[").concat(GLOBAL_VAR, ".$]")).replace(/\b\d+\b/g, function (match) {
     return encodeString(match);
