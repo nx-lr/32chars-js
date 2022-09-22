@@ -87,7 +87,7 @@ function encodeText(
   const REGEXPS = {
     constant: /\b(true|false|Infinity|NaN|undefined)\b/g,
     constructor: /\b(Array|Object|String|Number|Boolean|RegExp|Function)\b/g,
-    word: XRegExp(String.raw`\b([GHJ-MPQTV-Z]|[\pL\pN]{2,})\b`, "g"),
+    word: XRegExp(String.raw`([GHJ-MPQTV-Z]|[\pL\pN]{2,})`, "g"),
     letter: /\b[\da-zA-FINORSU]\b/g,
     symbol: /[!"#$%&'()*+,\-./:;<=>?@\[\\\]^_`{|}~]+/g,
     unicode: /[^!"#$%&'()*+,\-./:;<=>?@\[\\\]^_`{|}~ ]+/g,

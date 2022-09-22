@@ -61,7 +61,7 @@ function encodeText(TEXT, GLOBAL_VAR) {
   var REGEXPS = {
     constant: /\b(true|false|Infinity|NaN|undefined)\b/g,
     constructor: /\b(Array|Object|String|Number|Boolean|RegExp|Function)\b/g,
-    word: (0, _xregexp["default"])(String.raw(_templateObject2 || (_templateObject2 = (0, _taggedTemplateLiteral2["default"])(["\b([GHJ-MPQTV-Z]|[pLpN]{2,})\b"], ["\\b([GHJ-MPQTV-Z]|[\\pL\\pN]{2,})\\b"]))), "g"),
+    word: (0, _xregexp["default"])(String.raw(_templateObject2 || (_templateObject2 = (0, _taggedTemplateLiteral2["default"])(["([GHJ-MPQTV-Z]|[pLpN]{2,})"], ["([GHJ-MPQTV-Z]|[\\pL\\pN]{2,})"]))), "g"),
     letter: /\b[\da-zA-FINORSU]\b/g,
     symbol: /[!"#$%&'()*+,\-./:;<=>?@\[\\\]^_`{|}~]+/g,
     unicode: /[^!"#$%&'()*+,\-./:;<=>?@\[\\\]^_`{|}~ ]+/g
