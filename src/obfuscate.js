@@ -9,7 +9,7 @@ const print = console.log;
 const text = fs.readFileSync("./input.txt", "utf8");
 
 /**
- * VoidScript is a substitution encoding scheme that goes through three phases:
+ * PunkScript is a substitution encoding scheme that goes through three phases:
  *
  * - Initialization, where characters and values are assigned to variables;
  * - Substitution, where the variables are used to construct strings;
