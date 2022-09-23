@@ -70,7 +70,7 @@ No for most cases, except for small inputs of probably a few thousand words. Sin
 Install the package with NPM and add it to your `dependencies`:
 
 ```bash
-$ npm install --save void-script
+$ npm install --save punk-script
 ```
 
 ### In a browser environment
@@ -78,13 +78,13 @@ $ npm install --save void-script
 From CDN:
 
 ```html
-<script src="https://cdn.jsdelivr.net/npm/void-script/dist/index.browser.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/punk-script/dist/index.browser.js"></script>
 ```
 
 From `node_modules`:
 
 ```html
-<script src="./node_modules/void-script/dist/index.browser.js"></script>
+<script src="./node_modules/punk-script/dist/index.browser.js"></script>
 ```
 
 ## Usage
@@ -110,38 +110,39 @@ PunkScript has only one function `encode(text, options)`, which returns a `Strin
 
 #### Options
 
-```js
-;({
-  prettier: false,
-  declaration: "var",
-  shebang: false,
-  strict: true,
-  iife: true,
-  quoteStyle: {
-    quoteSequence: ["single", "double"],
-    quoteMode: "smart",
-  },
-  expressionStyle: "concat",
-})
+```ts
+type quote = "single" | "double" | "backtick"
+interface Options {
+  prettyPrint?: boolean
+  declaration?: "none" | "var" | "let"
+  shebang?: boolean
+  wrapInIIFE?: boolean
+  quoteStyle?: {
+    quoteSequence?: quote | quote[]
+    quoteMode?: "cycle" | "random" | "smart" | "only"
+  }
+  expressionStyle?: "concat" | "array" | "template"
+  export?: string
+}
 ```
 
-- `prettier: boolean`: Returns a pretty-printed version of the output string
-- `declaration: 'none'|'var'|'let'`: Includes a variable declaration statement. Used only when option `strict` is enabled.
-- `shebang: boolean`: Outputs a shell shebang statement.
-- `strict: boolean`: Outputs `'use strict'` as the program header.
-- `iife: boolean`: Wraps output in an IIFE.
+- `prettyPrint`: Pretty-prints output code for educational purposes
+- `declaration`: Includes a variable declaration statement. Used only when option `strict` is enabled.
+- `shebang`: Outputs a shell shebang statement.
+- `strict`: Outputs `'use strict'` as the program header.
+- `iife`: Wraps output in an IIFE.
 - `quoteStyle`: An object containing the quoting style to use throughout the document.
-  - `quoteSequence: 'single'|'double'|'backtick'|('single'|'double'|'backtick')[]`: A sequence of quoting styles.
-  - `quoteMode: 'only'|'cycle'|'smart'|'random'`:
+  - `quoteSequence`: A sequence of quoting styles.
+  - `quoteMode`:
     - `only`: Uses only that quoting style throughout the document.
     - `cycle`: Cycles between quotes as defined in `sequence`
     - `smart`: Optimizes and overrides the current quoting style to return the minimal output. Falls back to the next if output is longer.
     - `random`: Randomizes quoting style. Uses `Math#random` under the hood.
-- `expressionStyle: 'concat'|'array'|'template'`: Whether to use string concatenation, array joining or interpolation to join substrings together.
+- `expressionStyle`: Whether to use string concatenation, array joining or interpolation to join substrings together.
   - `concat`: Uses the `+` operator to concatenate strings.
   - `template`: Embeds sub-expressions in template strings while symbol characters are encoded literally inside the template string.
   - `array`: Separates all substrings with commas and embeds it in an array.
-- `export: string` Include a `module.exports` statement with a custom key for the output string. For use only in Node.
+- `export` Include a `module.exports` statement with a custom key for the output string. For use only in Node.
 
 String options are case-insensitive.
 
