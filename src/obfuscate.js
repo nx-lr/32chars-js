@@ -139,7 +139,7 @@ function encodeText(
 
     let choice = do {
       const singleOrDouble = /\b(single|double)\b/i.test(QUOTE_STYLE);
-      if (singleOrDouble && /\bbonly\b/i.test(QUOTE_STYLE)) {
+      if (singleOrDouble && /\bonly\b/i.test(QUOTE_STYLE)) {
         QUOTE_STYLE.match(/\b(single|double)\b/i)[0].toLowerCase();
       } else if (/\bcycle\b/i.test(QUOTE_STYLE)) {
         if (/\bsingle\b/i.test(QUOTE_STYLE)) ["single", "double"][count++ % 2];
@@ -150,6 +150,7 @@ function encodeText(
         else QUOTE_STYLE.toLowerCase().trim();
       } else Math.random() > 0.5 ? "double" : "single";
     };
+
     jsesc(string, {quotes: choice, wrap: true});
   };
 
@@ -457,7 +458,6 @@ function encodeText(
     "}";
 
   /**
-   *
    * `U` is created from calling `toString` prototype on an empty object.
    *
    * @example
