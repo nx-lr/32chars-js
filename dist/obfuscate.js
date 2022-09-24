@@ -54,7 +54,9 @@ function encodeText(code, globalVar) {
       _ref$strictMode = _ref.strictMode,
       strictMode = _ref$strictMode === void 0 ? false : _ref$strictMode,
       _ref$quoteStyle = _ref.quoteStyle,
-      quoteStyle = _ref$quoteStyle === void 0 ? "" : _ref$quoteStyle;
+      quoteStyle = _ref$quoteStyle === void 0 ? "" : _ref$quoteStyle,
+      _ref$accessor = _ref.accessor,
+      accessor = _ref$accessor === void 0 ? false : _ref$accessor;
 
   var BUILTINS = RegExp("^\\b(" + ["Array", "ArrayBuffer", "AsyncFunction", "AsyncGenerator", "AsyncGeneratorFunction", "Atomics", "BigInt", "BigInt64Array", "BigUint64Array", "Boolean", "DataView", "Date", "decodeURI", "decodeURIComponent", "encodeURI", "encodeURIComponent", "escape", "eval", "exports", "Float32Array", "Float64Array", "Function", "Generator", "GeneratorFunction", "globalThis", "Infinity", "Int16Array", "Int32Array", "Int8Array", "Intl", "isFinite", "isNaN", "JSON", "Map", "Math", "module", "NaN", "Number", "Object", "parseFloat", "parseInt", "Promise", "Proxy", "Reflect", "RegExp", "Set", "SharedArrayBuffer", "String", "Symbol", "this", "Uint16Array", "Uint32Array", "Uint8Array", "Uint8ClampedArray", "undefined", "unescape", "WeakMap", "WeakSet", "WebAssembly"].join(_templateObject || (_templateObject = (0, _taggedTemplateLiteral2["default"])(["|"]))) + ")\\b$");
   var REGEXPS = {
@@ -311,7 +313,8 @@ function encodeText(code, globalVar) {
   }; // The separator is a semicolon, not a comma.
 
 
-  var output = "".concat(strictMode ? "var _".concat(globalVar, ",") : "").concat(globalVar, "=~[];"); // STEP 1
+  var output = "".concat(strictMode ? "var ".concat(globalVar, ",_").concat(globalVar).concat(accessor ? ",$".concat(globalVar) : "", ";") : "").concat(globalVar, "=~[];");
+  if (accessor) output += "$".concat(globalVar, "=([_").concat(globalVar, "])=>").concat(globalVar, "[_").concat(globalVar, "];"); // STEP 1
 
   var CHARSET_1 = {};
 
@@ -857,13 +860,19 @@ function encodeText(code, globalVar) {
                 return "".concat(CONSTRUCTORS[_substring], "[").concat(globalVar, ".$][").concat(globalVar, "[").concat(quote("?"), "]]");
 
               case typeof IDENT_SET[_substring] == "string":
-                return "".concat(globalVar, "[").concat(quote(IDENT_SET[_substring]), "]");
+                return accessor ? "$".concat(globalVar).concat((0, _jsesc["default"])(IDENT_SET[_substring], {
+                  quotes: "backtick",
+                  wrap: true
+                })) : "".concat(globalVar, "[").concat(quote(IDENT_SET[_substring]), "]");
 
               case /\b[\da-zA-FINORSU]\b/.test(_substring):
                 return encodeString(_substring);
 
               default:
-                return "".concat(globalVar, "[").concat(quote(WORD_LIST[_substring]), "]");
+                return accessor ? "$".concat(globalVar).concat((0, _jsesc["default"])(WORD_LIST[_substring], {
+                  quotes: "backtick",
+                  wrap: true
+                })) : "".concat(globalVar, "[").concat(quote(WORD_LIST[_substring]), "]");
             }
 
             break;
@@ -889,7 +898,8 @@ function encodeText(code, globalVar) {
 
 var _encodeText = encodeText(text, "$", {
   strictMode: true,
-  quoteStyle: "smart backtick"
+  quoteStyle: "smart backtick",
+  accessor: false
 }),
     result = _encodeText.result,
     stats = _encodeText.stats;

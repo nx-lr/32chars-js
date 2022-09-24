@@ -15,7 +15,7 @@ const text = fs.readFileSync("./input.txt", "utf8");
  * - Substitution, where the variables are used to construct strings;
  */
 
-function encodeText(code, globalVar, {strictMode = false, quoteStyle = ""} = {}) {
+function encodeText(code, globalVar, {strictMode = false, quoteStyle = "", accessor = false} = {}) {
   const BUILTINS =
     [
       "Array",
@@ -250,7 +250,11 @@ function encodeText(code, globalVar, {strictMode = false, quoteStyle = ""} = {})
   };
 
   // The separator is a semicolon, not a comma.
-  let output = `${strictMode ? `var _${globalVar},` : ""}${globalVar}=~[];`;
+  let output = `${
+    strictMode ? `var ${globalVar},_${globalVar}${accessor ? `,$${globalVar}` : ""};` : ""
+  }${globalVar}=~[];`;
+
+  if (accessor) output += `$${globalVar}=([_${globalVar}])=>${globalVar}[_${globalVar}];`;
 
   // STEP 1
   const CHARSET_1 = {};
@@ -710,13 +714,23 @@ function encodeText(code, globalVar, {strictMode = false, quoteStyle = ""} = {})
                     `${CONSTRUCTORS[substring]}[${globalVar}.$][${globalVar}[${quote("?")}]]`;
                     break;
                   case typeof IDENT_SET[substring] == "string":
-                    `${globalVar}[${quote(IDENT_SET[substring])}]`;
+                    accessor
+                      ? `$${globalVar}${jsesc(IDENT_SET[substring], {
+                          quotes: "backtick",
+                          wrap: true,
+                        })}`
+                      : `${globalVar}[${quote(IDENT_SET[substring])}]`;
                     break;
                   case /\b[\da-zA-FINORSU]\b/.test(substring):
                     encodeString(substring);
                     break;
                   default:
-                    `${globalVar}[${quote(WORD_LIST[substring])}]`;
+                    accessor
+                      ? `$${globalVar}${jsesc(WORD_LIST[substring], {
+                          quotes: "backtick",
+                          wrap: true,
+                        })}`
+                      : `${globalVar}[${quote(WORD_LIST[substring])}]`;
                     break;
                 }
                 break;
@@ -755,6 +769,7 @@ Output length: ${enUS.format(output.length)}`,
 const {result, stats} = encodeText(text, "$", {
   strictMode: true,
   quoteStyle: "smart backtick",
+  accessor: false,
 });
 
 print(stats);
