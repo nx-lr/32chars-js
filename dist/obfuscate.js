@@ -24,7 +24,7 @@ var _jsesc = _interopRequireDefault(require("jsesc"));
 
 var _xregexp = _interopRequireDefault(require("xregexp"));
 
-var _templateObject, _templateObject2, _templateObject3, _templateObject4, _templateObject5, _templateObject6, _templateObject7, _templateObject8, _templateObject9, _templateObject10, _templateObject11, _templateObject12, _templateObject13, _templateObject14, _templateObject15, _templateObject16;
+var _templateObject, _templateObject2, _templateObject3, _templateObject4, _templateObject5, _templateObject6, _templateObject7, _templateObject8, _templateObject9, _templateObject10, _templateObject11, _templateObject12, _templateObject13, _templateObject14, _templateObject15;
 
 function ownKeys(object, enumerableOnly) { var keys = Object.keys(object); if (Object.getOwnPropertySymbols) { var symbols = Object.getOwnPropertySymbols(object); enumerableOnly && (symbols = symbols.filter(function (sym) { return Object.getOwnPropertyDescriptor(object, sym).enumerable; })), keys.push.apply(keys, symbols); } return keys; }
 
@@ -381,7 +381,8 @@ function encodeText(code, globalVar) {
     join: "%",
     slice: "/",
     "return": "_",
-    constructor: "$"
+    constructor: "$",
+    source: ","
   }; // And these are what we would achieve from there:
 
   var CONSTRUCTORS = {
@@ -541,7 +542,8 @@ function encodeText(code, globalVar) {
     eval: "=",
     escape: ">",
     unescape: "<",
-    parseInt: "~"
+    parseInt: "~",
+    parseFloat: "."
   };
   var RES_FUNCTIONS_1 = "".concat(globalVar, "={...").concat(globalVar, ",") + Object.entries(GLOBAL_FUNC).map(function (_ref26) {
     var _ref27 = (0, _slicedToArray2["default"])(_ref26, 2),
@@ -731,75 +733,68 @@ function encodeText(code, globalVar) {
    */
 
   var keyGen = /*#__PURE__*/_regenerator["default"].mark(function _callee() {
-    var digitsTo, digitsFrom, _iterator3, _step3, _key, i;
+    var digitsTo, digitsFrom, bijective, existingKeys, i, _key;
 
     return _regenerator["default"].wrap(function _callee$(_context) {
       while (1) {
         switch (_context.prev = _context.next) {
           case 0:
-            digitsTo = ".,:;!?*+^-=<>~'\"`/|\\#%&@()[]{}", digitsFrom = "0123456789abcdefghijklmnopqrstuvwxyz"; // yield brackets first since we didn't use them as keys yet
+            digitsTo = CIPHER_TO, digitsFrom = "0123456789abcdefghijklmnopqrstuvwxyz";
+            /**
+             * Convert an integer to bijective notation.
+             * https://stackoverflow.com/questions/8603480/how-to-create-a-function-that-converts-a-number-to-a-bijective-hexavigesimal
+             * @param {Number} int - A positive integer above zero
+             * @return {String} The number's value expressed in uppercased bijective base-26
+             */
 
-            _iterator3 = _createForOfIteratorHelper("()[]{}");
-            _context.prev = 2;
+            bijective = function bijective(_int, sequence) {
+              var length = sequence.length;
+              if (!_int) return "";
+              if (_int <= 0) return bijective(-_int, sequence);
+              if (_int <= length) return sequence[_int - 1];
+              var index = _int % length || length;
+              var result = [sequence[index - 1]];
 
-            _iterator3.s();
+              while ((_int = Math.floor((_int - 1) / length)) > 0) {
+                index = _int % length || length;
+                result.push(sequence[index - 1]);
+              }
+
+              return result.reverse().join(_templateObject13 || (_templateObject13 = (0, _taggedTemplateLiteral2["default"])([""])));
+            };
+
+            existingKeys = new Set(["'", // toString
+            "-", // space
+            Object.values(IDENT_SET), Object.values(GLOBAL_FUNC), (0, _toConsumableArray2["default"])("abcdefghijklmnopqrstuvwxyz").map(encodeLetter), (0, _toConsumableArray2["default"])("ABCDEFINORSU").map(encodeLetter), (0, _toConsumableArray2["default"])("0123456789").map(encodeDigit)].flat());
+            i = 1;
 
           case 4:
-            if ((_step3 = _iterator3.n()).done) {
-              _context.next = 10;
+            if (!(i <= Number.MAX_SAFE_INTEGER)) {
+              _context.next = 12;
               break;
             }
 
-            _key = _step3.value;
-            _context.next = 8;
+            _key = bijective(i, digitsTo);
+
+            if (existingKeys.has(_key)) {
+              _context.next = 9;
+              break;
+            }
+
+            _context.next = 9;
             return _key;
 
-          case 8:
+          case 9:
+            i++;
             _context.next = 4;
             break;
 
-          case 10:
-            _context.next = 15;
-            break;
-
           case 12:
-            _context.prev = 12;
-            _context.t0 = _context["catch"](2);
-
-            _iterator3.e(_context.t0);
-
-          case 15:
-            _context.prev = 15;
-
-            _iterator3.f();
-
-            return _context.finish(15);
-
-          case 18:
-            i = 0;
-
-          case 19:
-            if (!(i <= Number.MAX_SAFE_INTEGER)) {
-              _context.next = 25;
-              break;
-            }
-
-            _context.next = 22;
-            return i.toString(digitsTo.length).padStart(2, 0).split(_templateObject14 || (_templateObject14 = (0, _taggedTemplateLiteral2["default"])([""]))).map(function (a) {
-              return digitsTo[digitsFrom.indexOf(a)];
-            }).join(_templateObject13 || (_templateObject13 = (0, _taggedTemplateLiteral2["default"])([""])));
-
-          case 22:
-            i++;
-            _context.next = 19;
-            break;
-
-          case 25:
           case "end":
             return _context.stop();
         }
       }
-    }, _callee, null, [[2, 12, 15, 18]]);
+    }, _callee);
   })();
 
   var WORD_LIST = (_ref37 = (_code$match = code.match(REGEXPS.word)) !== null && _code$match !== void 0 ? _code$match : [], (_ref36 = Object.entries(_lodash["default"].countBy(_ref37)).filter(function (_ref28) {
@@ -836,7 +831,7 @@ function encodeText(code, globalVar) {
    * with empty arrays.
    */
 
-  var expression = "[" + code.split(_templateObject15 || (_templateObject15 = (0, _taggedTemplateLiteral2["default"])([" "]))).map(function (substring) {
+  var expression = "[" + code.split(_templateObject14 || (_templateObject14 = (0, _taggedTemplateLiteral2["default"])([" "]))).map(function (substring) {
     return (0, _toConsumableArray2["default"])(substring.matchAll(REGEXP)).map(function (match) {
       var _Object$entries$filte, group, _substring, encoded;
 
@@ -879,7 +874,7 @@ function encodeText(code, globalVar) {
             return quote(_substring);
         }
       }();
-    }).join(_templateObject16 || (_templateObject16 = (0, _taggedTemplateLiteral2["default"])(["+"])));
+    }).join(_templateObject15 || (_templateObject15 = (0, _taggedTemplateLiteral2["default"])(["+"])));
   }) + "]" + "[".concat(globalVar, "[").concat(quote("%"), "]]") + "(".concat(globalVar, "[").concat(quote("-"), "])");
   output += ";" + "_".concat(globalVar, "=").concat(expression); // Export
 

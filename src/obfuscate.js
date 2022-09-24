@@ -304,6 +304,7 @@ function encodeText(code, globalVar, {strictMode = false, quoteStyle = "", acces
     slice: "/",
     return: "_",
     constructor: "$",
+    source: ",",
   };
 
   // And these are what we would achieve from there:
@@ -432,6 +433,7 @@ function encodeText(code, globalVar, {strictMode = false, quoteStyle = "", acces
     escape: ">",
     unescape: "<",
     parseInt: "~",
+    parseFloat: ".",
   };
 
   const RES_FUNCTIONS_1 =
@@ -661,14 +663,45 @@ function encodeText(code, globalVar, {strictMode = false, quoteStyle = "", acces
    */
 
   const keyGen = (function* () {
-    const digitsTo = `.,:;!?*+^-=<>~'"\`/|\\#%&@()[]{}`,
+    const digitsTo = CIPHER_TO,
       digitsFrom = "0123456789abcdefghijklmnopqrstuvwxyz";
-    // yield brackets first since we didn't use them as keys yet
-    for (const key of "()[]{}") yield key;
-    for (let i = 0; i <= Number.MAX_SAFE_INTEGER; i++)
-      yield i.toString(digitsTo.length).padStart(2, 0).split``.map(
-        a => digitsTo[digitsFrom.indexOf(a)]
-      ).join``;
+
+    /**
+     * Convert an integer to bijective notation.
+     * https://stackoverflow.com/questions/8603480/how-to-create-a-function-that-converts-a-number-to-a-bijective-hexavigesimal
+     * @param {Number} int - A positive integer above zero
+     * @return {String} The number's value expressed in uppercased bijective base-26
+     */
+    const bijective = (int: number, sequence: string | string[]): string => {
+      const length = sequence.length;
+      if (!int) return "";
+      if (int <= 0) return bijective(-int, sequence);
+      if (int <= length) return sequence[int - 1];
+      let index = int % length || length;
+      let result = [sequence[index - 1]];
+      while ((int = Math.floor((int - 1) / length)) > 0) {
+        index = int % length || length;
+        result.push(sequence[index - 1]);
+      }
+      return result.reverse().join``;
+    };
+
+    const existingKeys = new Set(
+      [
+        "'", // toString
+        "-", // space
+        Object.values(IDENT_SET),
+        Object.values(GLOBAL_FUNC),
+        [..."abcdefghijklmnopqrstuvwxyz"].map(encodeLetter),
+        [..."ABCDEFINORSU"].map(encodeLetter),
+        [..."0123456789"].map(encodeDigit),
+      ].flat()
+    );
+
+    for (let i = 1; i <= Number.MAX_SAFE_INTEGER; i++) {
+      const key = bijective(i, digitsTo);
+      if (!existingKeys.has(key)) yield key;
+    }
   })();
 
   const WORD_LIST =
