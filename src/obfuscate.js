@@ -13,84 +13,80 @@ const text = fs.readFileSync("./input.txt", "utf8");
  *
  * - Initialization, where characters and values are assigned to variables;
  * - Substitution, where the variables are used to construct strings;
- * - Execution, where the constructed code is evaluated and executed.
  */
 
 function encodeText(
-  TEXT,
-  GLOBAL_VAR,
-  {STRICT_MODE = false, QUOTE_STYLE = ""} = {}
+  code,
+  globalVar,
+  {strictMode = false, quoteStyle = ""} = {}
 ) {
   const BUILTINS =
     [
-      "module",
-      "exports",
-      "Infinity",
-      "NaN",
-      "undefined",
-      "globalThis",
-      "this",
-      "eval",
-      "isFinite",
-      "isNaN",
-      "parseFloat",
-      "parseInt",
-      "encodeURI",
-      "encodeURIComponent",
-      "decodeURI",
-      "decodeURIComponent",
-      "escape",
-      "unescape",
-      "Object",
-      "Function",
-      "Boolean",
-      "Symbol",
-      "Number",
-      "BigInt",
-      "Math",
-      "Date",
-      "String",
-      "RegExp",
       "Array",
-      "Int8Array",
-      "Uint8Array",
-      "Uint8ClampedArray",
-      "Int16Array",
-      "Uint16Array",
-      "Int32Array",
-      "Uint32Array",
-      "Float32Array",
-      "Float64Array",
-      "BigInt64Array",
-      "BigUint64Array",
-      "Map",
-      "Set",
-      "WeakMap",
-      "WeakSet",
       "ArrayBuffer",
-      "SharedArrayBuffer",
-      "Atomics",
-      "DataView",
-      "JSON",
-      "Promise",
-      "Generator",
-      "GeneratorFunction",
       "AsyncFunction",
       "AsyncGenerator",
       "AsyncGeneratorFunction",
-      "Reflect",
-      "Proxy",
+      "Atomics",
+      "BigInt",
+      "BigInt64Array",
+      "BigUint64Array",
+      "Boolean",
+      "DataView",
+      "Date",
+      "decodeURI",
+      "decodeURIComponent",
+      "encodeURI",
+      "encodeURIComponent",
+      "escape",
+      "eval",
+      "exports",
+      "Float32Array",
+      "Float64Array",
+      "Function",
+      "Generator",
+      "GeneratorFunction",
+      "globalThis",
+      "Infinity",
+      "Int16Array",
+      "Int32Array",
+      "Int8Array",
       "Intl",
+      "isFinite",
+      "isNaN",
+      "JSON",
+      "Map",
+      "Math",
+      "module",
+      "NaN",
+      "Number",
+      "Object",
+      "parseFloat",
+      "parseInt",
+      "Promise",
+      "Proxy",
+      "Reflect",
+      "RegExp",
+      "Set",
+      "SharedArrayBuffer",
+      "String",
+      "Symbol",
+      "this",
+      "Uint16Array",
+      "Uint32Array",
+      "Uint8Array",
+      "Uint8ClampedArray",
+      "undefined",
+      "unescape",
+      "WeakMap",
+      "WeakSet",
       "WebAssembly",
-    ] |> RegExp("^\\b(" + %.sort().join`|` + ")\\b$");
+    ] |> RegExp("^\\b(" + %.join`|` + ")\\b$");
 
   const REGEXPS = {
-    constant: /\b(true|false|Infinity|NaN|undefined)\b/g,
-    constructor: /\b(Array|Object|String|Number|Boolean|RegExp|Function)\b/g,
-    word: XRegExp(String.raw`([GHJ-MPQTV-Z]|[\pL\pN]{2,})`, "g"),
-    letter: /\b[\da-zA-FINORSU]\b/g,
-    symbol: /[!"#$%&'()*+,\-./:;<=>?@\[\\\]^_`{|}~]+/g,
-    unicode: /[^!"#$%&'()*+,\-./:;<=>?@\[\\\]^_`{|}~ ]+/g,
+    word: XRegExp(String.raw`[\pL\pN]+`, "g"),
+    symbol: /[!-\/:-@[-`{-~]+/g,
+    unicode: /[^ -~]+/g,
   };
 
   /**
@@ -99,22 +95,22 @@ function encodeText(
    * character in plain text.
    */
 
-  let REGEXP =
-    Object.entries(REGEXPS)
-    |> %.map(([key, {source}]) => `(?<${key}>${source})`)
-    |> %.join`|`;
-  REGEXP = RegExp(REGEXP, "g");
+  const REGEXP = RegExp(
+    Object.entries(REGEXPS).map(([key, {source}]) => `(?<${key}>${source})`)
+      .join`|`,
+    "g"
+  );
 
   // Test whether an identifier can be made into a variable
   const checkIdentifier = (ident: string): boolean =>
     (ident = ident.trim()) && isValidIdentifier(ident) && !BUILTINS.test(ident);
-  if (!checkIdentifier(GLOBAL_VAR))
-    throw new Error(`Invalid global variable: ${quote(GLOBAL_VAR)}`);
+  if (!checkIdentifier(globalVar))
+    throw new Error(`Invalid global variable: ${quote(globalVar)}`);
 
   // Reject strings above the length of 2^29 to avoid going over the max string limit
   const MAX_STRING_LENGTH = 536870888,
     enUS = Intl.NumberFormat("en-us");
-  if (TEXT.length > MAX_STRING_LENGTH)
+  if (code.length > MAX_STRING_LENGTH)
     throw new Error(
       `Input string can only be up to ${enUS.format(
         NODE_MAX_LENGTH
@@ -132,26 +128,50 @@ function encodeText(
    */
 
   let count = 0;
-  const quote = string => do {
-    const single = string.match(/'/g)?.length || 0,
-      double = string.match(/"/g)?.length || 0;
-    const backtick = !/\$\{|`/.test(string) && /['"]/.test(string);
+  const quote = string => {
+    const quotes = quoteStyle.match(/\b(single|double|backtick)\b/g) || [
+        "single",
+      ],
+      mode = (quoteStyle.match(/\b(cycle|only|smart|random)\b/g) || [
+        "smart",
+      ])[0];
 
-    let choice = do {
-      const singleOrDouble = /\b(single|double)\b/i.test(QUOTE_STYLE);
-      if (singleOrDouble && /\bonly\b/i.test(QUOTE_STYLE)) {
-        QUOTE_STYLE.match(/\b(single|double)\b/i)[0].toLowerCase();
-      } else if (/\bcycle\b/i.test(QUOTE_STYLE)) {
-        if (/\bsingle\b/i.test(QUOTE_STYLE)) ["single", "double"][count++ % 2];
-        else ["double", "single"][count++ % 2];
-      } else if (singleOrDouble) {
-        if (single < double) "single";
-        else if (single > double) "double";
-        else QUOTE_STYLE.toLowerCase().trim();
-      } else Math.random() > 0.5 ? "double" : "single";
+    const {single, double, backtick} = {
+      single: jsesc(string, {quotes: "single", wrap: true}),
+      double: jsesc(string, {quotes: "double", wrap: true}),
+      backtick: jsesc(string, {quotes: "backtick", wrap: true}),
     };
 
-    jsesc(string, {quotes: choice, wrap: true});
+    switch (mode) {
+      case "only": {
+        const current = quotes[0];
+        return jsesc(string, {quotes: current, wrap: true});
+      }
+      case "cycle": {
+        const current = quotes[count++ % quotes.length];
+        return jsesc(string, {quotes: current, wrap: true});
+      }
+      case "random": {
+        const current =
+          Math.random() > 2 / 3
+            ? "backtick"
+            : Math.random() > 1 / 3
+            ? "double"
+            : "single";
+        return jsesc(string, {quotes: current, wrap: true});
+      }
+      case "smart": {
+        const choice = [
+          ["single", single],
+          ["double", double],
+          ["backtick", backtick],
+        ]
+          .map(([, a]) => a.length)
+          .sort((a, b) => b - a)[0];
+        const current = choice[0];
+        return jsesc(string, {quotes: current, wrap: true});
+      }
+    }
   };
 
   /**
@@ -163,10 +183,10 @@ function encodeText(
    * symbols to each letter of the English alphabet.
    * The first symbol, `$` or `_` determines if the symbol is uppercase or
    * lowercase.
-   * The second is assigned an arbitrary symbol. `_` and `$` are reserved for
-   * the two most common letters E and T.
-   * X and Z are rarely used and therefore get the escape sequences which are
-   * slightly longer.
+   * The second is assigned an arbitrary symbol. `_` and `$` are reserved
+   * for the two most common letters E and T.
+   * X and Z are rarely used and therefore get the escape sequences which
+   * are slightly longer.
    */
 
   const LETTERS = "abcdefghijklmnopqrstuvwxyz";
@@ -175,7 +195,7 @@ function encodeText(
 
   const encodeLetter = (char: Lower | Upper) =>
     (V.isUpperCase(char) ? "$" : "_") +
-    (char.toLowerCase() |> LETTERS.indexOf(%) |> CIPHER[%]);
+    CIPHER[LETTERS.indexOf(char.toLowerCase())];
 
   const encodeDigit = (number: string | number) =>
     [...(+number).toString(2).padStart(3, 0)].map(match =>
@@ -194,7 +214,7 @@ function encodeText(
     undefined: "[][[]]", // [][[]] doesn't exist
     Infinity: `!${quote("")}/![]`, // true/false==1/0
     NaN: "+{}", // It makes sense
-    "[object Object]": "{}", // y e s
+    "[object Object]": "{}", // [object objectLiteral]
   };
 
   /**
@@ -207,8 +227,61 @@ function encodeText(
    * single characters from stringified representations of the constants.
    */
 
+  const quoteKey = string => {
+    const quotes = quoteStyle.match(/\b(single|double|backtick)\b/g) || [
+        "single",
+      ],
+      mode = (quoteStyle.match(/\b(cycle|only|smart|random)\b/g) || [
+        "smart",
+      ])[0];
+
+    const {single, double, backtick} = {
+      single: jsesc(string, {quotes: "single", wrap: true}),
+      double: jsesc(string, {quotes: "double", wrap: true}),
+      backtick: jsesc(string, {quotes: "backtick", wrap: true}),
+    };
+
+    switch (mode) {
+      case "only": {
+        const current = quotes[0];
+        if (current == "backtick") return `[${backtick}]`;
+        else return jsesc(string, {quotes: current, wrap: true});
+      }
+      case "cycle": {
+        const current = quotes[count++ % quotes.length];
+        if (current == "backtick") return `[${backtick}]`;
+        else return jsesc(string, {quotes: current, wrap: true});
+      }
+      case "random": {
+        const current =
+          Math.random() > 2 / 3
+            ? "backtick"
+            : Math.random() > 1 / 3
+            ? "double"
+            : "single";
+        if (current == "backtick") return `[${backtick}]`;
+        else return jsesc(string, {quotes: current, wrap: true});
+      }
+      case "smart": {
+        if (isValidIdentifier(string)) return string;
+        else {
+          const choice = [
+            ["single", single],
+            ["double", double],
+            ["backtick", backtick],
+          ]
+            .map(([, a]) => a.length)
+            .sort((a, b) => b - a)[0];
+          const current = choice[0];
+          if (current == "backtick") return `[${backtick}]`;
+          else return jsesc(string, {quotes: current, wrap: true});
+        }
+      }
+    }
+  };
+
   // The separator is a semicolon, not a comma.
-  let RESULT = `${STRICT_MODE ? `var _${GLOBAL_VAR},` : ""}${GLOBAL_VAR}=~[];`;
+  let output = `${strictMode ? `var _${globalVar},` : ""}${globalVar}=~[];`;
 
   // STEP 1
   const CHARSET_1 = {};
@@ -219,22 +292,21 @@ function encodeText(
         CHARSET_1[char] = [expression, constant.indexOf(char)];
 
   const RES_CHARSET_1 =
-    _.range(0, 10)
-    |> %.map((digit: number) => [
-      `${encodeDigit(digit)}:\`\${++${GLOBAL_VAR}}\``,
-      Object.entries(CHARSET_1)
-      |> %.filter(([, [, val]]) => val == digit)
-      |> %.map(([char, [lit]]) => {
-        const key = quote(encodeLetter(char));
-        return `${key}:\`\${${lit}}\`[${GLOBAL_VAR}]`;
-      }),
-    ])
-    |> %.flat().join`,`
-    |> %.replace(/,$/, "").replace(/,+/g, ",")
-    |> GLOBAL_VAR + "={" + % + "}"
-    |> %.replace("_undefined", SPACE); // Replace space
+    `${globalVar}={` +
+    [...Array(10)].map(($, digit) => [
+      `${encodeDigit(digit)}:\`\${++${globalVar}}\``,
+      ...Object.entries(CHARSET_1)
+        .filter(([, [, value]]) => value == digit)
+        .map(
+          ([char, [literal]]) =>
+            `${quoteKey(
+              char == " " ? "-" : encodeLetter(char)
+            )}:\`\${${literal}}\`[${globalVar}]`
+        ),
+    ]) +
+    "}";
 
-  RESULT += RES_CHARSET_1;
+  output += RES_CHARSET_1;
 
   /**
    * STEP 2: LITERALS AND CONSTRUCTORS
@@ -288,8 +360,8 @@ function encodeText(
 
   for (const value of Object.entries(CHARSET_2)) {
     const [char, [expression, index]] = value;
-    const expansion = `\`\${${expression}[${GLOBAL_VAR}.$]}\`[${`${index}`
-      .split``.map(digit => `${GLOBAL_VAR}.${encodeDigit(digit)}`).join`+`}]`;
+    const expansion = `\`\${${expression}[${globalVar}.$]}\`[${`${index}`
+      .split``.map(digit => `${globalVar}.${encodeDigit(digit)}`).join`+`}]`;
     if (!(char in CHARSET_1)) CHARSET_2[char] = [expression, index, expansion];
   }
 
@@ -298,10 +370,10 @@ function encodeText(
   const CHARSET_2_DIFF = objectDifference(CHARSET_2, CHARSET_1);
 
   const RES_CHARSET_2 =
-    `${GLOBAL_VAR}={...${GLOBAL_VAR},` +
+    `${globalVar}={...${globalVar},` +
     Object.entries(CHARSET_2_DIFF).map(
       ([letter, [, , expansion]]) =>
-        `${quote(encodeLetter(letter))}:${expansion}`
+        `${quoteKey(encodeLetter(letter))}:${expansion}`
     ) +
     "}";
 
@@ -340,26 +412,24 @@ function encodeText(
       if (/[$_]/.test(char)) {
         return quote(char);
       } else if (/\d/.test(char)) {
-        return `${GLOBAL_VAR}.${encodeDigit(char)}`;
+        return `${globalVar}.${encodeDigit(char)}`;
       } else {
         const encoded = encodeLetter(char);
         return isValidIdentifier(encoded)
-          ? `${GLOBAL_VAR}.${encoded}`
-          : `${GLOBAL_VAR}[${quote(encoded)}]`;
+          ? `${globalVar}.${encoded}`
+          : `${globalVar}[${quote(encoded)}]`;
       }
     }).join`+`;
 
   const encodeIdentifiers = (identifiers: {[ident]: string}) =>
-    `${GLOBAL_VAR}={...${GLOBAL_VAR},` +
+    `${globalVar}={...${globalVar},` +
     Object.entries(identifiers)
       .map(([ident, key]) => [key, encodeString(ident)])
-      .map(
-        ([key, expr]) => `${isValidIdentifier(key) ? key : quote(key)}:${expr}`
-      ) +
+      .map(([key, expr]) => `${quoteKey(key)}:${expr}`) +
     "}";
 
-  RESULT += ";" + encodeIdentifiers(IDENT_SET1);
-  RESULT += ";" + RES_CHARSET_2;
+  output += ";" + encodeIdentifiers(IDENT_SET1);
+  output += ";" + RES_CHARSET_2;
 
   const IDENT_SET2 = {
     name: "?",
@@ -371,7 +441,7 @@ function encodeText(
     source: "`",
   };
 
-  RESULT += ";" + encodeIdentifiers(IDENT_SET2);
+  output += ";" + encodeIdentifiers(IDENT_SET2);
 
   /**
    * STEP 3: FUNCTIONS
@@ -396,20 +466,20 @@ function encodeText(
   };
 
   const RES_FUNCTIONS_1 =
-    `${GLOBAL_VAR}={...${GLOBAL_VAR},` +
+    `${globalVar}={...${globalVar},` +
     Object.entries(GLOBAL_FUNC).map(
       ([ident, shortcut]) =>
-        `${quote(shortcut)}:` +
+        `${quoteKey(shortcut)}:` +
         "(()=>{})" +
-        `[${GLOBAL_VAR}.$]` +
+        `[${globalVar}.$]` +
         "(" +
-        `${GLOBAL_VAR}._+${GLOBAL_VAR}[${quote("-")}]+${encodeString(ident)}` +
+        `${globalVar}._+${globalVar}[${quote("-")}]+${encodeString(ident)}` +
         ")" +
         "()"
     ) +
     "}";
 
-  RESULT += ";" + RES_FUNCTIONS_1;
+  output += ";" + RES_FUNCTIONS_1;
 
   /**
    * We would need to get the method `toString` by getting the `name`
@@ -432,27 +502,27 @@ function encodeText(
    * @end
    */
 
-  RESULT +=
+  output +=
     ";" +
-    `${GLOBAL_VAR}={...${GLOBAL_VAR},` +
+    `${globalVar}={...${globalVar},` +
     [
       [
-        quote("'"), // toString
+        quoteKey("'"), // toString
         `${encodeString("to")}+` +
-          `${quote("")}[${GLOBAL_VAR}.$]` +
-          `[${GLOBAL_VAR}[${quote("?")}]]`,
+          `${quote("")}[${globalVar}.$]` +
+          `[${globalVar}[${quote("?")}]]`,
       ],
       [
-        quote(encodeLetter("C")), // C
-        `${GLOBAL_VAR}[${quote(">")}]` +
+        quoteKey(encodeLetter("C")), // C
+        `${globalVar}[${quote(">")}]` +
           `(${quote("<")})` +
-          `[${GLOBAL_VAR}.${encodeDigit(2)}]`,
+          `[${globalVar}.${encodeDigit(2)}]`,
       ],
       [
-        quote(encodeLetter("D")), // D
-        `${GLOBAL_VAR}[${quote(">")}]` +
+        quoteKey(encodeLetter("D")), // D
+        `${globalVar}[${quote(">")}]` +
           `(${quote("=")})` +
-          `[${GLOBAL_VAR}.${encodeDigit(2)}]`,
+          `[${globalVar}.${encodeDigit(2)}]`,
       ],
     ].map(x => x.join`:`) +
     "}";
@@ -466,38 +536,36 @@ function encodeText(
    * @end
    *
    * We would use `U` and `C` to form the method name `toUpperCase`,
-   * to retrieve the remaining uppercase letters.
+   * to retrieve the remaining uppercase letters. We would also form the
+   * `Date` and `Buffer` constructors here for future use.
    *
-   * We would also form the `Date` and `Buffer` constructors here for
-   * future use.
-   *
-   * The four other letters we would need to generate are the five lowercase
-   * letters h, k, q, w and z, also using the toString method, but this
-   * time they are converted from numbers.
+   * The four other letters we would need to generate are the five
+   * lowercase letters h, k, q, w and z, also using the toString
+   * method, but this time they are converted from numbers.
    */
 
   const CIPHER_FROM = "0123456789abcdefghijklmnopqrstuvwxyz";
 
-  RESULT +=
+  output +=
     ";" +
-    `${GLOBAL_VAR}={...${GLOBAL_VAR},` +
+    `${globalVar}={...${globalVar},` +
     [
       [
-        quote(encodeLetter("U")), // C
-        `\`\${{}[${GLOBAL_VAR}[${quote("'")}]]` +
-          `[${GLOBAL_VAR}[${quote("!")}]]()}\`` +
-          `[${GLOBAL_VAR}.${encodeDigit(8)}]`,
+        quoteKey(encodeLetter("U")), // C
+        `\`\${{}[${globalVar}[${quote("'")}]]` +
+          `[${globalVar}[${quote("!")}]]()}\`` +
+          `[${globalVar}.${encodeDigit(8)}]`,
       ],
       ...[..."hkqwz"].map(letter => [
-        quote(encodeLetter(letter)),
+        quoteKey(encodeLetter(letter)),
         `(+(${encodeString(CIPHER_FROM.indexOf(letter))}))` +
-          `[${GLOBAL_VAR}[${quote("'")}]](${encodeString(36)})`,
+          `[${globalVar}[${quote("'")}]](${encodeString(36)})`,
       ]),
     ].map(x => x.join`:`) +
     "}";
 
   const IDENT_SET3 = {fromCharCode: "@", keys: "&", toUpperCase: '"'};
-  RESULT += ";" + encodeIdentifiers(IDENT_SET3);
+  output += ";" + encodeIdentifiers(IDENT_SET3);
 
   /**
    * TRANSFORMATION
@@ -580,18 +648,18 @@ function encodeText(
 [CIPHER_TO.indexOf(a)]).join``,31))\
 .map(a=>String.fromCharCode(a)).join``"
       .replace("CIPHER_TO", quote(CIPHER_TO))
-      .replace(/\.toString\b/g, ident => `[${GLOBAL_VAR}[${quote("'")}]]`)
-      .replace("Array", `[][${GLOBAL_VAR}.$]`)
-      .replace("String", `${quote("")}[${GLOBAL_VAR}.$]`)
+      .replace(/\.toString\b/g, ident => `[${globalVar}[${quote("'")}]]`)
+      .replace("Array", `[][${globalVar}.$]`)
+      .replace("String", `${quote("")}[${globalVar}.$]`)
       .replace(/\b\d+\b/g, match => encodeString(match))
-      .replace("parseInt", `${GLOBAL_VAR}[${quote("~")}]`)
-      .replace(/\ba\b/g, "_" + GLOBAL_VAR)
+      .replace("parseInt", `${globalVar}[${quote("~")}]`)
+      .replace(/\ba\b/g, "_" + globalVar)
       .replace(
         /\.\b(keys|split|map|indexOf|join|fromCharCode)\b/g,
-        p1 => `[${GLOBAL_VAR}[${quote(IDENT_SET[p1.slice(1)])}]]`
+        p1 => `[${globalVar}[${quote(IDENT_SET[p1.slice(1)])}]]`
       );
 
-  RESULT += ";" + `${GLOBAL_VAR}[+![]]=${ENCODING_MACRO}`;
+  output += ";" + `${globalVar}[+![]]=${ENCODING_MACRO}`;
 
   /**
    * UTF-16 STRINGS
@@ -639,26 +707,25 @@ function encodeText(
     // yield brackets first since we didn't use them as keys yet
     for (const key of "()[]{}") yield key;
     for (let i = 0; i <= Number.MAX_SAFE_INTEGER; i++)
-      yield i.toString(digitsTo.length)
-      |> %.padStart(2, 0).split``
-      |> %.map(a => digitsTo[digitsFrom.indexOf(a)])
-      |> %.join``;
+      yield i.toString(digitsTo.length).padStart(2, 0).split``.map(
+        a => digitsTo[digitsFrom.indexOf(a)]
+      ).join``;
   })();
 
   const WORD_LIST =
-    TEXT.match(REGEXPS.word) ?? []
+    code.match(REGEXPS.word) ?? []
     |> Object.entries(_.countBy(%))
-    |> %.filter(([a]) => !Object.keys(IDENT_SET).includes(a))
-    |> %.sort(([, a], [, b]) => b - a)
-    |> %.map(([word]) => [word, keyGen.next().value])
+      .filter(([a]) => !Object.keys(IDENT_SET).includes(a))
+      .sort(([, a], [, b]) => b - a)
+      .map(([word]) => [word, keyGen.next().value])
     |> Object.fromEntries(%);
 
-  RESULT +=
+  output +=
     ";" +
-    `${GLOBAL_VAR}={...${GLOBAL_VAR},` +
+    `${globalVar}={...${globalVar},` +
     Object.entries(WORD_LIST).map(
       ([word, key]) =>
-        `${quote(key)}:${GLOBAL_VAR}[+![]](${quote(base31(word))})`
+        `${quoteKey(key)}:${globalVar}[+![]](${quote(base31(word))})`
     ) +
     "}";
 
@@ -670,59 +737,68 @@ function encodeText(
    * with empty arrays.
    */
 
-  const EXPRESSION = `[${TEXT.split` `.map(substring => {
-    return [...substring.matchAll(REGEXP)].map(match => {
-      const [group, substring] = Object.entries(match.groups).filter(
-        ([, val]) => val != null
-      )[0];
-      switch (group) {
-        case "constant":
-          return `\`\${${CONSTANTS[substring]}}\``;
-        case "constructor":
-          return `${
-            CONSTRUCTORS[substring]
-          }[${GLOBAL_VAR}.$][${GLOBAL_VAR}[${quote("?")}]]`;
-        case "letter":
-          return encodeString(substring);
-        case "word":
-          let key = WORD_LIST[substring];
-          if (typeof IDENT_SET[substring] == "string")
-            key = IDENT_SET[substring];
-          return `${GLOBAL_VAR}[${quote(key)}]`;
-        case "unicode":
-          const encoded = base31(substring);
-          return `${GLOBAL_VAR}[+![]](${quote(encoded)})`;
-        default:
-          return quote(substring);
-      }
-    }).join`+`;
-  })}][${GLOBAL_VAR}[${quote("%")}]](${GLOBAL_VAR}[${quote("-")}])`;
+  const expression = `[${code.split` `.map(
+    substring =>
+      [...substring.matchAll(REGEXP)].map(
+        match => do {
+          const [group, substring] = Object.entries(match.groups).filter(
+            ([, val]) => !!val
+          )[0];
+          switch (group) {
+            case "word":
+              if (typeof CONSTANTS[substring] == "string")
+                `\`\${${CONSTANTS[substring]}}\``;
+              else if (typeof CONSTRUCTORS[substring] == "string")
+                `${
+                  CONSTRUCTORS[substring]
+                }[${globalVar}.$][${globalVar}[${quote("?")}]]`;
+              else if (typeof IDENT_SET[substring] == "string") {
+                let key = IDENT_SET[substring];
+                `${globalVar}[${quote(key)}]`;
+              } else if (/\b[\da-zA-FINORSU]\b/.test(substring)) {
+                encodeString(substring);
+              } else {
+                let key = WORD_LIST[substring];
+                `${globalVar}[${quote(key)}]`;
+              }
+              break;
+            case "unicode":
+              const encoded = base31(substring);
+              `${globalVar}[+![]](${quote(encoded)})`;
+              break;
+            default:
+              quote(substring);
+              break;
+          }
+        }
+      ).join`+`
+  )}][${globalVar}[${quote("%")}]](${globalVar}[${quote("-")}])`;
 
-  RESULT += ";" + `_${GLOBAL_VAR}=${EXPRESSION}`;
+  output += ";" + `_${globalVar}=${expression}`;
 
   // Export
-  RESULT +=
+  output +=
     ";" +
     "module" +
     `[${quote("exports")}]` +
     `[${quote("result")}]=_` +
-    GLOBAL_VAR;
+    globalVar;
 
   return {
-    result: RESULT,
+    result: output,
     stats: `=====
 STATS
 =====
-Input length: ${enUS.format(TEXT.length)}
-Expression length: ${enUS.format(EXPRESSION.length)}
-Ratio: ${EXPRESSION.length / TEXT.length}
-Output length: ${enUS.format(RESULT.length)}`,
+Input length: ${enUS.format(code.length)}
+Expression length: ${enUS.format(expression.length)}
+Ratio: ${expression.length / code.length}
+Output length: ${enUS.format(output.length)}`,
   };
 }
 
 const {result, stats} = encodeText(text, "_", {
-  STRICT_MODE: true,
-  QUOTE_STYLE: "single",
+  strictMode: true,
+  quoteStyle: "smart backtick single double",
 });
 
 print(stats);
