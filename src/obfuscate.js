@@ -378,18 +378,19 @@ function encodeText(code, globalVar, {strictMode = false, quoteStyle = "", acces
 
   // String encoding
   const encodeString = (str: string = ""): string =>
-    [...`${str}`.replace(/\W/g, "")].map(char => {
-      if (/[$_]/.test(char)) {
-        return quote(char);
-      } else if (/\d/.test(char)) {
-        return `${globalVar}.${encodeDigit(char)}`;
-      } else {
-        const encoded = encodeLetter(char);
-        return isValidIdentifier(encoded)
-          ? `${globalVar}.${encoded}`
-          : `${globalVar}[${quote(encoded)}]`;
+    [...`${str}`.replace(/\W/g, "")].map(
+      char => do {
+        if (/[$_]/.test(char)) {
+          quote(char);
+        } else if (/\d/.test(char)) {
+          `${globalVar}.${encodeDigit(char)}`;
+        } else {
+          const encoded = encodeLetter(char);
+          if (isValidIdentifier(encoded)) `${globalVar}.${encoded}`;
+          else globalVar + `[${quote(encoded)}]`;
+        }
       }
-    }).join`+`;
+    ).join`+`;
 
   const encodeIdentifiers = (identifiers: {[ident]: string}) =>
     `${globalVar}={...${globalVar},` +
@@ -607,10 +608,7 @@ function encodeText(code, globalVar, {strictMode = false, quoteStyle = "", acces
    */
 
   const ENCODING_MACRO =
-    "a=>a.split`,`.map(a=>parseInt([...a].map\
-(a=>[...Array(+(31)).keys()].map(a=>a.toString(31))\
-[CIPHER_TO.indexOf(a)]).join``,31))\
-.map(a=>String.fromCharCode(a)).join``"
+    "a=>a.split`,`.map(a=>parseInt([...a].map(a=>[...Array(+(31)).keys()].map(a=>a.toString(31))[CIPHER_TO.indexOf(a)]).join``,31)).map(a=>String.fromCharCode(a)).join``"
       .replace("CIPHER_TO", quote(CIPHER_TO))
       .replace(/\.toString\b/g, ident => `[${globalVar}[${quote("'")}]]`)
       .replace(/\b\d+\b/g, match => encodeString(match))
@@ -672,8 +670,9 @@ function encodeText(code, globalVar, {strictMode = false, quoteStyle = "", acces
      * https://stackoverflow.com/questions/8603480/how-to-create-a-function-that-converts-a-number-to-a-bijective-hexavigesimal
      *
      * @param {Number} int - A positive integer above zero
-     * @return {String} The number's value expressed in uppercased bijective base-26
+     * @return {String} The number's value expressed in uppercase bijective base-26
      */
+
     const bijective = (int: number, sequence: string | string[]): string => {
       const length = sequence.length;
       if (!int) return "";
@@ -708,18 +707,10 @@ function encodeText(code, globalVar, {strictMode = false, quoteStyle = "", acces
     return;
   })();
 
-  /**
-   * Convert an integer to bijective notation.
-   * https://stackoverflow.com/questions/8603480/how-to-create-a-function-that-converts-a-number-to-a-bijective-hexavigesimal
-   *
-   * @param {Number} int - A positive integer above zero
-   * @return {String} The number's value expressed in uppercased bijective base-26
-   */
-
   const WORD_LIST =
     code.match(REGEXPS.word) ?? []
     |> Object.entries(_.countBy(%))
-      .filter(([a]) => !Object.keys(IDENT_SET).includes(a))
+      .filter(([a, b]) => !Object.keys(IDENT_SET).includes(a) && b > 1)
       .sort(([, a], [, b]) => b - a)
       .map(([word]) => [word, keyGen.next().value])
     |> Object.fromEntries(%);
@@ -779,8 +770,12 @@ function encodeText(code, globalVar, {strictMode = false, quoteStyle = "", acces
                       globalVar + "." + IDENT_SET[substring];
                     else globalVar + `[${quote(IDENT_SET[substring])}]`;
                     break;
-                  default:
+                  case typeof WORD_LIST[substring] == "string":
                     `${globalVar}[${quote(WORD_LIST[substring])}]`;
+                    break;
+                  default:
+                    const encoded = base31(substring);
+                    `${globalVar}[+![]](${quote(encoded)})`;
                     break;
                 }
                 break;
