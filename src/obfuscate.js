@@ -15,11 +15,7 @@ const text = fs.readFileSync("./input.txt", "utf8");
  * - Substitution, where the variables are used to construct strings;
  */
 
-function encodeText(
-  code,
-  globalVar,
-  {strictMode = false, quoteStyle = ""} = {}
-) {
+function encodeText(code, globalVar, {strictMode = false, quoteStyle = ""} = {}) {
   const BUILTINS =
     [
       "Array",
@@ -96,25 +92,21 @@ function encodeText(
    */
 
   const REGEXP = RegExp(
-    Object.entries(REGEXPS).map(([key, {source}]) => `(?<${key}>${source})`)
-      .join`|`,
+    Object.entries(REGEXPS).map(([key, {source}]) => `(?<${key}>${source})`).join`|`,
     "g"
   );
 
   // Test whether an identifier can be made into a variable
   const checkIdentifier = (ident: string): boolean =>
     (ident = ident.trim()) && isValidIdentifier(ident) && !BUILTINS.test(ident);
-  if (!checkIdentifier(globalVar))
-    throw new Error(`Invalid global variable: ${quote(globalVar)}`);
+  if (!checkIdentifier(globalVar)) throw new Error(`Invalid global variable: ${quote(globalVar)}`);
 
   // Reject strings above the length of 2^29 to avoid going over the max string limit
   const MAX_STRING_LENGTH = 536870888,
     enUS = Intl.NumberFormat("en-us");
   if (code.length > MAX_STRING_LENGTH)
     throw new Error(
-      `Input string can only be up to ${enUS.format(
-        NODE_MAX_LENGTH
-      )} characters long`
+      `Input string can only be up to ${enUS.format(NODE_MAX_LENGTH)} characters long`
     );
 
   /**
@@ -129,18 +121,12 @@ function encodeText(
 
   let count = 0;
   const quote = string => {
-    const quotes = quoteStyle.match(/\b(single|double|backtick)\b/g) || [
-        "single",
-      ],
-      mode = (quoteStyle.match(/\b(cycle|only|smart|random)\b/g) || [
-        "smart",
-      ])[0];
+    const quotes = quoteStyle.match(/\b(single|double|backtick)\b/g) || ["single"],
+      mode = (quoteStyle.match(/\b(cycle|only|smart|random)\b/g) || ["smart"])[0];
 
-    const {single, double, backtick} = {
-      single: jsesc(string, {quotes: "single", wrap: true}),
-      double: jsesc(string, {quotes: "double", wrap: true}),
-      backtick: jsesc(string, {quotes: "backtick", wrap: true}),
-    };
+    const single = jsesc(string, {quotes: "single", wrap: true}),
+      double = jsesc(string, {quotes: "double", wrap: true}),
+      backtick = jsesc(string, {quotes: "backtick", wrap: true});
 
     switch (mode) {
       case "only": {
@@ -153,11 +139,7 @@ function encodeText(
       }
       case "random": {
         const current =
-          Math.random() > 2 / 3
-            ? "backtick"
-            : Math.random() > 1 / 3
-            ? "double"
-            : "single";
+          Math.random() > 2 / 3 ? "backtick" : Math.random() > 1 / 3 ? "double" : "single";
         return jsesc(string, {quotes: current, wrap: true});
       }
       case "smart": {
@@ -166,9 +148,9 @@ function encodeText(
           ["double", double],
           ["backtick", backtick],
         ]
-          .map(([, a]) => a.length)
-          .sort((a, b) => b - a)[0];
-        const current = choice[0];
+          .map(([a, b]) => [a, b.length])
+          .sort(([, a], [, b]) => a - b);
+        const current = choice.every(v => v[1] == choice[0][1]) ? quotes[0] : choice[0][0];
         return jsesc(string, {quotes: current, wrap: true});
       }
     }
@@ -194,13 +176,10 @@ function encodeText(
   const SPACE = "-";
 
   const encodeLetter = (char: Lower | Upper) =>
-    (V.isUpperCase(char) ? "$" : "_") +
-    CIPHER[LETTERS.indexOf(char.toLowerCase())];
+    (V.isUpperCase(char) ? "$" : "_") + CIPHER[LETTERS.indexOf(char.toLowerCase())];
 
   const encodeDigit = (number: string | number) =>
-    [...(+number).toString(2).padStart(3, 0)].map(match =>
-      match == 1 ? "$" : "_"
-    ).join``;
+    [...(+number).toString(2).padStart(3, 0)].map(match => (match == 1 ? "$" : "_")).join``;
 
   /**
    * @example
@@ -228,18 +207,12 @@ function encodeText(
    */
 
   const quoteKey = string => {
-    const quotes = quoteStyle.match(/\b(single|double|backtick)\b/g) || [
-        "single",
-      ],
-      mode = (quoteStyle.match(/\b(cycle|only|smart|random)\b/g) || [
-        "smart",
-      ])[0];
+    const quotes = quoteStyle.match(/\b(single|double|backtick)\b/g) || ["single"],
+      mode = (quoteStyle.match(/\b(cycle|only|smart|random)\b/g) || ["smart"])[0];
 
-    const {single, double, backtick} = {
-      single: jsesc(string, {quotes: "single", wrap: true}),
-      double: jsesc(string, {quotes: "double", wrap: true}),
-      backtick: jsesc(string, {quotes: "backtick", wrap: true}),
-    };
+    const single = jsesc(string, {quotes: "single", wrap: true}),
+      double = jsesc(string, {quotes: "double", wrap: true}),
+      backtick = jsesc(string, {quotes: "backtick", wrap: true});
 
     switch (mode) {
       case "only": {
@@ -254,11 +227,7 @@ function encodeText(
       }
       case "random": {
         const current =
-          Math.random() > 2 / 3
-            ? "backtick"
-            : Math.random() > 1 / 3
-            ? "double"
-            : "single";
+          Math.random() > 2 / 3 ? "backtick" : Math.random() > 1 / 3 ? "double" : "single";
         if (current == "backtick") return `[${backtick}]`;
         else return jsesc(string, {quotes: current, wrap: true});
       }
@@ -270,9 +239,9 @@ function encodeText(
             ["double", double],
             ["backtick", backtick],
           ]
-            .map(([, a]) => a.length)
-            .sort((a, b) => b - a)[0];
-          const current = choice[0];
+            .map(([a, b]) => [a, a == "backtick" ? b.length + 2 : b.length])
+            .sort(([, a], [, b]) => a - b)[0];
+          const current = choice.every(v => v[1] == choice[0][1]) ? quotes[0] : choice[0][0];
           if (current == "backtick") return `[${backtick}]`;
           else return jsesc(string, {quotes: current, wrap: true});
         }
@@ -299,9 +268,7 @@ function encodeText(
         .filter(([, [, value]]) => value == digit)
         .map(
           ([char, [literal]]) =>
-            `${quoteKey(
-              char == " " ? "-" : encodeLetter(char)
-            )}:\`\${${literal}}\`[${globalVar}]`
+            `${quoteKey(char == " " ? "-" : encodeLetter(char))}:\`\${${literal}}\`[${globalVar}]`
         ),
     ]) +
     "}";
@@ -360,8 +327,9 @@ function encodeText(
 
   for (const value of Object.entries(CHARSET_2)) {
     const [char, [expression, index]] = value;
-    const expansion = `\`\${${expression}[${globalVar}.$]}\`[${`${index}`
-      .split``.map(digit => `${globalVar}.${encodeDigit(digit)}`).join`+`}]`;
+    const expansion = `\`\${${expression}[${globalVar}.$]}\`[${`${index}`.split``.map(
+      digit => `${globalVar}.${encodeDigit(digit)}`
+    ).join`+`}]`;
     if (!(char in CHARSET_1)) CHARSET_2[char] = [expression, index, expansion];
   }
 
@@ -372,8 +340,7 @@ function encodeText(
   const RES_CHARSET_2 =
     `${globalVar}={...${globalVar},` +
     Object.entries(CHARSET_2_DIFF).map(
-      ([letter, [, , expansion]]) =>
-        `${quoteKey(encodeLetter(letter))}:${expansion}`
+      ([letter, [, , expansion]]) => `${quoteKey(encodeLetter(letter))}:${expansion}`
     ) +
     "}";
 
@@ -508,21 +475,15 @@ function encodeText(
     [
       [
         quoteKey("'"), // toString
-        `${encodeString("to")}+` +
-          `${quote("")}[${globalVar}.$]` +
-          `[${globalVar}[${quote("?")}]]`,
+        `${encodeString("to")}+` + `${quote("")}[${globalVar}.$]` + `[${globalVar}[${quote("?")}]]`,
       ],
       [
         quoteKey(encodeLetter("C")), // C
-        `${globalVar}[${quote(">")}]` +
-          `(${quote("<")})` +
-          `[${globalVar}.${encodeDigit(2)}]`,
+        `${globalVar}[${quote(">")}]` + `(${quote("<")})` + `[${globalVar}.${encodeDigit(2)}]`,
       ],
       [
         quoteKey(encodeLetter("D")), // D
-        `${globalVar}[${quote(">")}]` +
-          `(${quote("=")})` +
-          `[${globalVar}.${encodeDigit(2)}]`,
+        `${globalVar}[${quote(">")}]` + `(${quote("=")})` + `[${globalVar}.${encodeDigit(2)}]`,
       ],
     ].map(x => x.join`:`) +
     "}";
@@ -609,10 +570,7 @@ function encodeText(
 
   const base31 = (s: string) =>
     `${[...Array(s.length)].map(
-      (x, i) =>
-        [...s.charCodeAt(i).toString(31)].map(
-          c => CIPHER_TO[CIPHER_FROM.indexOf(c)]
-        ).join``
+      (x, i) => [...s.charCodeAt(i).toString(31)].map(c => CIPHER_TO[CIPHER_FROM.indexOf(c)]).join``
     )}`;
 
   const base31Decode = b =>
@@ -649,15 +607,14 @@ function encodeText(
 .map(a=>String.fromCharCode(a)).join``"
       .replace("CIPHER_TO", quote(CIPHER_TO))
       .replace(/\.toString\b/g, ident => `[${globalVar}[${quote("'")}]]`)
-      .replace("Array", `[][${globalVar}.$]`)
-      .replace("String", `${quote("")}[${globalVar}.$]`)
       .replace(/\b\d+\b/g, match => encodeString(match))
       .replace("parseInt", `${globalVar}[${quote("~")}]`)
       .replace(/\ba\b/g, "_" + globalVar)
       .replace(
         /\.\b(keys|split|map|indexOf|join|fromCharCode)\b/g,
         p1 => `[${globalVar}[${quote(IDENT_SET[p1.slice(1)])}]]`
-      );
+      )
+      .replace(/\b(Array|String)\b/g, match => `${CONSTRUCTORS[match]}[${globalVar}.$]`);
 
   output += ";" + `${globalVar}[+![]]=${ENCODING_MACRO}`;
 
@@ -724,8 +681,7 @@ function encodeText(
     ";" +
     `${globalVar}={...${globalVar},` +
     Object.entries(WORD_LIST).map(
-      ([word, key]) =>
-        `${quoteKey(key)}:${globalVar}[+![]](${quote(base31(word))})`
+      ([word, key]) => `${quoteKey(key)}:${globalVar}[+![]](${quote(base31(word))})`
     ) +
     "}";
 
@@ -737,56 +693,52 @@ function encodeText(
    * with empty arrays.
    */
 
-  const expression = `[${code.split` `.map(
-    substring =>
-      [...substring.matchAll(REGEXP)].map(
-        match => do {
-          const [group, substring] = Object.entries(match.groups).filter(
-            ([, val]) => !!val
-          )[0];
-          switch (group) {
-            case "word":
-              switch (true) {
-                case typeof CONSTANTS[substring] == "string":
-                  `\`\${${CONSTANTS[substring]}}\``;
-                  break;
-                case typeof CONSTRUCTORS[substring] == "string":
-                  `${
-                    CONSTRUCTORS[substring]
-                  }[${globalVar}.$][${globalVar}[${quote("?")}]]`;
-                  break;
-                case typeof IDENT_SET[substring] == "string":
-                  `${globalVar}[${quote(IDENT_SET[substring])}]`;
-                  break;
-                case /\b[\da-zA-FINORSU]\b/.test(substring):
-                  encodeString(substring);
-                  break;
-                default:
-                  `${globalVar}[${quote(WORD_LIST[substring])}]`;
-                  break;
-              }
-              break;
-            case "unicode":
-              const encoded = base31(substring);
-              `${globalVar}[+![]](${quote(encoded)})`;
-              break;
-            default:
-              quote(substring);
-              break;
+  const expression =
+    "[" +
+    code.split` `.map(
+      substring =>
+        [...substring.matchAll(REGEXP)].map(
+          match => do {
+            const [group, substring] = Object.entries(match.groups).filter(([, val]) => !!val)[0];
+            switch (group) {
+              case "word":
+                switch (true) {
+                  case typeof CONSTANTS[substring] == "string":
+                    `\`\${${CONSTANTS[substring]}}\``;
+                    break;
+                  case typeof CONSTRUCTORS[substring] == "string":
+                    `${CONSTRUCTORS[substring]}[${globalVar}.$][${globalVar}[${quote("?")}]]`;
+                    break;
+                  case typeof IDENT_SET[substring] == "string":
+                    `${globalVar}[${quote(IDENT_SET[substring])}]`;
+                    break;
+                  case /\b[\da-zA-FINORSU]\b/.test(substring):
+                    encodeString(substring);
+                    break;
+                  default:
+                    `${globalVar}[${quote(WORD_LIST[substring])}]`;
+                    break;
+                }
+                break;
+              case "unicode":
+                const encoded = base31(substring);
+                `${globalVar}[+![]](${quote(encoded)})`;
+                break;
+              default:
+                quote(substring);
+                break;
+            }
           }
-        }
-      ).join`+`
-  )}][${globalVar}[${quote("%")}]](${globalVar}[${quote("-")}])`;
+        ).join`+`
+    ) +
+    "]" +
+    `[${globalVar}[${quote("%")}]]` +
+    `(${globalVar}[${quote("-")}])`;
 
   output += ";" + `_${globalVar}=${expression}`;
 
   // Export
-  output +=
-    ";" +
-    "module" +
-    `[${quote("exports")}]` +
-    `[${quote("result")}]=_` +
-    globalVar;
+  output += ";" + "module.exports.result=_" + globalVar;
 
   return {
     result: output,
@@ -800,9 +752,9 @@ Output length: ${enUS.format(output.length)}`,
   };
 }
 
-const {result, stats} = encodeText(text, "_", {
+const {result, stats} = encodeText(text, "$", {
   strictMode: true,
-  quoteStyle: "smart backtick single double",
+  quoteStyle: "smart backtick",
 });
 
 print(stats);

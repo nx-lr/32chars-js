@@ -48,7 +48,7 @@ var text = _fs["default"].readFileSync("./input.txt", "utf8");
 
 
 function encodeText(code, globalVar) {
-  var _code$match, _ref28, _ref29;
+  var _code$match, _ref36, _ref37;
 
   var _ref = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : {},
       _ref$strictMode = _ref.strictMode,
@@ -100,23 +100,19 @@ function encodeText(code, globalVar) {
   var quote = function quote(string) {
     var quotes = quoteStyle.match(/\b(single|double|backtick)\b/g) || ["single"],
         mode = (quoteStyle.match(/\b(cycle|only|smart|random)\b/g) || ["smart"])[0];
-    var _single$double$backti = {
-      single: (0, _jsesc["default"])(string, {
-        quotes: "single",
-        wrap: true
-      }),
-      "double": (0, _jsesc["default"])(string, {
-        quotes: "double",
-        wrap: true
-      }),
-      backtick: (0, _jsesc["default"])(string, {
-        quotes: "backtick",
-        wrap: true
-      })
-    },
-        single = _single$double$backti.single,
-        _double = _single$double$backti["double"],
-        backtick = _single$double$backti.backtick;
+
+    var single = (0, _jsesc["default"])(string, {
+      quotes: "single",
+      wrap: true
+    }),
+        _double = (0, _jsesc["default"])(string, {
+      quotes: "double",
+      wrap: true
+    }),
+        backtick = (0, _jsesc["default"])(string, {
+      quotes: "backtick",
+      wrap: true
+    });
 
     switch (mode) {
       case "only":
@@ -151,13 +147,24 @@ function encodeText(code, globalVar) {
         {
           var choice = [["single", single], ["double", _double], ["backtick", backtick]].map(function (_ref4) {
             var _ref5 = (0, _slicedToArray2["default"])(_ref4, 2),
-                a = _ref5[1];
+                a = _ref5[0],
+                b = _ref5[1];
 
-            return a.length;
-          }).sort(function (a, b) {
-            return b - a;
-          })[0];
-          var _current3 = choice[0];
+            return [a, b.length];
+          }).sort(function (_ref6, _ref7) {
+            var _ref8 = (0, _slicedToArray2["default"])(_ref6, 2),
+                a = _ref8[1];
+
+            var _ref9 = (0, _slicedToArray2["default"])(_ref7, 2),
+                b = _ref9[1];
+
+            return a - b;
+          });
+
+          var _current3 = choice.every(function (v) {
+            return v[1] == choice[0][1];
+          }) ? quotes[0] : choice[0][0];
+
           return (0, _jsesc["default"])(string, {
             quotes: _current3,
             wrap: true
@@ -228,23 +235,19 @@ function encodeText(code, globalVar) {
   var quoteKey = function quoteKey(string) {
     var quotes = quoteStyle.match(/\b(single|double|backtick)\b/g) || ["single"],
         mode = (quoteStyle.match(/\b(cycle|only|smart|random)\b/g) || ["smart"])[0];
-    var _single$double$backti2 = {
-      single: (0, _jsesc["default"])(string, {
-        quotes: "single",
-        wrap: true
-      }),
-      "double": (0, _jsesc["default"])(string, {
-        quotes: "double",
-        wrap: true
-      }),
-      backtick: (0, _jsesc["default"])(string, {
-        quotes: "backtick",
-        wrap: true
-      })
-    },
-        single = _single$double$backti2.single,
-        _double2 = _single$double$backti2["double"],
-        backtick = _single$double$backti2.backtick;
+
+    var single = (0, _jsesc["default"])(string, {
+      quotes: "single",
+      wrap: true
+    }),
+        _double2 = (0, _jsesc["default"])(string, {
+      quotes: "double",
+      wrap: true
+    }),
+        backtick = (0, _jsesc["default"])(string, {
+      quotes: "backtick",
+      wrap: true
+    });
 
     switch (mode) {
       case "only":
@@ -278,15 +281,26 @@ function encodeText(code, globalVar) {
       case "smart":
         {
           if ((0, _isValidIdentifier["default"])(string)) return string;else {
-            var choice = [["single", single], ["double", _double2], ["backtick", backtick]].map(function (_ref6) {
-              var _ref7 = (0, _slicedToArray2["default"])(_ref6, 2),
-                  a = _ref7[1];
+            var choice = [["single", single], ["double", _double2], ["backtick", backtick]].map(function (_ref10) {
+              var _ref11 = (0, _slicedToArray2["default"])(_ref10, 2),
+                  a = _ref11[0],
+                  b = _ref11[1];
 
-              return a.length;
-            }).sort(function (a, b) {
-              return b - a;
+              return [a, a == "backtick" ? b.length + 2 : b.length];
+            }).sort(function (_ref12, _ref13) {
+              var _ref14 = (0, _slicedToArray2["default"])(_ref12, 2),
+                  a = _ref14[1];
+
+              var _ref15 = (0, _slicedToArray2["default"])(_ref13, 2),
+                  b = _ref15[1];
+
+              return a - b;
             })[0];
-            var _current6 = choice[0];
+
+            var _current6 = choice.every(function (v) {
+              return v[1] == choice[0][1];
+            }) ? quotes[0] : choice[0][0];
+
             if (_current6 == "backtick") return "[".concat(backtick, "]");else return (0, _jsesc["default"])(string, {
               quotes: _current6,
               wrap: true
@@ -322,17 +336,17 @@ function encodeText(code, globalVar) {
   }
 
   var RES_CHARSET_1 = "".concat(globalVar, "={") + (0, _toConsumableArray2["default"])(Array(10)).map(function ($, digit) {
-    return ["".concat(encodeDigit(digit), ":`${++").concat(globalVar, "}`")].concat((0, _toConsumableArray2["default"])(Object.entries(CHARSET_1).filter(function (_ref8) {
-      var _ref9 = (0, _slicedToArray2["default"])(_ref8, 2),
-          _ref9$ = (0, _slicedToArray2["default"])(_ref9[1], 2),
-          value = _ref9$[1];
+    return ["".concat(encodeDigit(digit), ":`${++").concat(globalVar, "}`")].concat((0, _toConsumableArray2["default"])(Object.entries(CHARSET_1).filter(function (_ref16) {
+      var _ref17 = (0, _slicedToArray2["default"])(_ref16, 2),
+          _ref17$ = (0, _slicedToArray2["default"])(_ref17[1], 2),
+          value = _ref17$[1];
 
       return value == digit;
-    }).map(function (_ref10) {
-      var _ref11 = (0, _slicedToArray2["default"])(_ref10, 2),
-          _char3 = _ref11[0],
-          _ref11$ = (0, _slicedToArray2["default"])(_ref11[1], 1),
-          literal = _ref11$[0];
+    }).map(function (_ref18) {
+      var _ref19 = (0, _slicedToArray2["default"])(_ref18, 2),
+          _char3 = _ref19[0],
+          _ref19$ = (0, _slicedToArray2["default"])(_ref19[1], 1),
+          literal = _ref19$[0];
 
       return "".concat(quoteKey(_char3 == " " ? "-" : encodeLetter(_char3)), ":`${").concat(literal, "}`[").concat(globalVar, "]");
     })));
@@ -425,11 +439,11 @@ function encodeText(code, globalVar) {
   };
 
   var CHARSET_2_DIFF = objectDifference(CHARSET_2, CHARSET_1);
-  var RES_CHARSET_2 = "".concat(globalVar, "={...").concat(globalVar, ",") + Object.entries(CHARSET_2_DIFF).map(function (_ref12) {
-    var _ref13 = (0, _slicedToArray2["default"])(_ref12, 2),
-        letter = _ref13[0],
-        _ref13$ = (0, _slicedToArray2["default"])(_ref13[1], 3),
-        expansion = _ref13$[2];
+  var RES_CHARSET_2 = "".concat(globalVar, "={...").concat(globalVar, ",") + Object.entries(CHARSET_2_DIFF).map(function (_ref20) {
+    var _ref21 = (0, _slicedToArray2["default"])(_ref20, 2),
+        letter = _ref21[0],
+        _ref21$ = (0, _slicedToArray2["default"])(_ref21[1], 3),
+        expansion = _ref21$[2];
 
     return "".concat(quoteKey(encodeLetter(letter)), ":").concat(expansion);
   }) + "}";
@@ -478,16 +492,16 @@ function encodeText(code, globalVar) {
   };
 
   var encodeIdentifiers = function encodeIdentifiers(identifiers) {
-    return "".concat(globalVar, "={...").concat(globalVar, ",") + Object.entries(identifiers).map(function (_ref14) {
-      var _ref15 = (0, _slicedToArray2["default"])(_ref14, 2),
-          ident = _ref15[0],
-          key = _ref15[1];
+    return "".concat(globalVar, "={...").concat(globalVar, ",") + Object.entries(identifiers).map(function (_ref22) {
+      var _ref23 = (0, _slicedToArray2["default"])(_ref22, 2),
+          ident = _ref23[0],
+          key = _ref23[1];
 
       return [key, encodeString(ident)];
-    }).map(function (_ref16) {
-      var _ref17 = (0, _slicedToArray2["default"])(_ref16, 2),
-          key = _ref17[0],
-          expr = _ref17[1];
+    }).map(function (_ref24) {
+      var _ref25 = (0, _slicedToArray2["default"])(_ref24, 2),
+          key = _ref25[0],
+          expr = _ref25[1];
 
       return "".concat(quoteKey(key), ":").concat(expr);
     }) + "}";
@@ -526,10 +540,10 @@ function encodeText(code, globalVar) {
     unescape: "<",
     parseInt: "~"
   };
-  var RES_FUNCTIONS_1 = "".concat(globalVar, "={...").concat(globalVar, ",") + Object.entries(GLOBAL_FUNC).map(function (_ref18) {
-    var _ref19 = (0, _slicedToArray2["default"])(_ref18, 2),
-        ident = _ref19[0],
-        shortcut = _ref19[1];
+  var RES_FUNCTIONS_1 = "".concat(globalVar, "={...").concat(globalVar, ",") + Object.entries(GLOBAL_FUNC).map(function (_ref26) {
+    var _ref27 = (0, _slicedToArray2["default"])(_ref26, 2),
+        ident = _ref27[0],
+        shortcut = _ref27[1];
 
     return "".concat(quoteKey(shortcut), ":") + "(()=>{})" + "[".concat(globalVar, ".$]") + "(" + "".concat(globalVar, "._+").concat(globalVar, "[").concat(quote("-"), "]+").concat(encodeString(ident)) + ")" + "()";
   }) + "}";
@@ -673,10 +687,12 @@ function encodeText(code, globalVar) {
 [CIPHER_TO.indexOf(a)]).join``,31))\
 .map(a=>String.fromCharCode(a)).join``".replace("CIPHER_TO", quote(CIPHER_TO)).replace(/\.toString\b/g, function (ident) {
     return "[".concat(globalVar, "[").concat(quote("'"), "]]");
-  }).replace("Array", "[][".concat(globalVar, ".$]")).replace("String", "".concat(quote(""), "[").concat(globalVar, ".$]")).replace(/\b\d+\b/g, function (match) {
+  }).replace(/\b\d+\b/g, function (match) {
     return encodeString(match);
   }).replace("parseInt", "".concat(globalVar, "[").concat(quote("~"), "]")).replace(/\ba\b/g, "_" + globalVar).replace(/\.\b(keys|split|map|indexOf|join|fromCharCode)\b/g, function (p1) {
     return "[".concat(globalVar, "[").concat(quote(IDENT_SET[p1.slice(1)]), "]]");
+  }).replace(/\b(Array|String)\b/g, function (match) {
+    return "".concat(CONSTRUCTORS[match], "[").concat(globalVar, ".$]");
   });
   output += ";" + "".concat(globalVar, "[+![]]=").concat(ENCODING_MACRO);
   /**
@@ -783,29 +799,29 @@ function encodeText(code, globalVar) {
     }, _callee, null, [[2, 12, 15, 18]]);
   })();
 
-  var WORD_LIST = (_ref29 = (_code$match = code.match(REGEXPS.word)) !== null && _code$match !== void 0 ? _code$match : [], (_ref28 = Object.entries(_lodash["default"].countBy(_ref29)).filter(function (_ref20) {
-    var _ref21 = (0, _slicedToArray2["default"])(_ref20, 1),
-        a = _ref21[0];
+  var WORD_LIST = (_ref37 = (_code$match = code.match(REGEXPS.word)) !== null && _code$match !== void 0 ? _code$match : [], (_ref36 = Object.entries(_lodash["default"].countBy(_ref37)).filter(function (_ref28) {
+    var _ref29 = (0, _slicedToArray2["default"])(_ref28, 1),
+        a = _ref29[0];
 
     return !Object.keys(IDENT_SET).includes(a);
-  }).sort(function (_ref22, _ref23) {
-    var _ref24 = (0, _slicedToArray2["default"])(_ref22, 2),
-        a = _ref24[1];
+  }).sort(function (_ref30, _ref31) {
+    var _ref32 = (0, _slicedToArray2["default"])(_ref30, 2),
+        a = _ref32[1];
 
-    var _ref25 = (0, _slicedToArray2["default"])(_ref23, 2),
-        b = _ref25[1];
+    var _ref33 = (0, _slicedToArray2["default"])(_ref31, 2),
+        b = _ref33[1];
 
     return b - a;
-  }).map(function (_ref26) {
-    var _ref27 = (0, _slicedToArray2["default"])(_ref26, 1),
-        word = _ref27[0];
+  }).map(function (_ref34) {
+    var _ref35 = (0, _slicedToArray2["default"])(_ref34, 1),
+        word = _ref35[0];
 
     return [word, keyGen.next().value];
-  }), Object.fromEntries(_ref28)));
-  output += ";" + "".concat(globalVar, "={...").concat(globalVar, ",") + Object.entries(WORD_LIST).map(function (_ref30) {
-    var _ref31 = (0, _slicedToArray2["default"])(_ref30, 2),
-        word = _ref31[0],
-        key = _ref31[1];
+  }), Object.fromEntries(_ref36)));
+  output += ";" + "".concat(globalVar, "={...").concat(globalVar, ",") + Object.entries(WORD_LIST).map(function (_ref38) {
+    var _ref39 = (0, _slicedToArray2["default"])(_ref38, 2),
+        word = _ref39[0],
+        key = _ref39[1];
 
     return "".concat(quoteKey(key), ":").concat(globalVar, "[+![]](").concat(quote(base31(word)), ")");
   }) + "}";
@@ -817,14 +833,14 @@ function encodeText(code, globalVar) {
    * with empty arrays.
    */
 
-  var expression = "[".concat(code.split(_templateObject15 || (_templateObject15 = (0, _taggedTemplateLiteral2["default"])([" "]))).map(function (substring) {
+  var expression = "[" + code.split(_templateObject15 || (_templateObject15 = (0, _taggedTemplateLiteral2["default"])([" "]))).map(function (substring) {
     return (0, _toConsumableArray2["default"])(substring.matchAll(REGEXP)).map(function (match) {
       var _Object$entries$filte, group, _substring, encoded;
 
       return function () {
-        _Object$entries$filte = (0, _slicedToArray2["default"])(Object.entries(match.groups).filter(function (_ref32) {
-          var _ref33 = (0, _slicedToArray2["default"])(_ref32, 2),
-              val = _ref33[1];
+        _Object$entries$filte = (0, _slicedToArray2["default"])(Object.entries(match.groups).filter(function (_ref40) {
+          var _ref41 = (0, _slicedToArray2["default"])(_ref40, 2),
+              val = _ref41[1];
 
           return !!val;
         })[0], 2);
@@ -861,19 +877,19 @@ function encodeText(code, globalVar) {
         }
       }();
     }).join(_templateObject16 || (_templateObject16 = (0, _taggedTemplateLiteral2["default"])(["+"])));
-  }), "][").concat(globalVar, "[").concat(quote("%"), "]](").concat(globalVar, "[").concat(quote("-"), "])");
+  }) + "]" + "[".concat(globalVar, "[").concat(quote("%"), "]]") + "(".concat(globalVar, "[").concat(quote("-"), "])");
   output += ";" + "_".concat(globalVar, "=").concat(expression); // Export
 
-  output += ";" + "module" + "[".concat(quote("exports"), "]") + "[".concat(quote("result"), "]=_") + globalVar;
+  output += ";" + "module.exports.result=_" + globalVar;
   return {
     result: output,
     stats: "=====\nSTATS\n=====\nInput length: ".concat(enUS.format(code.length), "\nExpression length: ").concat(enUS.format(expression.length), "\nRatio: ").concat(expression.length / code.length, "\nOutput length: ").concat(enUS.format(output.length))
   };
 }
 
-var _encodeText = encodeText(text, "_", {
+var _encodeText = encodeText(text, "$", {
   strictMode: true,
-  quoteStyle: "smart backtick single double"
+  quoteStyle: "smart backtick"
 }),
     result = _encodeText.result,
     stats = _encodeText.stats;
