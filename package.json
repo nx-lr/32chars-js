@@ -1,6 +1,7 @@
 {
   "author": "frime",
   "babel": {
+    "comments": false,
     "plugins": [
       "@babel/plugin-transform-runtime",
       [
@@ -96,7 +97,7 @@
     "arrowParens": "avoid",
     "bracketSpacing": false,
     "jsxBracketSameLine": true,
-    "printWidth": 80,
+    "printWidth": 100,
     "semi": true,
     "singleQuote": false,
     "tabWidth": 2,
