@@ -819,7 +819,7 @@ function encodeText(code, globalVar) {
 
   var expression = "[".concat(code.split(_templateObject15 || (_templateObject15 = (0, _taggedTemplateLiteral2["default"])([" "]))).map(function (substring) {
     return (0, _toConsumableArray2["default"])(substring.matchAll(REGEXP)).map(function (match) {
-      var _Object$entries$filte, group, _substring, _key2, _key3, encoded;
+      var _Object$entries$filte, group, _substring, encoded;
 
       return function () {
         _Object$entries$filte = (0, _slicedToArray2["default"])(Object.entries(match.groups).filter(function (_ref32) {
@@ -833,15 +833,24 @@ function encodeText(code, globalVar) {
 
         switch (group) {
           case "word":
-            if (typeof CONSTANTS[_substring] == "string") return "`${".concat(CONSTANTS[_substring], "}`");else if (typeof CONSTRUCTORS[_substring] == "string") return "".concat(CONSTRUCTORS[_substring], "[").concat(globalVar, ".$][").concat(globalVar, "[").concat(quote("?"), "]]");else if (typeof IDENT_SET[_substring] == "string") {
-              _key2 = IDENT_SET[_substring];
-              return "".concat(globalVar, "[").concat(quote(_key2), "]");
-            } else if (/\b[\da-zA-FINORSU]\b/.test(_substring)) {
-              return encodeString(_substring);
-            } else {
-              _key3 = WORD_LIST[_substring];
-              return "".concat(globalVar, "[").concat(quote(_key3), "]");
+            switch (true) {
+              case typeof CONSTANTS[_substring] == "string":
+                return "`${".concat(CONSTANTS[_substring], "}`");
+
+              case typeof CONSTRUCTORS[_substring] == "string":
+                return "".concat(CONSTRUCTORS[_substring], "[").concat(globalVar, ".$][").concat(globalVar, "[").concat(quote("?"), "]]");
+
+              case typeof IDENT_SET[_substring] == "string":
+                return "".concat(globalVar, "[").concat(quote(IDENT_SET[_substring]), "]");
+
+              case /\b[\da-zA-FINORSU]\b/.test(_substring):
+                return encodeString(_substring);
+
+              default:
+                return "".concat(globalVar, "[").concat(quote(WORD_LIST[_substring]), "]");
             }
+
+            break;
 
           case "unicode":
             encoded = base31(_substring);

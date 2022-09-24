@@ -746,20 +746,24 @@ function encodeText(
           )[0];
           switch (group) {
             case "word":
-              if (typeof CONSTANTS[substring] == "string")
-                `\`\${${CONSTANTS[substring]}}\``;
-              else if (typeof CONSTRUCTORS[substring] == "string")
-                `${
-                  CONSTRUCTORS[substring]
-                }[${globalVar}.$][${globalVar}[${quote("?")}]]`;
-              else if (typeof IDENT_SET[substring] == "string") {
-                let key = IDENT_SET[substring];
-                `${globalVar}[${quote(key)}]`;
-              } else if (/\b[\da-zA-FINORSU]\b/.test(substring)) {
-                encodeString(substring);
-              } else {
-                let key = WORD_LIST[substring];
-                `${globalVar}[${quote(key)}]`;
+              switch (true) {
+                case typeof CONSTANTS[substring] == "string":
+                  `\`\${${CONSTANTS[substring]}}\``;
+                  break;
+                case typeof CONSTRUCTORS[substring] == "string":
+                  `${
+                    CONSTRUCTORS[substring]
+                  }[${globalVar}.$][${globalVar}[${quote("?")}]]`;
+                  break;
+                case typeof IDENT_SET[substring] == "string":
+                  `${globalVar}[${quote(IDENT_SET[substring])}]`;
+                  break;
+                case /\b[\da-zA-FINORSU]\b/.test(substring):
+                  encodeString(substring);
+                  break;
+                default:
+                  `${globalVar}[${quote(WORD_LIST[substring])}]`;
+                  break;
               }
               break;
             case "unicode":
