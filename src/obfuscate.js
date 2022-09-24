@@ -80,7 +80,7 @@ function encodeText(code, globalVar, {strictMode = false, quoteStyle = "", acces
     ] |> RegExp("^\\b(" + %.join`|` + ")\\b$");
 
   const REGEXPS = {
-    word: XRegExp(String.raw`[\pL\pN]+`, "g"),
+    word: XRegExp(String.raw`[\pL\pN]+|[\0-\x1f\x7f]+`, "g"),
     symbol: /[!-\/:-@[-`{-~]+/g,
     unicode: /[^ -~]+/g,
   };
@@ -409,6 +409,8 @@ function encodeText(code, globalVar, {strictMode = false, quoteStyle = "", acces
     split: "|",
     indexOf: "#",
     source: "`",
+    entries: "[",
+    fromEntries: "]",
   };
 
   output += ";" + encodeIdentifiers(IDENT_SET2);
@@ -652,13 +654,12 @@ function encodeText(code, globalVar, {strictMode = false, quoteStyle = "", acces
   /**
    * PART 4: ENCODING
    *
-   * What we would now do is encode the string by matching all
-   * words in the string, ranking them by their frequency and then
-   * assigning symbol keys to these values in base 30, excluding
-   * combinations with _ and $ which are valid identifiers
-   * and have already been assigned.
+   * We will now encode the string by matching all word patterns in the
+   * string, ranking them by their frequency and then assigning symbol keys
+   * to these values in base 32, skipping over all the keys which have been
+   * already defined.
    *
-   * They would be referenced later on when we assemble the
+   * These strings are referenced later on when we begin assembling the
    * string.
    */
 
@@ -669,6 +670,7 @@ function encodeText(code, globalVar, {strictMode = false, quoteStyle = "", acces
     /**
      * Convert an integer to bijective notation.
      * https://stackoverflow.com/questions/8603480/how-to-create-a-function-that-converts-a-number-to-a-bijective-hexavigesimal
+     *
      * @param {Number} int - A positive integer above zero
      * @return {String} The number's value expressed in uppercased bijective base-26
      */
@@ -702,7 +704,17 @@ function encodeText(code, globalVar, {strictMode = false, quoteStyle = "", acces
       const key = bijective(i, digitsTo);
       if (!existingKeys.has(key)) yield key;
     }
+
+    return;
   })();
+
+  /**
+   * Convert an integer to bijective notation.
+   * https://stackoverflow.com/questions/8603480/how-to-create-a-function-that-converts-a-number-to-a-bijective-hexavigesimal
+   *
+   * @param {Number} int - A positive integer above zero
+   * @return {String} The number's value expressed in uppercased bijective base-26
+   */
 
   const WORD_LIST =
     code.match(REGEXPS.word) ?? []
@@ -714,18 +726,33 @@ function encodeText(code, globalVar, {strictMode = false, quoteStyle = "", acces
 
   output +=
     ";" +
-    `${globalVar}={...${globalVar},` +
-    Object.entries(WORD_LIST).map(
-      ([word, key]) => `${quoteKey(key)}:${globalVar}[+![]](${quote(base31(word))})`
-    ) +
-    "}";
+    `${globalVar}={...${globalVar},[~[]]:{` +
+    Object.entries(WORD_LIST).map(([word, key]) => `${quoteKey(key)}:${quote(base31(word))}`) +
+    "}}";
+
+  const WORD_LIST_EXPR =
+    "globalVar[1]=Object.fromEntries(Object.entries(WORD_LIST).map(([k,v])=>[k,globalVar[0](v)]))"
+      .replace(/\b(v)\b/g, match => "_" + globalVar)
+      .replace(/\b(k)\b/g, match => "$" + globalVar)
+      .replace(/\b(0)\b/g, match => "+![]")
+      .replace(/\b(1)\b/g, match => `+!${quote("")}`)
+      .replace(/\b(WORD_LIST)\b/g, `${globalVar}[~[]]`)
+      .replace(/\b(globalVar)\b/g, globalVar)
+      .replace(/\b(Object)\b/g, match => `{}[${globalVar}.$]`)
+      .replace(
+        /\.\b(map|entries|fromEntries)\b/g,
+        p1 => `[${globalVar}[${quote(IDENT_SET[p1.slice(1)])}]]`
+      );
+
+  output += ";" + WORD_LIST_EXPR;
+  output += ";" + `${globalVar}={...${globalVar},...${globalVar}[+!'']}`;
 
   /**
    * PART 5: SUBSTITUTION
    *
    * We would first split up the text into spaces so we can join
    * the result into a string later on. Spaces are represented
-   * with empty arrays.
+   * with empty elements in an array and returned with joins.
    */
 
   const expression =
