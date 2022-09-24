@@ -237,13 +237,11 @@ function encodeText(code, globalVar, {strictMode = false, quoteStyle = "", acces
           const choice = [
             ["single", single],
             ["double", double],
-            ["backtick", backtick],
           ]
-            .map(([a, b]) => [a, a == "backtick" ? b.length + 2 : b.length])
+            .map(([a, b]) => [a, b.length])
             .sort(([, a], [, b]) => a - b)[0];
           const current = choice.every(v => v[1] == choice[0][1]) ? quotes[0] : choice[0][0];
-          if (current == "backtick") return `[${backtick}]`;
-          else return jsesc(string, {quotes: current, wrap: true});
+          return jsesc(string, {quotes: current, wrap: true});
         }
       }
     }
@@ -707,6 +705,9 @@ function encodeText(code, globalVar, {strictMode = false, quoteStyle = "", acces
             switch (group) {
               case "word":
                 switch (true) {
+                  case /\b[\da-zA-FINORSU]\b/.test(substring):
+                    encodeString(substring);
+                    break;
                   case typeof CONSTANTS[substring] == "string":
                     `\`\${${CONSTANTS[substring]}}\``;
                     break;
@@ -714,23 +715,12 @@ function encodeText(code, globalVar, {strictMode = false, quoteStyle = "", acces
                     `${CONSTRUCTORS[substring]}[${globalVar}.$][${globalVar}[${quote("?")}]]`;
                     break;
                   case typeof IDENT_SET[substring] == "string":
-                    accessor
-                      ? `$${globalVar}${jsesc(IDENT_SET[substring], {
-                          quotes: "backtick",
-                          wrap: true,
-                        })}`
-                      : `${globalVar}[${quote(IDENT_SET[substring])}]`;
-                    break;
-                  case /\b[\da-zA-FINORSU]\b/.test(substring):
-                    encodeString(substring);
+                    if (isValidIdentifier(IDENT_SET[substring]))
+                      globalVar + "." + IDENT_SET[substring];
+                    else globalVar + `[${quote(IDENT_SET[substring])}]`;
                     break;
                   default:
-                    accessor
-                      ? `$${globalVar}${jsesc(WORD_LIST[substring], {
-                          quotes: "backtick",
-                          wrap: true,
-                        })}`
-                      : `${globalVar}[${quote(WORD_LIST[substring])}]`;
+                    `${globalVar}[${quote(WORD_LIST[substring])}]`;
                     break;
                 }
                 break;

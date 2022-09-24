@@ -283,12 +283,12 @@ function encodeText(code, globalVar) {
       case "smart":
         {
           if ((0, _isValidIdentifier["default"])(string)) return string;else {
-            var choice = [["single", single], ["double", _double2], ["backtick", backtick]].map(function (_ref10) {
+            var choice = [["single", single], ["double", _double2]].map(function (_ref10) {
               var _ref11 = (0, _slicedToArray2["default"])(_ref10, 2),
                   a = _ref11[0],
                   b = _ref11[1];
 
-              return [a, a == "backtick" ? b.length + 2 : b.length];
+              return [a, b.length];
             }).sort(function (_ref12, _ref13) {
               var _ref14 = (0, _slicedToArray2["default"])(_ref12, 2),
                   a = _ref14[1];
@@ -303,7 +303,7 @@ function encodeText(code, globalVar) {
               return v[1] == choice[0][1];
             }) ? quotes[0] : choice[0][0];
 
-            if (_current6 == "backtick") return "[".concat(backtick, "]");else return (0, _jsesc["default"])(string, {
+            return (0, _jsesc["default"])(string, {
               quotes: _current6,
               wrap: true
             });
@@ -853,6 +853,9 @@ function encodeText(code, globalVar) {
         switch (group) {
           case "word":
             switch (true) {
+              case /\b[\da-zA-FINORSU]\b/.test(_substring):
+                return encodeString(_substring);
+
               case typeof CONSTANTS[_substring] == "string":
                 return "`${".concat(CONSTANTS[_substring], "}`");
 
@@ -860,19 +863,10 @@ function encodeText(code, globalVar) {
                 return "".concat(CONSTRUCTORS[_substring], "[").concat(globalVar, ".$][").concat(globalVar, "[").concat(quote("?"), "]]");
 
               case typeof IDENT_SET[_substring] == "string":
-                return accessor ? "$".concat(globalVar).concat((0, _jsesc["default"])(IDENT_SET[_substring], {
-                  quotes: "backtick",
-                  wrap: true
-                })) : "".concat(globalVar, "[").concat(quote(IDENT_SET[_substring]), "]");
-
-              case /\b[\da-zA-FINORSU]\b/.test(_substring):
-                return encodeString(_substring);
+                if ((0, _isValidIdentifier["default"])(IDENT_SET[_substring])) return globalVar + "." + IDENT_SET[_substring];else return globalVar + "[".concat(quote(IDENT_SET[_substring]), "]");
 
               default:
-                return accessor ? "$".concat(globalVar).concat((0, _jsesc["default"])(WORD_LIST[_substring], {
-                  quotes: "backtick",
-                  wrap: true
-                })) : "".concat(globalVar, "[").concat(quote(WORD_LIST[_substring]), "]");
+                return "".concat(globalVar, "[").concat(quote(WORD_LIST[_substring]), "]");
             }
 
             break;
