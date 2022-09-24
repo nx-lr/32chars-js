@@ -15,69 +15,9 @@ const text = fs.readFileSync("./input.txt", "utf8");
  * - Substitution, where the variables are used to construct strings;
  */
 
-function encodeText(code, globalVar, {strictMode = false, quoteStyle = "", accessor = false} = {}) {
+function encodeText(code, globalVar, {strictMode = false, quoteStyle = ""} = {}) {
   const BUILTINS =
-    [
-      "Array",
-      "ArrayBuffer",
-      "AsyncFunction",
-      "AsyncGenerator",
-      "AsyncGeneratorFunction",
-      "Atomics",
-      "BigInt",
-      "BigInt64Array",
-      "BigUint64Array",
-      "Boolean",
-      "DataView",
-      "Date",
-      "decodeURI",
-      "decodeURIComponent",
-      "encodeURI",
-      "encodeURIComponent",
-      "escape",
-      "eval",
-      "exports",
-      "Float32Array",
-      "Float64Array",
-      "Function",
-      "Generator",
-      "GeneratorFunction",
-      "globalThis",
-      "Infinity",
-      "Int16Array",
-      "Int32Array",
-      "Int8Array",
-      "Intl",
-      "isFinite",
-      "isNaN",
-      "JSON",
-      "Map",
-      "Math",
-      "module",
-      "NaN",
-      "Number",
-      "Object",
-      "parseFloat",
-      "parseInt",
-      "Promise",
-      "Proxy",
-      "Reflect",
-      "RegExp",
-      "Set",
-      "SharedArrayBuffer",
-      "String",
-      "Symbol",
-      "this",
-      "Uint16Array",
-      "Uint32Array",
-      "Uint8Array",
-      "Uint8ClampedArray",
-      "undefined",
-      "unescape",
-      "WeakMap",
-      "WeakSet",
-      "WebAssembly",
-    ] |> RegExp("^\\b(" + %.join`|` + ")\\b$");
+    /^(Array|ArrayBuffer|AsyncFunction|AsyncGenerator|AsyncGeneratorFunction|Atomics|BigInt|BigInt64Array|BigUint64Array|Boolean|DataView|Date|decodeURI|decodeURIComponent|encodeURI|encodeURIComponent|escape|eval|exports|Float32Array|Float64Array|Function|Generator|GeneratorFunction|globalThis|Infinity|Int16Array|Int32Array|Int8Array|Intl|isFinite|isNaN|JSON|Map|Math|module|NaN|Number|Object|parseFloat|parseInt|Promise|Proxy|Reflect|RegExp|Set|SharedArrayBuffer|String|Symbol|this|Uint16Array|Uint32Array|Uint8Array|Uint8ClampedArray|undefined|unescape|WeakMap|WeakSet|WebAssembly)$/;
 
   const REGEXPS = {
     word: XRegExp(String.raw`[\pL\pN]+|[\0-\x1f\x7f]+`, "g"),
@@ -120,38 +60,41 @@ function encodeText(code, globalVar, {strictMode = false, quoteStyle = "", acces
    */
 
   let count = 0;
-  const quote = string => {
-    const quotes = quoteStyle.match(/\b(single|double|backtick)\b/g) || ["single"],
-      mode = (quoteStyle.match(/\b(cycle|only|smart|random)\b/g) || ["smart"])[0];
+  const quoteSequence = quoteStyle.match(/\b(single|double|backtick)\b/g) || ["single"],
+    quoteMode = quoteStyle.match(/\b(cycle|only|smart|random)\b/g)[0] || "smart";
 
+  const quote = string => {
     const single = jsesc(string, {quotes: "single", wrap: true}),
       double = jsesc(string, {quotes: "double", wrap: true}),
       backtick = jsesc(string, {quotes: "backtick", wrap: true});
 
-    switch (mode) {
-      case "only": {
-        const current = quotes[0];
+    let current;
+    switch (quoteMode) {
+      case "only":
+        current = quoteSequence[0];
         return jsesc(string, {quotes: current, wrap: true});
-      }
-      case "cycle": {
-        const current = quotes[count++ % quotes.length];
+      case "cycle":
+        current = quoteSequence[count++ % quotes.length];
         return jsesc(string, {quotes: current, wrap: true});
-      }
-      case "random": {
-        const current =
-          Math.random() > 2 / 3 ? "backtick" : Math.random() > 1 / 3 ? "double" : "single";
+      case "random":
+        current = quoteSequence[Math.random() * quoteSequence.length];
         return jsesc(string, {quotes: current, wrap: true});
-      }
       case "smart": {
-        const choice = [
-          ["single", single],
-          ["double", double],
-          ["backtick", backtick],
-        ]
-          .map(([a, b]) => [a, b.length])
-          .sort(([, a], [, b]) => a - b);
-        const current = choice.every(v => v[1] == choice[0][1]) ? quotes[0] : choice[0][0];
-        return jsesc(string, {quotes: current, wrap: true});
+        const lengthMap = [
+          {type: "single", string: single, length: single.length},
+          {type: "double", string: double, length: double.length},
+          {type: "backtick", string: backtick, length: backtick.length},
+        ];
+        const lengths = lengthMap
+          .map(({type, length}) => length)
+          .sort(({length: a}, {length: b}) => a - b);
+        if (new Set(lengths).size != 1) {
+          current = lengthMap[0].type;
+          return jsesc(string, {quotes: current, wrap: true});
+        } else {
+          current = quoteSequence[0];
+          return jsesc(string, {quotes: current, wrap: true});
+        }
       }
     }
   };
@@ -207,40 +150,39 @@ function encodeText(code, globalVar, {strictMode = false, quoteStyle = "", acces
    */
 
   const quoteKey = string => {
-    const quotes = quoteStyle.match(/\b(single|double|backtick)\b/g) || ["single"],
-      mode = (quoteStyle.match(/\b(cycle|only|smart|random)\b/g) || ["smart"])[0];
-
     const single = jsesc(string, {quotes: "single", wrap: true}),
       double = jsesc(string, {quotes: "double", wrap: true}),
       backtick = jsesc(string, {quotes: "backtick", wrap: true});
 
-    switch (mode) {
-      case "only": {
-        const current = quotes[0];
+    let current;
+    switch (quoteMode) {
+      case "only":
+        current = quoteSequence[0];
         if (current == "backtick") return `[${backtick}]`;
-        else return jsesc(string, {quotes: current, wrap: true});
-      }
-      case "cycle": {
-        const current = quotes[count++ % quotes.length];
+        return jsesc(string, {quotes: current, wrap: true});
+      case "cycle":
+        current = quoteSequence[count++ % quotes.length];
         if (current == "backtick") return `[${backtick}]`;
-        else return jsesc(string, {quotes: current, wrap: true});
-      }
-      case "random": {
-        const current =
-          Math.random() > 2 / 3 ? "backtick" : Math.random() > 1 / 3 ? "double" : "single";
+        return jsesc(string, {quotes: current, wrap: true});
+      case "random":
+        current = quoteSequence[Math.random() * quoteSequence.length];
         if (current == "backtick") return `[${backtick}]`;
-        else return jsesc(string, {quotes: current, wrap: true});
-      }
+        return jsesc(string, {quotes: current, wrap: true});
       case "smart": {
         if (isValidIdentifier(string)) return string;
-        else {
-          const choice = [
-            ["single", single],
-            ["double", double],
-          ]
-            .map(([a, b]) => [a, b.length])
-            .sort(([, a], [, b]) => a - b)[0];
-          const current = choice.every(v => v[1] == choice[0][1]) ? quotes[0] : choice[0][0];
+        const lengthMap = [
+          {type: "single", string: single, length: single.length},
+          {type: "double", string: double, length: double.length},
+        ];
+        const lengths = lengthMap
+          .map(({type, length}) => length)
+          .sort(({length: a}, {length: b}) => a - b);
+        if (new Set(lengths).size != 1) {
+          current = lengthMap[0].type;
+          return jsesc(string, {quotes: current, wrap: true});
+        } else {
+          current = quoteSequence[0];
+          current = current == "backtick" ? "single" : current;
           return jsesc(string, {quotes: current, wrap: true});
         }
       }
@@ -248,11 +190,7 @@ function encodeText(code, globalVar, {strictMode = false, quoteStyle = "", acces
   };
 
   // The separator is a semicolon, not a comma.
-  let output = `${
-    strictMode ? `var ${globalVar},_${globalVar}${accessor ? `,$${globalVar}` : ""};` : ""
-  }${globalVar}=~[];`;
-
-  if (accessor) output += `$${globalVar}=([_${globalVar}])=>${globalVar}[_${globalVar}];`;
+  let output = `${strictMode ? `var ${globalVar},_${globalVar};` : ""}${globalVar}=~[];`;
 
   // STEP 1
   const CHARSET_1 = {};
@@ -814,7 +752,6 @@ Output length: ${enUS.format(output.length)}`,
 const {result, stats} = encodeText(text, "$", {
   strictMode: true,
   quoteStyle: "smart backtick",
-  accessor: false,
 });
 
 print(stats);
