@@ -133,7 +133,7 @@ function encodeText(code, globalVar, {strictMode = false, quoteStyle = "", thres
     (V.isUpperCase(char) ? "$" : "_") + CIPHER[LETTERS.indexOf(char.toLowerCase())];
 
   const encodeDigit = (number: string | number) =>
-    [...(+number).toString(2).padStart(3, 0)].map(match => (match == 1 ? "$" : "_")).join``;
+    (+number).toString(2).padStart(3, 0).split``.map(x => (x == 1 ? "$" : "_")).join``;
 
   /**
    * @example

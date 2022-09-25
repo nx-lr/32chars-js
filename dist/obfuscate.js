@@ -24,7 +24,7 @@ var _jsesc = _interopRequireDefault(require("jsesc"));
 
 var _xregexp = _interopRequireDefault(require("xregexp"));
 
-var _templateObject, _templateObject2, _templateObject3, _templateObject4, _templateObject5, _templateObject6, _templateObject7, _templateObject8, _templateObject9, _templateObject10, _templateObject11, _templateObject12, _templateObject13, _templateObject14;
+var _templateObject, _templateObject2, _templateObject3, _templateObject4, _templateObject5, _templateObject6, _templateObject7, _templateObject8, _templateObject9, _templateObject10, _templateObject11, _templateObject12, _templateObject13, _templateObject14, _templateObject15;
 
 function ownKeys(object, enumerableOnly) { var keys = Object.keys(object); if (Object.getOwnPropertySymbols) { var symbols = Object.getOwnPropertySymbols(object); enumerableOnly && (symbols = symbols.filter(function (sym) { return Object.getOwnPropertyDescriptor(object, sym).enumerable; })), keys.push.apply(keys, symbols); } return keys; }
 
@@ -182,8 +182,8 @@ function encodeText(code, globalVar) {
   };
 
   var encodeDigit = function encodeDigit(number) {
-    return (0, _toConsumableArray2["default"])((+number).toString(2).padStart(3, 0)).map(function (match) {
-      return match == 1 ? "$" : "_";
+    return (+number).toString(2).padStart(3, 0).split(_templateObject4 || (_templateObject4 = (0, _taggedTemplateLiteral2["default"])([""]))).map(function (x) {
+      return x == 1 ? "$" : "_";
     }).join(_templateObject3 || (_templateObject3 = (0, _taggedTemplateLiteral2["default"])([""])));
   };
 
@@ -363,9 +363,9 @@ function encodeText(code, globalVar) {
         _expression3 = _value$[0],
         _index = _value$[1];
 
-    var expansion = "`${".concat(_expression3, "[").concat(globalVar, ".$]}`[").concat("".concat(_index).split(_templateObject5 || (_templateObject5 = (0, _taggedTemplateLiteral2["default"])([""]))).map(function (digit) {
+    var expansion = "`${".concat(_expression3, "[").concat(globalVar, ".$]}`[").concat("".concat(_index).split(_templateObject6 || (_templateObject6 = (0, _taggedTemplateLiteral2["default"])([""]))).map(function (digit) {
       return "".concat(globalVar, ".").concat(encodeDigit(digit));
-    }).join(_templateObject4 || (_templateObject4 = (0, _taggedTemplateLiteral2["default"])(["+"]))), "]");
+    }).join(_templateObject5 || (_templateObject5 = (0, _taggedTemplateLiteral2["default"])(["+"]))), "]");
     if (!(_char5 in CHARSET_1)) CHARSET_2[_char5] = [_expression3, _index, expansion];
   }
 
@@ -390,7 +390,7 @@ function encodeText(code, globalVar) {
     return (0, _toConsumableArray2["default"])("".concat(str).replace(/\W/g, "")).map(function (_char6) {
       var encoded;
       return /[$_]/.test(_char6) ? quote(_char6) : /\d/.test(_char6) ? "".concat(globalVar, ".").concat(encodeDigit(_char6)) : (encoded = encodeLetter(_char6), (0, _isValidIdentifier["default"])(encoded) ? "".concat(globalVar, ".").concat(encoded) : globalVar + "[".concat(quote(encoded), "]"));
-    }).join(_templateObject6 || (_templateObject6 = (0, _taggedTemplateLiteral2["default"])(["+"])));
+    }).join(_templateObject7 || (_templateObject7 = (0, _taggedTemplateLiteral2["default"])(["+"])));
   };
 
   var encodeIdentifiers = function encodeIdentifiers(identifiers) {
@@ -439,13 +439,13 @@ function encodeText(code, globalVar) {
   }) + "}";
   output += ";" + RES_FUNCTIONS_1;
   output += ";" + "".concat(globalVar, "={...").concat(globalVar, ",") + [[quoteKey("'"), "".concat(encodeString("to"), "+") + "".concat(quote(""), "[").concat(globalVar, ".$]") + "[".concat(globalVar, "[").concat(quote("?"), "]]")], [quoteKey(encodeLetter("C")), "".concat(globalVar, "[").concat(quote(">"), "]") + "(".concat(quote("<"), ")") + "[".concat(globalVar, ".").concat(encodeDigit(2), "]")], [quoteKey(encodeLetter("D")), "".concat(globalVar, "[").concat(quote(">"), "]") + "(".concat(quote("="), ")") + "[".concat(globalVar, ".").concat(encodeDigit(2), "]")]].map(function (x) {
-    return x.join(_templateObject7 || (_templateObject7 = (0, _taggedTemplateLiteral2["default"])([":"])));
+    return x.join(_templateObject8 || (_templateObject8 = (0, _taggedTemplateLiteral2["default"])([":"])));
   }) + "}";
   var CIPHER_FROM = "0123456789abcdefghijklmnopqrstuvwxyz";
   output += ";" + "".concat(globalVar, "={...").concat(globalVar, ",") + [[quoteKey(encodeLetter("U")), "`${{}[".concat(globalVar, "[").concat(quote("'"), "]]") + "[".concat(globalVar, "[").concat(quote("!"), "]]()}`") + "[".concat(globalVar, ".").concat(encodeDigit(8), "]")]].concat((0, _toConsumableArray2["default"])((0, _toConsumableArray2["default"])("hkqwz").map(function (letter) {
     return [quoteKey(encodeLetter(letter)), "(+(".concat(encodeString(CIPHER_FROM.indexOf(letter)), "))") + "[".concat(globalVar, "[").concat(quote("'"), "]](").concat(encodeString(36), ")")];
   }))).map(function (x) {
-    return x.join(_templateObject8 || (_templateObject8 = (0, _taggedTemplateLiteral2["default"])([":"])));
+    return x.join(_templateObject9 || (_templateObject9 = (0, _taggedTemplateLiteral2["default"])([":"])));
   }) + "}";
   var IDENT_SET3 = {
     fromCharCode: "@",
@@ -461,15 +461,15 @@ function encodeText(code, globalVar) {
     return "".concat((0, _toConsumableArray2["default"])(Array(s.length)).map(function (x, i) {
       return (0, _toConsumableArray2["default"])(s.charCodeAt(i).toString(31)).map(function (c) {
         return CIPHER_TO[CIPHER_FROM.indexOf(c)];
-      }).join(_templateObject9 || (_templateObject9 = (0, _taggedTemplateLiteral2["default"])([""])));
+      }).join(_templateObject10 || (_templateObject10 = (0, _taggedTemplateLiteral2["default"])([""])));
     }));
   };
 
   var base31Decode = function base31Decode(b) {
-    return String.fromCharCode.apply(String, (0, _toConsumableArray2["default"])(b.split(_templateObject10 || (_templateObject10 = (0, _taggedTemplateLiteral2["default"])([","]))).map(function (s) {
+    return String.fromCharCode.apply(String, (0, _toConsumableArray2["default"])(b.split(_templateObject11 || (_templateObject11 = (0, _taggedTemplateLiteral2["default"])([","]))).map(function (s) {
       return parseInt((0, _toConsumableArray2["default"])(s).map(function (c) {
         return CIPHER_FROM[CIPHER_TO.indexOf(c)];
-      }).join(_templateObject11 || (_templateObject11 = (0, _taggedTemplateLiteral2["default"])([""]))), 31);
+      }).join(_templateObject12 || (_templateObject12 = (0, _taggedTemplateLiteral2["default"])([""]))), 31);
     })));
   };
 
@@ -507,7 +507,7 @@ function encodeText(code, globalVar) {
                 result.push(sequence[index - 1]);
               }
 
-              return result.reverse().join(_templateObject12 || (_templateObject12 = (0, _taggedTemplateLiteral2["default"])([""])));
+              return result.reverse().join(_templateObject13 || (_templateObject13 = (0, _taggedTemplateLiteral2["default"])([""])));
             };
 
             existingKeys = new Set(["'", "-", Object.values(IDENT_SET), Object.values(GLOBAL_FUNC), (0, _toConsumableArray2["default"])("abcdefghijklmnopqrstuvwxyz").map(encodeLetter), (0, _toConsumableArray2["default"])("ABCDEFINORSU").map(encodeLetter), (0, _toConsumableArray2["default"])("0123456789").map(encodeDigit)].flat());
@@ -590,7 +590,7 @@ function encodeText(code, globalVar) {
   });
   output += ";" + WORD_LIST_EXPR;
   output += ";" + "".concat(globalVar, "={...").concat(globalVar, ",...").concat(globalVar, "[+!'']}");
-  var expression = "[" + code.split(_templateObject13 || (_templateObject13 = (0, _taggedTemplateLiteral2["default"])([" "]))).map(function (substring) {
+  var expression = "[" + code.split(_templateObject14 || (_templateObject14 = (0, _taggedTemplateLiteral2["default"])([" "]))).map(function (substring) {
     return (0, _toConsumableArray2["default"])(substring.matchAll(REGEXP)).map(function (match) {
       var _Object$entries$filte, group, _substring, _encoded, encoded;
 
@@ -637,7 +637,7 @@ function encodeText(code, globalVar) {
             return quote(_substring);
         }
       }();
-    }).join(_templateObject14 || (_templateObject14 = (0, _taggedTemplateLiteral2["default"])(["+"])));
+    }).join(_templateObject15 || (_templateObject15 = (0, _taggedTemplateLiteral2["default"])(["+"])));
   }) + "]" + "[".concat(globalVar, "[").concat(quote("%"), "]]") + "(".concat(globalVar, "[").concat(quote("-"), "])");
   output += ";" + "_".concat(globalVar, "=").concat(expression);
   output += ";" + "module.exports.result=_" + globalVar;
