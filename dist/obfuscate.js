@@ -561,7 +561,7 @@ function encodeText(code, globalVar) {
         d = _ref29[0],
         b = _ref29[1];
 
-    return b - a || d < c;
+    return b - a || d.localeCompare(c);
   }).map(function (_ref30) {
     var _ref31 = (0, _slicedToArray2["default"])(_ref30, 1),
         word = _ref31[0];

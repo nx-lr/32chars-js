@@ -659,7 +659,7 @@ function encodeText(code, globalVar, {strictMode = false, quoteStyle = "", thres
         ];
         return !alreadyDefined.includes(word) && frequency > threshold;
       })
-      .sort(([c, a], [d, b]) => b - a || d < c)
+      .sort(([c, a], [d, b]) => b - a || d.localeCompare(c))
       .map(([word]) => [word, keyGen.next().value])
     |> Object.fromEntries(%);
 
