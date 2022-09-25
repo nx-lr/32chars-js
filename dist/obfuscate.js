@@ -41,13 +41,15 @@ var print = console.log;
 var text = _fs["default"].readFileSync("./input.txt", "utf8");
 
 function encodeText(code, globalVar) {
-  var _code$match, _ref30, _ref31;
+  var _code$match, _ref32, _ref33;
 
   var _ref = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : {},
       _ref$strictMode = _ref.strictMode,
       strictMode = _ref$strictMode === void 0 ? false : _ref$strictMode,
       _ref$quoteStyle = _ref.quoteStyle,
-      quoteStyle = _ref$quoteStyle === void 0 ? "" : _ref$quoteStyle;
+      quoteStyle = _ref$quoteStyle === void 0 ? "" : _ref$quoteStyle,
+      _ref$threshold = _ref.threshold,
+      threshold = _ref$threshold === void 0 ? 1 : _ref$threshold;
 
   var BUILTINS = /^(Array|ArrayBuffer|AsyncFunction|AsyncGenerator|AsyncGeneratorFunction|Atomics|BigInt|BigInt64Array|BigUint64Array|Boolean|DataView|Date|decodeURI|decodeURIComponent|encodeURI|encodeURIComponent|escape|eval|exports|Float32Array|Float64Array|Function|Generator|GeneratorFunction|globalThis|Infinity|Int16Array|Int32Array|Int8Array|Intl|isFinite|isNaN|JSON|Map|Math|module|NaN|Number|Object|parseFloat|parseInt|Promise|Proxy|Reflect|RegExp|Set|SharedArrayBuffer|String|Symbol|this|Uint16Array|Uint32Array|Uint8Array|Uint8ClampedArray|undefined|unescape|WeakMap|WeakSet|WebAssembly)$/;
   var REGEXPS = {
@@ -72,10 +74,24 @@ function encodeText(code, globalVar) {
       enUS = Intl.NumberFormat("en-us");
   if (code.length > MAX_STRING_LENGTH) throw new Error("Input string can only be up to ".concat(enUS.format(NODE_MAX_LENGTH), " characters long"));
   var count = 0;
+
+  var quoteHelper = function quoteHelper(string, quote) {
+    switch (quote) {
+      case "single":
+      case "double":
+        return JSON.stringify(string);
+
+      case "backtick":
+        return JSON.stringify(string);
+    }
+  };
+
   var quoteSequence = quoteStyle.match(/\b(single|double|backtick)\b/g) || ["single"],
       quoteMode = quoteStyle.match(/\b(cycle|only|smart|random)\b/g)[0] || "smart";
 
   var quote = function quote(string) {
+    var _current;
+
     var single = (0, _jsesc["default"])(string, {
       quotes: "single",
       wrap: true
@@ -115,42 +131,44 @@ function encodeText(code, globalVar) {
 
       case "smart":
         {
-          var lengthMap = [{
-            type: "single",
-            string: single,
-            length: single.length
-          }, {
-            type: "double",
-            string: _double,
-            length: _double.length
-          }, {
-            type: "backtick",
-            string: backtick,
-            length: backtick.length
-          }];
-          var lengths = lengthMap.map(function (_ref4) {
-            var type = _ref4.type,
-                length = _ref4.length;
-            return length;
-          }).sort(function (_ref5, _ref6) {
-            var a = _ref5.length;
-            var b = _ref6.length;
+          var chosen;
+          current = quoteSequence[0];
+          var lengthMap = {
+            single: single.length,
+            "double": _double.length,
+            backtick: backtick.length
+          },
+              lengthSorted = Object.entries(lengthMap).sort(function (_ref4, _ref5) {
+            var _ref6 = (0, _slicedToArray2["default"])(_ref4, 2),
+                a = _ref6[1];
+
+            var _ref7 = (0, _slicedToArray2["default"])(_ref5, 2),
+                b = _ref7[1];
+
             return a - b;
           });
 
-          if (new Set(lengths).size != 1) {
-            current = lengthMap[0].type;
-            return (0, _jsesc["default"])(string, {
-              quotes: current,
-              wrap: true
-            });
-          } else {
-            current = quoteSequence[0];
-            return (0, _jsesc["default"])(string, {
-              quotes: current,
-              wrap: true
-            });
+          var _lengthSorted = (0, _slicedToArray2["default"])(lengthSorted, 2),
+              _short = _lengthSorted[0],
+              mid = _lengthSorted[1];
+
+          switch (new Set(Object.values(lengthMap)).size) {
+            case 3:
+              chosen = _short[0];
+              break;
+
+            case 2:
+              chosen = _short[0] == current || mid[0] == current ? current : _short[0];
+              break;
+
+            case 1:
+              chosen = (_current = current) !== null && _current !== void 0 ? _current : _short[0];
           }
+
+          return (0, _jsesc["default"])(string, {
+            quotes: chosen,
+            wrap: true
+          });
         }
     }
   };
@@ -197,7 +215,6 @@ function encodeText(code, globalVar) {
     switch (quoteMode) {
       case "only":
         current = quoteSequence[0];
-        if (current == "backtick") return "[".concat(backtick, "]");
         return (0, _jsesc["default"])(string, {
           quotes: current,
           wrap: true
@@ -205,7 +222,6 @@ function encodeText(code, globalVar) {
 
       case "cycle":
         current = quoteSequence[count++ % quotes.length];
-        if (current == "backtick") return "[".concat(backtick, "]");
         return (0, _jsesc["default"])(string, {
           quotes: current,
           wrap: true
@@ -213,7 +229,6 @@ function encodeText(code, globalVar) {
 
       case "random":
         current = quoteSequence[Math.random() * quoteSequence.length];
-        if (current == "backtick") return "[".concat(backtick, "]");
         return (0, _jsesc["default"])(string, {
           quotes: current,
           wrap: true
@@ -222,39 +237,34 @@ function encodeText(code, globalVar) {
       case "smart":
         {
           if ((0, _isValidIdentifier["default"])(string)) return string;
-          var lengthMap = [{
-            type: "single",
-            string: single,
-            length: single.length
-          }, {
-            type: "double",
-            string: _double2,
-            length: _double2.length
-          }];
-          var lengths = lengthMap.map(function (_ref7) {
-            var type = _ref7.type,
-                length = _ref7.length;
-            return length;
-          }).sort(function (_ref8, _ref9) {
-            var a = _ref8.length;
-            var b = _ref9.length;
+          var chosen;
+          var lengthMap = {
+            single: single.length,
+            "double": _double2.length
+          },
+              lengthSorted = Object.entries(lengthMap).sort(function (_ref8, _ref9) {
+            var _ref10 = (0, _slicedToArray2["default"])(_ref8, 2),
+                a = _ref10[1];
+
+            var _ref11 = (0, _slicedToArray2["default"])(_ref9, 2),
+                b = _ref11[1];
+
             return a - b;
           });
 
-          if (new Set(lengths).size != 1) {
-            current = lengthMap[0].type;
-            return (0, _jsesc["default"])(string, {
-              quotes: current,
-              wrap: true
-            });
-          } else {
-            current = quoteSequence[0];
-            current = current == "backtick" ? "single" : current;
-            return (0, _jsesc["default"])(string, {
-              quotes: current,
-              wrap: true
-            });
+          switch (new Set(Object.values(lengthMap)).size) {
+            case 2:
+              chosen = lengthSorted[0][0];
+              break;
+
+            case 1:
+              chosen = quoteSequence[0] == "backtick" ? lengthSorted[0][0] : quoteSequence[0];
           }
+
+          return (0, _jsesc["default"])(string, {
+            quotes: chosen,
+            wrap: true
+          });
         }
     }
   };
@@ -283,17 +293,17 @@ function encodeText(code, globalVar) {
   }
 
   var RES_CHARSET_1 = "".concat(globalVar, "={") + (0, _toConsumableArray2["default"])(Array(10)).map(function ($, digit) {
-    return ["".concat(encodeDigit(digit), ":`${++").concat(globalVar, "}`")].concat((0, _toConsumableArray2["default"])(Object.entries(CHARSET_1).filter(function (_ref10) {
-      var _ref11 = (0, _slicedToArray2["default"])(_ref10, 2),
-          _ref11$ = (0, _slicedToArray2["default"])(_ref11[1], 2),
-          value = _ref11$[1];
+    return ["".concat(encodeDigit(digit), ":`${++").concat(globalVar, "}`")].concat((0, _toConsumableArray2["default"])(Object.entries(CHARSET_1).filter(function (_ref12) {
+      var _ref13 = (0, _slicedToArray2["default"])(_ref12, 2),
+          _ref13$ = (0, _slicedToArray2["default"])(_ref13[1], 2),
+          value = _ref13$[1];
 
       return value == digit;
-    }).map(function (_ref12) {
-      var _ref13 = (0, _slicedToArray2["default"])(_ref12, 2),
-          _char3 = _ref13[0],
-          _ref13$ = (0, _slicedToArray2["default"])(_ref13[1], 1),
-          literal = _ref13$[0];
+    }).map(function (_ref14) {
+      var _ref15 = (0, _slicedToArray2["default"])(_ref14, 2),
+          _char3 = _ref15[0],
+          _ref15$ = (0, _slicedToArray2["default"])(_ref15[1], 1),
+          literal = _ref15$[0];
 
       return "".concat(quoteKey(_char3 == " " ? "-" : encodeLetter(_char3)), ":`${").concat(literal, "}`[").concat(globalVar, "]");
     })));
@@ -366,11 +376,11 @@ function encodeText(code, globalVar) {
   };
 
   var CHARSET_2_DIFF = objectDifference(CHARSET_2, CHARSET_1);
-  var RES_CHARSET_2 = "".concat(globalVar, "={...").concat(globalVar, ",") + Object.entries(CHARSET_2_DIFF).map(function (_ref14) {
-    var _ref15 = (0, _slicedToArray2["default"])(_ref14, 2),
-        letter = _ref15[0],
-        _ref15$ = (0, _slicedToArray2["default"])(_ref15[1], 3),
-        expansion = _ref15$[2];
+  var RES_CHARSET_2 = "".concat(globalVar, "={...").concat(globalVar, ",") + Object.entries(CHARSET_2_DIFF).map(function (_ref16) {
+    var _ref17 = (0, _slicedToArray2["default"])(_ref16, 2),
+        letter = _ref17[0],
+        _ref17$ = (0, _slicedToArray2["default"])(_ref17[1], 3),
+        expansion = _ref17$[2];
 
     return "".concat(quoteKey(encodeLetter(letter)), ":").concat(expansion);
   }) + "}";
@@ -384,16 +394,16 @@ function encodeText(code, globalVar) {
   };
 
   var encodeIdentifiers = function encodeIdentifiers(identifiers) {
-    return "".concat(globalVar, "={...").concat(globalVar, ",") + Object.entries(identifiers).map(function (_ref16) {
-      var _ref17 = (0, _slicedToArray2["default"])(_ref16, 2),
-          ident = _ref17[0],
-          key = _ref17[1];
+    return "".concat(globalVar, "={...").concat(globalVar, ",") + Object.entries(identifiers).map(function (_ref18) {
+      var _ref19 = (0, _slicedToArray2["default"])(_ref18, 2),
+          ident = _ref19[0],
+          key = _ref19[1];
 
       return [key, encodeString(ident)];
-    }).map(function (_ref18) {
-      var _ref19 = (0, _slicedToArray2["default"])(_ref18, 2),
-          key = _ref19[0],
-          expr = _ref19[1];
+    }).map(function (_ref20) {
+      var _ref21 = (0, _slicedToArray2["default"])(_ref20, 2),
+          key = _ref21[0],
+          expr = _ref21[1];
 
       return "".concat(quoteKey(key), ":").concat(expr);
     }) + "}";
@@ -420,10 +430,10 @@ function encodeText(code, globalVar) {
     parseInt: "~",
     parseFloat: "."
   };
-  var RES_FUNCTIONS_1 = "".concat(globalVar, "={...").concat(globalVar, ",") + Object.entries(GLOBAL_FUNC).map(function (_ref20) {
-    var _ref21 = (0, _slicedToArray2["default"])(_ref20, 2),
-        ident = _ref21[0],
-        shortcut = _ref21[1];
+  var RES_FUNCTIONS_1 = "".concat(globalVar, "={...").concat(globalVar, ",") + Object.entries(GLOBAL_FUNC).map(function (_ref22) {
+    var _ref23 = (0, _slicedToArray2["default"])(_ref22, 2),
+        ident = _ref23[0],
+        shortcut = _ref23[1];
 
     return "".concat(quoteKey(shortcut), ":") + "(()=>{})" + "[".concat(globalVar, ".$]") + "(" + "".concat(globalVar, "._+").concat(globalVar, "[").concat(quote("-"), "]+").concat(encodeString(ident)) + ")" + "()";
   }) + "}";
@@ -443,7 +453,7 @@ function encodeText(code, globalVar) {
     toUpperCase: '"'
   };
   output += ";" + encodeIdentifiers(IDENT_SET3);
-  var CIPHER_TO = "_.:;!?*+^-=<>~'\"/|#$%&@{}()[]`\\";
+  var CIPHER_TO = "_.:;!?*+^-=<>~'\"`/|#$%&@{}()[]\\";
 
   var IDENT_SET = _objectSpread(_objectSpread(_objectSpread({}, IDENT_SET1), IDENT_SET2), IDENT_SET3);
 
@@ -535,30 +545,33 @@ function encodeText(code, globalVar) {
     }, _callee);
   })();
 
-  var WORD_LIST = (_ref31 = (_code$match = code.match(REGEXPS.word)) !== null && _code$match !== void 0 ? _code$match : [], (_ref30 = Object.entries(_lodash["default"].countBy(_ref31)).filter(function (_ref22) {
-    var _ref23 = (0, _slicedToArray2["default"])(_ref22, 2),
-        a = _ref23[0],
-        b = _ref23[1];
+  var WORD_LIST = (_ref33 = (_code$match = code.match(REGEXPS.word)) !== null && _code$match !== void 0 ? _code$match : [], (_ref32 = Object.entries(_lodash["default"].countBy(_ref33)).filter(function (_ref24) {
+    var _ref25 = (0, _slicedToArray2["default"])(_ref24, 2),
+        word = _ref25[0],
+        frequency = _ref25[1];
 
-    return !Object.keys(IDENT_SET).includes(a) && b > 1;
-  }).sort(function (_ref24, _ref25) {
-    var _ref26 = (0, _slicedToArray2["default"])(_ref24, 2),
-        a = _ref26[1];
+    var alreadyDefined = [].concat((0, _toConsumableArray2["default"])(Object.keys(_objectSpread(_objectSpread(_objectSpread({}, IDENT_SET), CONSTRUCTORS), CONSTANTS))), (0, _toConsumableArray2["default"])(CIPHER_FROM + "ABCDEFINORSU"));
+    return !alreadyDefined.includes(word) && frequency > threshold;
+  }).sort(function (_ref26, _ref27) {
+    var _ref28 = (0, _slicedToArray2["default"])(_ref26, 2),
+        c = _ref28[0],
+        a = _ref28[1];
 
-    var _ref27 = (0, _slicedToArray2["default"])(_ref25, 2),
-        b = _ref27[1];
+    var _ref29 = (0, _slicedToArray2["default"])(_ref27, 2),
+        d = _ref29[0],
+        b = _ref29[1];
 
-    return b - a;
-  }).map(function (_ref28) {
-    var _ref29 = (0, _slicedToArray2["default"])(_ref28, 1),
-        word = _ref29[0];
+    return b - a || d < c;
+  }).map(function (_ref30) {
+    var _ref31 = (0, _slicedToArray2["default"])(_ref30, 1),
+        word = _ref31[0];
 
     return [word, keyGen.next().value];
-  }), Object.fromEntries(_ref30)));
-  output += ";" + "".concat(globalVar, "={...").concat(globalVar, ",[~[]]:{") + Object.entries(WORD_LIST).map(function (_ref32) {
-    var _ref33 = (0, _slicedToArray2["default"])(_ref32, 2),
-        word = _ref33[0],
-        key = _ref33[1];
+  }), Object.fromEntries(_ref32)));
+  output += ";" + "".concat(globalVar, "={...").concat(globalVar, ",[~[]]:{") + Object.entries(WORD_LIST).map(function (_ref34) {
+    var _ref35 = (0, _slicedToArray2["default"])(_ref34, 2),
+        word = _ref35[0],
+        key = _ref35[1];
 
     return "".concat(quoteKey(key), ":").concat(quote(base31(word)));
   }) + "}}";
@@ -582,9 +595,9 @@ function encodeText(code, globalVar) {
       var _Object$entries$filte, group, _substring, _encoded, encoded;
 
       return function () {
-        _Object$entries$filte = (0, _slicedToArray2["default"])(Object.entries(match.groups).filter(function (_ref34) {
-          var _ref35 = (0, _slicedToArray2["default"])(_ref34, 2),
-              val = _ref35[1];
+        _Object$entries$filte = (0, _slicedToArray2["default"])(Object.entries(match.groups).filter(function (_ref36) {
+          var _ref37 = (0, _slicedToArray2["default"])(_ref36, 2),
+              val = _ref37[1];
 
           return !!val;
         })[0], 2);

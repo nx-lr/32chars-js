@@ -15,7 +15,7 @@ const text = fs.readFileSync("./input.txt", "utf8");
  * - Substitution, where the variables are used to construct strings;
  */
 
-function encodeText(code, globalVar, {strictMode = false, quoteStyle = ""} = {}) {
+function encodeText(code, globalVar, {strictMode = false, quoteStyle = "", threshold = 1} = {}) {
   const BUILTINS =
     /^(Array|ArrayBuffer|AsyncFunction|AsyncGenerator|AsyncGeneratorFunction|Atomics|BigInt|BigInt64Array|BigUint64Array|Boolean|DataView|Date|decodeURI|decodeURIComponent|encodeURI|encodeURIComponent|escape|eval|exports|Float32Array|Float64Array|Function|Generator|GeneratorFunction|globalThis|Infinity|Int16Array|Int32Array|Int8Array|Intl|isFinite|isNaN|JSON|Map|Math|module|NaN|Number|Object|parseFloat|parseInt|Promise|Proxy|Reflect|RegExp|Set|SharedArrayBuffer|String|Symbol|this|Uint16Array|Uint32Array|Uint8Array|Uint8ClampedArray|undefined|unescape|WeakMap|WeakSet|WebAssembly)$/;
 
@@ -60,6 +60,16 @@ function encodeText(code, globalVar, {strictMode = false, quoteStyle = ""} = {})
    */
 
   let count = 0;
+  const quoteHelper = (string: string, quote: "single" | "double" | "backtick"): string => {
+    switch (quote) {
+      case "single":
+      case "double":
+        return JSON.stringify(string);
+      case "backtick":
+        return JSON.stringify(string);
+    }
+  };
+
   const quoteSequence = quoteStyle.match(/\b(single|double|backtick)\b/g) || ["single"],
     quoteMode = quoteStyle.match(/\b(cycle|only|smart|random)\b/g)[0] || "smart";
 
@@ -80,21 +90,22 @@ function encodeText(code, globalVar, {strictMode = false, quoteStyle = ""} = {})
         current = quoteSequence[Math.random() * quoteSequence.length];
         return jsesc(string, {quotes: current, wrap: true});
       case "smart": {
-        const lengthMap = [
-          {type: "single", string: single, length: single.length},
-          {type: "double", string: double, length: double.length},
-          {type: "backtick", string: backtick, length: backtick.length},
-        ];
-        const lengths = lengthMap
-          .map(({type, length}) => length)
-          .sort(({length: a}, {length: b}) => a - b);
-        if (new Set(lengths).size != 1) {
-          current = lengthMap[0].type;
-          return jsesc(string, {quotes: current, wrap: true});
-        } else {
-          current = quoteSequence[0];
-          return jsesc(string, {quotes: current, wrap: true});
+        let chosen;
+        current = quoteSequence[0];
+        const lengthMap = {single: single.length, double: double.length, backtick: backtick.length},
+          lengthSorted = Object.entries(lengthMap).sort(([, a], [, b]) => a - b);
+        const [short, mid] = lengthSorted;
+        switch (new Set(Object.values(lengthMap)).size) {
+          case 3:
+            chosen = short[0];
+            break;
+          case 2:
+            chosen = short[0] == current || mid[0] == current ? current : short[0];
+            break;
+          case 1:
+            chosen = current ?? short[0];
         }
+        return jsesc(string, {quotes: chosen, wrap: true});
       }
     }
   };
@@ -158,33 +169,26 @@ function encodeText(code, globalVar, {strictMode = false, quoteStyle = ""} = {})
     switch (quoteMode) {
       case "only":
         current = quoteSequence[0];
-        if (current == "backtick") return `[${backtick}]`;
         return jsesc(string, {quotes: current, wrap: true});
       case "cycle":
         current = quoteSequence[count++ % quotes.length];
-        if (current == "backtick") return `[${backtick}]`;
         return jsesc(string, {quotes: current, wrap: true});
       case "random":
         current = quoteSequence[Math.random() * quoteSequence.length];
-        if (current == "backtick") return `[${backtick}]`;
         return jsesc(string, {quotes: current, wrap: true});
       case "smart": {
         if (isValidIdentifier(string)) return string;
-        const lengthMap = [
-          {type: "single", string: single, length: single.length},
-          {type: "double", string: double, length: double.length},
-        ];
-        const lengths = lengthMap
-          .map(({type, length}) => length)
-          .sort(({length: a}, {length: b}) => a - b);
-        if (new Set(lengths).size != 1) {
-          current = lengthMap[0].type;
-          return jsesc(string, {quotes: current, wrap: true});
-        } else {
-          current = quoteSequence[0];
-          current = current == "backtick" ? "single" : current;
-          return jsesc(string, {quotes: current, wrap: true});
+        let chosen;
+        const lengthMap = {single: single.length, double: double.length},
+          lengthSorted = Object.entries(lengthMap).sort(([, a], [, b]) => a - b);
+        switch (new Set(Object.values(lengthMap)).size) {
+          case 2:
+            chosen = lengthSorted[0][0];
+            break;
+          case 1:
+            chosen = quoteSequence[0] == "backtick" ? lengthSorted[0][0] : quoteSequence[0];
         }
+        return jsesc(string, {quotes: chosen, wrap: true});
       }
     }
   };
@@ -493,7 +497,7 @@ function encodeText(code, globalVar, {strictMode = false, quoteStyle = ""} = {})
    *   ignoring all boundaries.
    */
 
-  const CIPHER_TO = `_.:;!?*+^-=<>~'"/|#$%&@{}()[]\`\\`;
+  const CIPHER_TO = "_.:;!?*+^-=<>~'\"`/|#$%&@{}()[]\\";
   const IDENT_SET = {...IDENT_SET1, ...IDENT_SET2, ...IDENT_SET3};
 
   /**
@@ -648,8 +652,14 @@ function encodeText(code, globalVar, {strictMode = false, quoteStyle = ""} = {})
   const WORD_LIST =
     code.match(REGEXPS.word) ?? []
     |> Object.entries(_.countBy(%))
-      .filter(([a, b]) => !Object.keys(IDENT_SET).includes(a) && b > 1)
-      .sort(([, a], [, b]) => b - a)
+      .filter(([word, frequency]) => {
+        const alreadyDefined = [
+          ...Object.keys({...IDENT_SET, ...CONSTRUCTORS, ...CONSTANTS}),
+          ...(CIPHER_FROM + "ABCDEFINORSU"),
+        ];
+        return !alreadyDefined.includes(word) && frequency > threshold;
+      })
+      .sort(([c, a], [d, b]) => b - a || d < c)
       .map(([word]) => [word, keyGen.next().value])
     |> Object.fromEntries(%);
 
