@@ -48,6 +48,8 @@ function encodeText(code, globalVar) {
       strictMode = _ref$strictMode === void 0 ? false : _ref$strictMode,
       _ref$quoteStyle = _ref.quoteStyle,
       quoteStyle = _ref$quoteStyle === void 0 ? "" : _ref$quoteStyle,
+      _ref$variable = _ref.variable,
+      variable = _ref$variable === void 0 ? "var" : _ref$variable,
       _ref$threshold = _ref.threshold,
       threshold = _ref$threshold === void 0 ? 1 : _ref$threshold;
 
@@ -74,24 +76,10 @@ function encodeText(code, globalVar) {
       enUS = Intl.NumberFormat("en-us");
   if (code.length > MAX_STRING_LENGTH) throw new Error("Input string can only be up to ".concat(enUS.format(NODE_MAX_LENGTH), " characters long"));
   var count = 0;
-
-  var quoteHelper = function quoteHelper(string, quote) {
-    switch (quote) {
-      case "single":
-      case "double":
-        return JSON.stringify(string);
-
-      case "backtick":
-        return JSON.stringify(string);
-    }
-  };
-
   var quoteSequence = quoteStyle.match(/\b(single|double|backtick)\b/g) || ["single"],
       quoteMode = quoteStyle.match(/\b(cycle|only|smart|random)\b/g)[0] || "smart";
 
   var quote = function quote(string) {
-    var _current;
-
     var single = (0, _jsesc["default"])(string, {
       quotes: "single",
       wrap: true
@@ -110,29 +98,21 @@ function encodeText(code, globalVar) {
     switch (quoteMode) {
       case "only":
         current = quoteSequence[0];
-        return (0, _jsesc["default"])(string, {
-          quotes: current,
-          wrap: true
-        });
+        break;
 
       case "cycle":
-        current = quoteSequence[count++ % quotes.length];
-        return (0, _jsesc["default"])(string, {
-          quotes: current,
-          wrap: true
-        });
+        current = quoteSequence[count++ % quoteSequence.length];
+        break;
 
       case "random":
-        current = quoteSequence[Math.random() * quoteSequence.length];
-        return (0, _jsesc["default"])(string, {
-          quotes: current,
-          wrap: true
-        });
+        current = quoteSequence[~~(Math.random() * quoteSequence.length)];
+        break;
 
       case "smart":
         {
           var chosen;
           current = quoteSequence[0];
+
           var lengthMap = {
             single: single.length,
             "double": _double.length,
@@ -146,9 +126,8 @@ function encodeText(code, globalVar) {
                 b = _ref7[1];
 
             return a - b;
-          });
-
-          var _lengthSorted = (0, _slicedToArray2["default"])(lengthSorted, 2),
+          }),
+              _lengthSorted = (0, _slicedToArray2["default"])(lengthSorted, 2),
               _short = _lengthSorted[0],
               mid = _lengthSorted[1];
 
@@ -162,15 +141,18 @@ function encodeText(code, globalVar) {
               break;
 
             case 1:
-              chosen = (_current = current) !== null && _current !== void 0 ? _current : _short[0];
+              chosen = current || _short[0];
+              break;
           }
 
-          return (0, _jsesc["default"])(string, {
-            quotes: chosen,
-            wrap: true
-          });
+          current = chosen;
         }
     }
+
+    return (0, _jsesc["default"])(string, {
+      quotes: current,
+      wrap: true
+    });
   };
 
   var LETTERS = "abcdefghijklmnopqrstuvwxyz";
@@ -215,29 +197,25 @@ function encodeText(code, globalVar) {
     switch (quoteMode) {
       case "only":
         current = quoteSequence[0];
-        return (0, _jsesc["default"])(string, {
-          quotes: current,
-          wrap: true
-        });
+        if (current == "backtick") return "[".concat(backtick, "]");
+        break;
 
       case "cycle":
-        current = quoteSequence[count++ % quotes.length];
-        return (0, _jsesc["default"])(string, {
-          quotes: current,
-          wrap: true
-        });
+        current = quoteSequence[count++ % quoteSequence.length];
+        if (current == "backtick") return "[".concat(backtick, "]");
+        break;
 
       case "random":
-        current = quoteSequence[Math.random() * quoteSequence.length];
-        return (0, _jsesc["default"])(string, {
-          quotes: current,
-          wrap: true
-        });
+        current = quoteSequence[~~(Math.random() * quoteSequence.length)];
+        if (current == "backtick") return "[".concat(backtick, "]");
+        break;
 
       case "smart":
         {
           if ((0, _isValidIdentifier["default"])(string)) return string;
           var chosen;
+          current = quoteSequence[0];
+
           var lengthMap = {
             single: single.length,
             "double": _double2.length
@@ -250,26 +228,32 @@ function encodeText(code, globalVar) {
                 b = _ref11[1];
 
             return a - b;
-          });
+          }),
+              _lengthSorted2 = (0, _slicedToArray2["default"])(lengthSorted, 2),
+              _short2 = _lengthSorted2[0],
+              mid = _lengthSorted2[1];
 
           switch (new Set(Object.values(lengthMap)).size) {
             case 2:
-              chosen = lengthSorted[0][0];
+              chosen = _short2[0];
               break;
 
             case 1:
-              chosen = quoteSequence[0] == "backtick" ? lengthSorted[0][0] : quoteSequence[0];
+              chosen = current == "backtick" ? "single" : current || _short2[0];
+              break;
           }
 
-          return (0, _jsesc["default"])(string, {
-            quotes: chosen,
-            wrap: true
-          });
+          current = chosen;
         }
     }
+
+    return (0, _jsesc["default"])(string, {
+      quotes: current,
+      wrap: true
+    });
   };
 
-  var output = "".concat(strictMode ? "var ".concat(globalVar, ",_").concat(globalVar, ";") : "").concat(globalVar, "=~[];");
+  var output = (strictMode ? "".concat(variable.trim().toLowerCase() == "var" ? "var" : "let") + " ".concat(globalVar, ",_").concat(globalVar, ";") : "") + "".concat(globalVar, "=~[];");
   var CHARSET_1 = {};
 
   for (var _i = 0, _Object$entries = Object.entries(CONSTANTS); _i < _Object$entries.length; _i++) {
@@ -418,7 +402,6 @@ function encodeText(code, globalVar) {
     repeat: "*",
     split: "|",
     indexOf: "#",
-    source: "`",
     entries: "[",
     fromEntries: "]"
   };
@@ -450,6 +433,7 @@ function encodeText(code, globalVar) {
   var IDENT_SET3 = {
     fromCharCode: "@",
     keys: "&",
+    raw: "`",
     toUpperCase: '"'
   };
   output += ";" + encodeIdentifiers(IDENT_SET3);
@@ -590,53 +574,61 @@ function encodeText(code, globalVar) {
   });
   output += ";" + WORD_LIST_EXPR;
   output += ";" + "".concat(globalVar, "={...").concat(globalVar, ",...").concat(globalVar, "[+!'']}");
+
+  var testRawString = function testRawString(string) {
+    try {
+      if (/(?<!\\)\$\{/.test(string)) throw new Error();
+      eval("(`".concat(string, "`)"));
+      return true;
+    } catch (_unused) {
+      return false;
+    }
+  };
+
   var expression = "[" + code.split(_templateObject14 || (_templateObject14 = (0, _taggedTemplateLiteral2["default"])([" "]))).map(function (substring) {
     return (0, _toConsumableArray2["default"])(substring.matchAll(REGEXP)).map(function (match) {
-      var _Object$entries$filte, group, _substring, _encoded, encoded;
+      var _Object$entries$filte = (0, _slicedToArray2["default"])(Object.entries(match.groups).filter(function (_ref36) {
+        var _ref37 = (0, _slicedToArray2["default"])(_ref36, 2),
+            val = _ref37[1];
 
-      return function () {
-        _Object$entries$filte = (0, _slicedToArray2["default"])(Object.entries(match.groups).filter(function (_ref36) {
-          var _ref37 = (0, _slicedToArray2["default"])(_ref36, 2),
-              val = _ref37[1];
+        return !!val;
+      })[0], 2),
+          group = _Object$entries$filte[0],
+          substring = _Object$entries$filte[1];
 
-          return !!val;
-        })[0], 2);
-        group = _Object$entries$filte[0];
-        _substring = _Object$entries$filte[1];
+      switch (group) {
+        case "unicode":
+          var encoded = base31(substring);
+          return "".concat(globalVar, "[+![]](").concat(quote(encoded), ")");
 
-        switch (group) {
-          case "word":
-            switch (true) {
-              case /\b[\da-zA-FINORSU]\b/.test(_substring):
-                return encodeString(_substring);
+        case "word":
+          switch (true) {
+            case /\b[\da-zA-FINORSU]\b/.test(substring):
+              return encodeString(substring);
 
-              case typeof CONSTANTS[_substring] == "string":
-                return "`${".concat(CONSTANTS[_substring], "}`");
+            case typeof CONSTANTS[substring] == "string":
+              return "`${".concat(CONSTANTS[substring], "}`");
 
-              case typeof CONSTRUCTORS[_substring] == "string":
-                return "".concat(CONSTRUCTORS[_substring], "[").concat(globalVar, ".$][").concat(globalVar, "[").concat(quote("?"), "]]");
+            case typeof CONSTRUCTORS[substring] == "string":
+              return "".concat(CONSTRUCTORS[substring], "[").concat(globalVar, ".$][").concat(globalVar, "[").concat(quote("?"), "]]");
 
-              case typeof IDENT_SET[_substring] == "string":
-                if ((0, _isValidIdentifier["default"])(IDENT_SET[_substring])) return globalVar + "." + IDENT_SET[_substring];else return globalVar + "[".concat(quote(IDENT_SET[_substring]), "]");
+            case typeof IDENT_SET[substring] == "string":
+              if ((0, _isValidIdentifier["default"])(IDENT_SET[substring])) return globalVar + "." + IDENT_SET[substring];else return globalVar + "[".concat(quote(IDENT_SET[substring]), "]");
 
-              case typeof WORD_LIST[_substring] == "string":
-                return "".concat(globalVar, "[").concat(quote(WORD_LIST[_substring]), "]");
+            case typeof WORD_LIST[substring] == "string":
+              return "".concat(globalVar, "[").concat(quote(WORD_LIST[substring]), "]");
 
-              default:
-                _encoded = base31(_substring);
-                return "".concat(globalVar, "[+![]](").concat(quote(_encoded), ")");
-            }
+            default:
+              var _encoded = base31(substring);
 
-            break;
+              return "".concat(globalVar, "[+![]](").concat(quote(_encoded), ")");
+          }
 
-          case "unicode":
-            encoded = base31(_substring);
-            return "".concat(globalVar, "[+![]](").concat(quote(encoded), ")");
-
-          default:
-            return quote(_substring);
-        }
-      }();
+        default:
+          {
+            if (substring.includes("\\") && testRawString(substring)) return "".concat(quote(""), "[").concat(globalVar, ".$][").concat(globalVar, "[").concat(quote("`"), "]]`").concat(substring, "`");else return quote(substring);
+          }
+      }
     }).join(_templateObject15 || (_templateObject15 = (0, _taggedTemplateLiteral2["default"])(["+"])));
   }) + "]" + "[".concat(globalVar, "[").concat(quote("%"), "]]") + "(".concat(globalVar, "[").concat(quote("-"), "])");
   output += ";" + "_".concat(globalVar, "=").concat(expression);

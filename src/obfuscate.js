@@ -15,7 +15,11 @@ const text = fs.readFileSync("./input.txt", "utf8");
  * - Substitution, where the variables are used to construct strings;
  */
 
-function encodeText(code, globalVar, {strictMode = false, quoteStyle = "", threshold = 1} = {}) {
+function encodeText(
+  code,
+  globalVar,
+  {strictMode = false, quoteStyle = "", variable = "var", threshold = 1} = {}
+) {
   const BUILTINS =
     /^(Array|ArrayBuffer|AsyncFunction|AsyncGenerator|AsyncGeneratorFunction|Atomics|BigInt|BigInt64Array|BigUint64Array|Boolean|DataView|Date|decodeURI|decodeURIComponent|encodeURI|encodeURIComponent|escape|eval|exports|Float32Array|Float64Array|Function|Generator|GeneratorFunction|globalThis|Infinity|Int16Array|Int32Array|Int8Array|Intl|isFinite|isNaN|JSON|Map|Math|module|NaN|Number|Object|parseFloat|parseInt|Promise|Proxy|Reflect|RegExp|Set|SharedArrayBuffer|String|Symbol|this|Uint16Array|Uint32Array|Uint8Array|Uint8ClampedArray|undefined|unescape|WeakMap|WeakSet|WebAssembly)$/;
 
@@ -60,15 +64,6 @@ function encodeText(code, globalVar, {strictMode = false, quoteStyle = "", thres
    */
 
   let count = 0;
-  const quoteHelper = (string: string, quote: "single" | "double" | "backtick"): string => {
-    switch (quote) {
-      case "single":
-      case "double":
-        return JSON.stringify(string);
-      case "backtick":
-        return JSON.stringify(string);
-    }
-  };
 
   const quoteSequence = quoteStyle.match(/\b(single|double|backtick)\b/g) || ["single"],
     quoteMode = quoteStyle.match(/\b(cycle|only|smart|random)\b/g)[0] || "smart";
@@ -82,19 +77,19 @@ function encodeText(code, globalVar, {strictMode = false, quoteStyle = "", thres
     switch (quoteMode) {
       case "only":
         current = quoteSequence[0];
-        return jsesc(string, {quotes: current, wrap: true});
+        break;
       case "cycle":
-        current = quoteSequence[count++ % quotes.length];
-        return jsesc(string, {quotes: current, wrap: true});
+        current = quoteSequence[count++ % quoteSequence.length];
+        break;
       case "random":
-        current = quoteSequence[Math.random() * quoteSequence.length];
-        return jsesc(string, {quotes: current, wrap: true});
+        current = quoteSequence[~~(Math.random() * quoteSequence.length)];
+        break;
       case "smart": {
         let chosen;
         current = quoteSequence[0];
         const lengthMap = {single: single.length, double: double.length, backtick: backtick.length},
-          lengthSorted = Object.entries(lengthMap).sort(([, a], [, b]) => a - b);
-        const [short, mid] = lengthSorted;
+          lengthSorted = Object.entries(lengthMap).sort(([, a], [, b]) => a - b),
+          [short, mid] = lengthSorted;
         switch (new Set(Object.values(lengthMap)).size) {
           case 3:
             chosen = short[0];
@@ -103,11 +98,14 @@ function encodeText(code, globalVar, {strictMode = false, quoteStyle = "", thres
             chosen = short[0] == current || mid[0] == current ? current : short[0];
             break;
           case 1:
-            chosen = current ?? short[0];
+            chosen = current || short[0];
+            break;
         }
-        return jsesc(string, {quotes: chosen, wrap: true});
+        current = chosen;
       }
     }
+
+    return jsesc(string, {quotes: current, wrap: true});
   };
 
   /**
@@ -169,32 +167,43 @@ function encodeText(code, globalVar, {strictMode = false, quoteStyle = "", thres
     switch (quoteMode) {
       case "only":
         current = quoteSequence[0];
-        return jsesc(string, {quotes: current, wrap: true});
+        if (current == "backtick") return `[${backtick}]`;
+        break;
       case "cycle":
-        current = quoteSequence[count++ % quotes.length];
-        return jsesc(string, {quotes: current, wrap: true});
+        current = quoteSequence[count++ % quoteSequence.length];
+        if (current == "backtick") return `[${backtick}]`;
+        break;
       case "random":
-        current = quoteSequence[Math.random() * quoteSequence.length];
-        return jsesc(string, {quotes: current, wrap: true});
+        current = quoteSequence[~~(Math.random() * quoteSequence.length)];
+        if (current == "backtick") return `[${backtick}]`;
+        break;
       case "smart": {
         if (isValidIdentifier(string)) return string;
         let chosen;
+        current = quoteSequence[0];
         const lengthMap = {single: single.length, double: double.length},
-          lengthSorted = Object.entries(lengthMap).sort(([, a], [, b]) => a - b);
+          lengthSorted = Object.entries(lengthMap).sort(([, a], [, b]) => a - b),
+          [short, mid] = lengthSorted;
         switch (new Set(Object.values(lengthMap)).size) {
           case 2:
-            chosen = lengthSorted[0][0];
+            chosen = short[0];
             break;
           case 1:
-            chosen = quoteSequence[0] == "backtick" ? lengthSorted[0][0] : quoteSequence[0];
+            chosen = current == "backtick" ? "single" : current || short[0];
+            break;
         }
-        return jsesc(string, {quotes: chosen, wrap: true});
+        current = chosen;
       }
     }
+
+    return jsesc(string, {quotes: current, wrap: true});
   };
 
   // The separator is a semicolon, not a comma.
-  let output = `${strictMode ? `var ${globalVar},_${globalVar};` : ""}${globalVar}=~[];`;
+  let output =
+    (strictMode
+      ? `${variable.trim().toLowerCase() == "var" ? "var" : "let"}` + ` ${globalVar},_${globalVar};`
+      : "") + `${globalVar}=~[];`;
 
   // STEP 1
   const CHARSET_1 = {};
@@ -351,7 +360,6 @@ function encodeText(code, globalVar, {strictMode = false, quoteStyle = "", thres
     repeat: "*",
     split: "|",
     indexOf: "#",
-    source: "`",
     entries: "[",
     fromEntries: "]",
   };
@@ -474,7 +482,7 @@ function encodeText(code, globalVar, {strictMode = false, quoteStyle = "", thres
     ].map(x => x.join`:`) +
     "}";
 
-  const IDENT_SET3 = {fromCharCode: "@", keys: "&", toUpperCase: '"'};
+  const IDENT_SET3 = {fromCharCode: "@", keys: "&", raw: "`", toUpperCase: '"'};
   output += ";" + encodeIdentifiers(IDENT_SET3);
 
   /**
@@ -694,49 +702,51 @@ function encodeText(code, globalVar, {strictMode = false, quoteStyle = "", thres
    * with empty elements in an array and returned with joins.
    */
 
+  const testRawString = string => {
+    try {
+      if (/(?<!\\)\$\{/.test(string)) throw new Error();
+      eval(`(\`${string}\`)`);
+      return true;
+    } catch {
+      return false;
+    }
+  };
+
   const expression =
     "[" +
     code.split` `.map(
       substring =>
-        [...substring.matchAll(REGEXP)].map(
-          match => do {
-            const [group, substring] = Object.entries(match.groups).filter(([, val]) => !!val)[0];
-            switch (group) {
-              case "word":
-                switch (true) {
-                  case /\b[\da-zA-FINORSU]\b/.test(substring):
-                    encodeString(substring);
-                    break;
-                  case typeof CONSTANTS[substring] == "string":
-                    `\`\${${CONSTANTS[substring]}}\``;
-                    break;
-                  case typeof CONSTRUCTORS[substring] == "string":
-                    `${CONSTRUCTORS[substring]}[${globalVar}.$][${globalVar}[${quote("?")}]]`;
-                    break;
-                  case typeof IDENT_SET[substring] == "string":
-                    if (isValidIdentifier(IDENT_SET[substring]))
-                      globalVar + "." + IDENT_SET[substring];
-                    else globalVar + `[${quote(IDENT_SET[substring])}]`;
-                    break;
-                  case typeof WORD_LIST[substring] == "string":
-                    `${globalVar}[${quote(WORD_LIST[substring])}]`;
-                    break;
-                  default:
-                    const encoded = base31(substring);
-                    `${globalVar}[+![]](${quote(encoded)})`;
-                    break;
-                }
-                break;
-              case "unicode":
-                const encoded = base31(substring);
-                `${globalVar}[+![]](${quote(encoded)})`;
-                break;
-              default:
-                quote(substring);
-                break;
+        [...substring.matchAll(REGEXP)].map(match => {
+          const [group, substring] = Object.entries(match.groups).filter(([, val]) => !!val)[0];
+          switch (group) {
+            case "unicode":
+              const encoded = base31(substring);
+              return `${globalVar}[+![]](${quote(encoded)})`;
+            case "word":
+              switch (true) {
+                case /\b[\da-zA-FINORSU]\b/.test(substring):
+                  return encodeString(substring);
+                case typeof CONSTANTS[substring] == "string":
+                  return `\`\${${CONSTANTS[substring]}}\``;
+                case typeof CONSTRUCTORS[substring] == "string":
+                  return `${CONSTRUCTORS[substring]}[${globalVar}.$][${globalVar}[${quote("?")}]]`;
+                case typeof IDENT_SET[substring] == "string":
+                  if (isValidIdentifier(IDENT_SET[substring]))
+                    return globalVar + "." + IDENT_SET[substring];
+                  else return globalVar + `[${quote(IDENT_SET[substring])}]`;
+                case typeof WORD_LIST[substring] == "string":
+                  return `${globalVar}[${quote(WORD_LIST[substring])}]`;
+                default:
+                  const encoded = base31(substring);
+                  return `${globalVar}[+![]](${quote(encoded)})`;
+              }
+            default: {
+              if (substring.includes("\\") && testRawString(substring))
+                return `${quote("")}[${globalVar}.$][${globalVar}[${quote("`")}]]\`${substring}\``;
+              else return quote(substring);
             }
           }
-        ).join`+`
+        }).join`+`
     ) +
     "]" +
     `[${globalVar}[${quote("%")}]]` +
