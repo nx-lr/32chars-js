@@ -545,7 +545,7 @@ function encodeText(code, globalVar) {
         d = _ref29[0],
         b = _ref29[1];
 
-    return b - a || d.localeCompare(c);
+    return b - a || c.length - d.length;
   }).map(function (_ref30) {
     var _ref31 = (0, _slicedToArray2["default"])(_ref30, 1),
         word = _ref31[0];
@@ -573,7 +573,7 @@ function encodeText(code, globalVar) {
     return "[".concat(globalVar, "[").concat(quote(IDENT_SET[p1.slice(1)]), "]]");
   });
   output += ";" + WORD_LIST_EXPR;
-  output += ";" + "".concat(globalVar, "={...").concat(globalVar, ",...").concat(globalVar, "[+!'']}");
+  output += ";" + "".concat(globalVar, "={...").concat(globalVar, ",...").concat(globalVar, "[+!").concat(quote(""), "]}");
 
   var testRawString = function testRawString(string) {
     try {
@@ -585,7 +585,7 @@ function encodeText(code, globalVar) {
     }
   };
 
-  var expression = "[" + code.split(_templateObject14 || (_templateObject14 = (0, _taggedTemplateLiteral2["default"])([" "]))).map(function (substring) {
+  var transform = function transform(substring) {
     return (0, _toConsumableArray2["default"])(substring.matchAll(REGEXP)).map(function (match) {
       var _Object$entries$filte = (0, _slicedToArray2["default"])(Object.entries(match.groups).filter(function (_ref36) {
         var _ref37 = (0, _slicedToArray2["default"])(_ref36, 2),
@@ -629,8 +629,10 @@ function encodeText(code, globalVar) {
             if (substring.includes("\\") && testRawString(substring)) return "".concat(quote(""), "[").concat(globalVar, ".$][").concat(globalVar, "[").concat(quote("`"), "]]`").concat(substring, "`");else return quote(substring);
           }
       }
-    }).join(_templateObject15 || (_templateObject15 = (0, _taggedTemplateLiteral2["default"])(["+"])));
-  }) + "]" + "[".concat(globalVar, "[").concat(quote("%"), "]]") + "(".concat(globalVar, "[").concat(quote("-"), "])");
+    }).join(_templateObject14 || (_templateObject14 = (0, _taggedTemplateLiteral2["default"])(["+"])));
+  };
+
+  var expression = "[" + code.split(_templateObject15 || (_templateObject15 = (0, _taggedTemplateLiteral2["default"])([" "]))).map(transform) + "]" + "[".concat(globalVar, "[").concat(quote("%"), "]]") + "(".concat(globalVar, "[").concat(quote("-"), "])");
   output += ";" + "_".concat(globalVar, "=").concat(expression);
   output += ";" + "module.exports.result=_" + globalVar;
   return {

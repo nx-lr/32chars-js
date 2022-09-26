@@ -667,7 +667,7 @@ function encodeText(
         ];
         return !alreadyDefined.includes(word) && frequency > threshold;
       })
-      .sort(([c, a], [d, b]) => b - a || d.localeCompare(c))
+      .sort(([c, a], [d, b]) => b - a || c.length - d.length)
       .map(([word]) => [word, keyGen.next().value])
     |> Object.fromEntries(%);
 
@@ -692,7 +692,7 @@ function encodeText(
       );
 
   output += ";" + WORD_LIST_EXPR;
-  output += ";" + `${globalVar}={...${globalVar},...${globalVar}[+!'']}`;
+  output += ";" + `${globalVar}={...${globalVar},...${globalVar}[+!${quote("")}]}`;
 
   /**
    * PART 5: SUBSTITUTION
@@ -712,42 +712,42 @@ function encodeText(
     }
   };
 
-  const expression =
-    "[" +
-    code.split` `.map(
-      substring =>
-        [...substring.matchAll(REGEXP)].map(match => {
-          const [group, substring] = Object.entries(match.groups).filter(([, val]) => !!val)[0];
-          switch (group) {
-            case "unicode":
+  const transform = substring =>
+    [...substring.matchAll(REGEXP)].map(match => {
+      const [group, substring] = Object.entries(match.groups).filter(([, val]) => !!val)[0];
+      switch (group) {
+        case "unicode":
+          const encoded = base31(substring);
+          return `${globalVar}[+![]](${quote(encoded)})`;
+        case "word":
+          switch (true) {
+            case /\b[\da-zA-FINORSU]\b/.test(substring):
+              return encodeString(substring);
+            case typeof CONSTANTS[substring] == "string":
+              return `\`\${${CONSTANTS[substring]}}\``;
+            case typeof CONSTRUCTORS[substring] == "string":
+              return `${CONSTRUCTORS[substring]}[${globalVar}.$][${globalVar}[${quote("?")}]]`;
+            case typeof IDENT_SET[substring] == "string":
+              if (isValidIdentifier(IDENT_SET[substring]))
+                return globalVar + "." + IDENT_SET[substring];
+              else return globalVar + `[${quote(IDENT_SET[substring])}]`;
+            case typeof WORD_LIST[substring] == "string":
+              return `${globalVar}[${quote(WORD_LIST[substring])}]`;
+            default:
               const encoded = base31(substring);
               return `${globalVar}[+![]](${quote(encoded)})`;
-            case "word":
-              switch (true) {
-                case /\b[\da-zA-FINORSU]\b/.test(substring):
-                  return encodeString(substring);
-                case typeof CONSTANTS[substring] == "string":
-                  return `\`\${${CONSTANTS[substring]}}\``;
-                case typeof CONSTRUCTORS[substring] == "string":
-                  return `${CONSTRUCTORS[substring]}[${globalVar}.$][${globalVar}[${quote("?")}]]`;
-                case typeof IDENT_SET[substring] == "string":
-                  if (isValidIdentifier(IDENT_SET[substring]))
-                    return globalVar + "." + IDENT_SET[substring];
-                  else return globalVar + `[${quote(IDENT_SET[substring])}]`;
-                case typeof WORD_LIST[substring] == "string":
-                  return `${globalVar}[${quote(WORD_LIST[substring])}]`;
-                default:
-                  const encoded = base31(substring);
-                  return `${globalVar}[+![]](${quote(encoded)})`;
-              }
-            default: {
-              if (substring.includes("\\") && testRawString(substring))
-                return `${quote("")}[${globalVar}.$][${globalVar}[${quote("`")}]]\`${substring}\``;
-              else return quote(substring);
-            }
           }
-        }).join`+`
-    ) +
+        default: {
+          if (substring.includes("\\") && testRawString(substring))
+            return `${quote("")}[${globalVar}.$][${globalVar}[${quote("`")}]]\`${substring}\``;
+          else return quote(substring);
+        }
+      }
+    }).join`+`;
+
+  const expression =
+    "[" +
+    code.split` `.map(transform) +
     "]" +
     `[${globalVar}[${quote("%")}]]` +
     `(${globalVar}[${quote("-")}])`;
