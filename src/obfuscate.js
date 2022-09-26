@@ -583,9 +583,9 @@ function encodeText(
    * converted into base 31 so that all characters, save for the
    * comma `,`, are used. Every resulting digit is ciphered.
    *
-   * The comma is used as it is syntactically used to separate
-   * array elements, which are the ciphered digit substrings.
-   * When `.toString` is called, the commas come in, therefore
+   * The comma syntactically used to separate array elements, 
+   * which are the ciphered digit substrings. When `.toString`
+   * is called, the commas magically appear, therefore
    * there's no need to explicitly write `.join(',')`.
    */
 
