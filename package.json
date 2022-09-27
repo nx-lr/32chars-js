@@ -68,6 +68,8 @@
     "chalk-animation": "^2.0.3",
     "chance": "^1.1.7",
     "cli-highlight": "^2.1.11",
+    "colors": "^1.4.0",
+    "diff": "^5.1.0",
     "figlet": "^1.5.2",
     "glob": "^8.0.3",
     "huffman-ts": "^0.1.3",

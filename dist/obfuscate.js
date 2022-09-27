@@ -36,9 +36,9 @@ function _unsupportedIterableToArray(o, minLen) { if (!o) return; if (typeof o =
 
 function _arrayLikeToArray(arr, len) { if (len == null || len > arr.length) len = arr.length; for (var i = 0, arr2 = new Array(len); i < len; i++) { arr2[i] = arr[i]; } return arr2; }
 
-var print = console.log;
-
 var text = _fs["default"].readFileSync("./input.txt", "utf8");
+
+console.log("Compiling...");
 
 function encodeText(code, globalVar) {
   var _ref = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : {},
@@ -49,7 +49,7 @@ function encodeText(code, globalVar) {
       _ref$variable = _ref.variable,
       variable = _ref$variable === void 0 ? "var" : _ref$variable,
       _ref$threshold = _ref.threshold,
-      threshold = _ref$threshold === void 0 ? 1 : _ref$threshold;
+      threshold = _ref$threshold === void 0 ? 2 : _ref$threshold;
 
   var BUILTINS = /^(Array|ArrayBuffer|AsyncFunction|AsyncGenerator|AsyncGeneratorFunction|Atomics|BigInt|BigInt64Array|BigUint64Array|Boolean|DataView|Date|decodeURI|decodeURIComponent|encodeURI|encodeURIComponent|escape|eval|exports|Float32Array|Float64Array|Function|Generator|GeneratorFunction|globalThis|Infinity|Int16Array|Int32Array|Int8Array|Intl|isFinite|isNaN|JSON|Map|Math|module|NaN|Number|Object|parseFloat|parseInt|Promise|Proxy|Reflect|RegExp|Set|SharedArrayBuffer|String|Symbol|this|Uint16Array|Uint32Array|Uint8Array|Uint8ClampedArray|undefined|unescape|WeakMap|WeakSet|WebAssembly)$/;
   var REGEXPS = {
@@ -64,6 +64,7 @@ function encodeText(code, globalVar) {
 
     return "(?<".concat(key, ">").concat(source, ")");
   }).join(_templateObject2 || (_templateObject2 = (0, _taggedTemplateLiteral2["default"])(["|"]))), "g");
+  console.log("Generating header...");
 
   var checkIdentifier = function checkIdentifier(ident) {
     return (ident = ident.trim()) && (0, _isValidIdentifier["default"])(ident) && !BUILTINS.test(ident);
@@ -503,6 +504,8 @@ function encodeText(code, globalVar) {
   });
   output += ";" + "".concat(globalVar, "[+[]]=").concat(UNICODE_MACRO);
   output += ";" + "".concat(globalVar, "[~[]]=").concat(ALNUM_MACRO);
+  console.log("Header generated");
+  console.log("Mapping keys...");
   var RE_CONSTANTS = ["true", "false", "Infinity", "NaN", "undefined", Object.keys(IDENT_MAP)].flat();
 
   var keyGen = _regenerator["default"].mark(function _callee() {
@@ -613,7 +616,7 @@ function encodeText(code, globalVar) {
     return Object.fromEntries(wordMap);
   }();
 
-  output += ";" + "".concat(globalVar, "={...").concat(globalVar, ",[~-~[]]:{") + Object.entries(WORD_MAP).map(function (_ref32) {
+  output += ";" + "".concat(globalVar, "={...").concat(globalVar, ",[+!").concat(quote(""), "]:{") + Object.entries(WORD_MAP).map(function (_ref32) {
     var _ref33 = (0, _slicedToArray2["default"])(_ref32, 2),
         word = _ref33[0],
         key = _ref33[1];
@@ -624,7 +627,7 @@ function encodeText(code, globalVar) {
   }).sort(function (x, y) {
     return x.length - y.length || x.localeCompare(y);
   }) + "}}";
-  var WORD_MAP_EXPR = "globalVar[1]=Object.fromEntries(Object.entries(WORD_MAP).map(([k,v])=>[k,v[0]=='-'?globalVar[-1](v.slice(1)):v[0]=='='?globalVar[-1](v.slice(1)).toUpperCase():globalVar[0](v.slice(1))]))".replace(/\b(v)\b/g, function (match) {
+  var WORD_MAP_EXPR = "WORD_MAP=Object.fromEntries(Object.entries(WORD_MAP).map(([k,v])=>[k,v[0]=='-'?globalVar[-1](v.slice(1)):v[0]=='='?globalVar[-1](v.slice(1)).toUpperCase():globalVar[0](v.slice(1))]))".replace(/\b(v)\b/g, function (match) {
     return "_" + globalVar;
   }).replace(/\b(k)\b/g, function (match) {
     return "$" + globalVar;
@@ -634,13 +637,15 @@ function encodeText(code, globalVar) {
     return "~[]";
   }).replace(/\b(1)\b/g, function (match) {
     return "+!".concat(quote(""));
-  }).replace(/\b(WORD_MAP)\b/g, "".concat(globalVar, "[~-~[]]")).replace(/\b(globalVar)\b/g, globalVar).replace(/\b(Object)\b/g, function (match) {
+  }).replace(/\b(WORD_MAP)\b/g, "".concat(globalVar, "[+!").concat(quote(""), "]")).replace(/\b(globalVar)\b/g, globalVar).replace(/\b(Object)\b/g, function (match) {
     return "{}[".concat(globalVar, ".$]");
   }).replace(/\.\b(map|slice|entries|fromEntries|toUpperCase)\b/g, function (p1) {
     return "[".concat(globalVar, "[").concat(quote(IDENT_MAP[p1.slice(1)]), "]]");
   });
   output += ";" + WORD_MAP_EXPR;
   output += ";" + "".concat(globalVar, "={...").concat(globalVar, ",...").concat(globalVar, "[+!").concat(quote(""), "]}");
+  console.log("Keys mapped");
+  console.log("Parsing and subbing...");
 
   var transform = function transform(substring) {
     return (0, _toConsumableArray2["default"])(substring.matchAll(REGEXP)).map(function (match) {
@@ -693,18 +698,25 @@ function encodeText(code, globalVar) {
                   return "".concat(globalVar, "[").concat(quote(WORD_MAP[substring]), "]");
                 }
 
-              case testParseInt(substring):
+              case testParseIntUpper(substring):
                 {
                   var _encoded = alnumBase32(substring);
 
-                  return "".concat(globalVar, "[~[]](").concat(quote(_encoded), ")");
+                  return "".concat(globalVar, "[~[]](").concat(quote(_encoded), ")[").concat(globalVar, "[").concat(quote('"'), "]]()");
+                }
+
+              case testParseInt(substring):
+                {
+                  var _encoded2 = alnumBase32(substring);
+
+                  return "".concat(globalVar, "[~[]](").concat(quote(_encoded2), ")");
                 }
 
               default:
                 {
-                  var _encoded2 = uniBase31(substring);
+                  var _encoded3 = uniBase31(substring);
 
-                  return "".concat(globalVar, "[+[]](").concat(quote(_encoded2), ")");
+                  return "".concat(globalVar, "[+[]](").concat(quote(_encoded3), ")");
                 }
             }
           }
@@ -715,9 +727,10 @@ function encodeText(code, globalVar) {
   var expression = "[" + code.split(_templateObject20 || (_templateObject20 = (0, _taggedTemplateLiteral2["default"])([" "]))).map(transform) + "]" + "[".concat(globalVar, "[").concat(quote("%"), "]]") + "(".concat(globalVar, "[").concat(quote("-"), "])");
   output += ";" + "_".concat(globalVar, "=").concat(expression);
   output += ";" + "module.exports.result=_" + globalVar;
+  console.log("Script complete!");
   return {
     result: output,
-    stats: "=====\nSTATS\n=====\nInput length: ".concat(enUS.format(code.length), "\nExpression length: ").concat(enUS.format(expression.length), "\nRatio: ").concat(expression.length / code.length, "\nOutput length: ").concat(enUS.format(output.length))
+    stats: "\n=====\nSTATS\n=====\nInput length: ".concat(enUS.format(code.length), "\nExpression length: ").concat(enUS.format(expression.length), "\nRatio: ").concat(expression.length / code.length, "\nOutput length: ").concat(enUS.format(output.length), "\n")
   };
 }
 
@@ -728,6 +741,6 @@ var _encodeText = encodeText(text, "$", {
     result = _encodeText.result,
     stats = _encodeText.stats;
 
-print(stats);
+console.log(stats);
 
 _fs["default"].writeFileSync("./output.js", result);

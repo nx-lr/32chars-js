@@ -5,7 +5,6 @@ import fs from "fs";
 import isValidIdentifier from "is-valid-identifier";
 import jsesc from "jsesc";
 
-const print = console.log;
 const text = fs.readFileSync("./input.txt", "utf8");
 
 /**
@@ -14,11 +13,12 @@ const text = fs.readFileSync("./input.txt", "utf8");
  * - Initialization, where characters and values are assigned to variables;
  * - Substitution, where the variables are used to construct strings;
  */
+console.log("Compiling...");
 
 function encodeText(
   code,
   globalVar,
-  {strictMode = false, quoteStyle = "", variable = "var", threshold = 1} = {}
+  {strictMode = false, quoteStyle = "", variable = "var", threshold = 2} = {}
 ) {
   const BUILTINS =
     /^(Array|ArrayBuffer|AsyncFunction|AsyncGenerator|AsyncGeneratorFunction|Atomics|BigInt|BigInt64Array|BigUint64Array|Boolean|DataView|Date|decodeURI|decodeURIComponent|encodeURI|encodeURIComponent|escape|eval|exports|Float32Array|Float64Array|Function|Generator|GeneratorFunction|globalThis|Infinity|Int16Array|Int32Array|Int8Array|Intl|isFinite|isNaN|JSON|Map|Math|module|NaN|Number|Object|parseFloat|parseInt|Promise|Proxy|Reflect|RegExp|Set|SharedArrayBuffer|String|Symbol|this|Uint16Array|Uint32Array|Uint8Array|Uint8ClampedArray|undefined|unescape|WeakMap|WeakSet|WebAssembly)$/;
@@ -39,6 +39,8 @@ function encodeText(
     Object.entries(REGEXPS).map(([key, {source}]) => `(?<${key}>${source})`).join`|`,
     "g"
   );
+
+  console.log("Generating header...");
 
   // Test whether an identifier can be made into a variable
   const checkIdentifier = (ident: string): boolean =>
@@ -622,6 +624,9 @@ function encodeText(
    * there's no need to explicitly write `.join(',')`.
    */
 
+  console.log("Header generated");
+  console.log("Mapping keys...");
+
   // CONSTANTS
   const RE_CONSTANTS = [
     "true",
@@ -725,7 +730,7 @@ function encodeText(
 
   output +=
     ";" +
-    `${globalVar}={...${globalVar},[~-~[]]:{` +
+    `${globalVar}={...${globalVar},[+!${quote("")}]:{` +
     Object.entries(WORD_MAP)
       .map(([word, key]) => {
         const prefix = testParseInt(word) ? "-" : testParseIntUpper(word) ? "=" : "_";
@@ -736,13 +741,13 @@ function encodeText(
     "}}";
 
   const WORD_MAP_EXPR =
-    "globalVar[1]=Object.fromEntries(Object.entries(WORD_MAP).map(([k,v])=>[k,v[0]=='-'?globalVar[-1](v.slice(1)):v[0]=='='?globalVar[-1](v.slice(1)).toUpperCase():globalVar[0](v.slice(1))]))"
+    "WORD_MAP=Object.fromEntries(Object.entries(WORD_MAP).map(([k,v])=>[k,v[0]=='-'?globalVar[-1](v.slice(1)):v[0]=='='?globalVar[-1](v.slice(1)).toUpperCase():globalVar[0](v.slice(1))]))"
       .replace(/\b(v)\b/g, match => "_" + globalVar)
       .replace(/\b(k)\b/g, match => "$" + globalVar)
       .replace(/\b(0)\b/g, match => "+[]")
       .replace(/\b(-1)\b/g, match => `~[]`)
       .replace(/\b(1)\b/g, match => `+!${quote("")}`)
-      .replace(/\b(WORD_MAP)\b/g, `${globalVar}[~-~[]]`)
+      .replace(/\b(WORD_MAP)\b/g, `${globalVar}[+!${quote("")}]`)
       .replace(/\b(globalVar)\b/g, globalVar)
       .replace(/\b(Object)\b/g, match => `{}[${globalVar}.$]`)
       .replace(
@@ -752,6 +757,9 @@ function encodeText(
 
   output += ";" + WORD_MAP_EXPR;
   output += ";" + `${globalVar}={...${globalVar},...${globalVar}[+!${quote("")}]}`;
+
+  console.log("Keys mapped");
+  console.log("Parsing and subbing...");
 
   /**
    * PART 5: SUBSTITUTION
@@ -781,30 +789,28 @@ function encodeText(
             case /\b[\da-zA-FINORSU]\b/.test(substring): {
               return encodeString(substring);
             }
-
             case typeof CONSTANTS[substring] == "string": {
               return `\`\${${CONSTANTS[substring]}}\``;
             }
-
             case typeof CONSTRUCTORS[substring] == "string": {
               return `${CONSTRUCTORS[substring]}[${globalVar}.$][${globalVar}[${quote("?")}]]`;
             }
-
             case typeof IDENT_MAP[substring] == "string": {
               if (isValidIdentifier(IDENT_MAP[substring]))
                 return globalVar + "." + IDENT_MAP[substring];
               else return globalVar + `[${quote(IDENT_MAP[substring])}]`;
             }
-
             case typeof WORD_MAP[substring] == "string": {
               return `${globalVar}[${quote(WORD_MAP[substring])}]`;
             }
-
+            case testParseIntUpper(substring): {
+              const encoded = alnumBase32(substring);
+              return `${globalVar}[~[]](${quote(encoded)})[${globalVar}[${quote('"')}]]()`;
+            }
             case testParseInt(substring): {
               const encoded = alnumBase32(substring);
               return `${globalVar}[~[]](${quote(encoded)})`;
             }
-
             default: {
               const encoded = uniBase31(substring);
               return `${globalVar}[+[]](${quote(encoded)})`;
@@ -826,15 +832,19 @@ function encodeText(
   // Export
   output += ";" + "module.exports.result=_" + globalVar;
 
+  console.log("Script complete!");
+
   return {
     result: output,
-    stats: `=====
+    stats: `
+=====
 STATS
 =====
 Input length: ${enUS.format(code.length)}
 Expression length: ${enUS.format(expression.length)}
 Ratio: ${expression.length / code.length}
-Output length: ${enUS.format(output.length)}`,
+Output length: ${enUS.format(output.length)}
+`,
   };
 }
 
@@ -843,6 +853,6 @@ const {result, stats} = encodeText(text, "$", {
   quoteStyle: "smart backtick",
 });
 
-print(stats);
+console.log(stats);
 
 fs.writeFileSync("./output.js", result);
