@@ -520,7 +520,7 @@ function encodeText(
    *   ignoring all boundaries.
    */
 
-  const CIPHER_TO = "_.:;!?*+^-=<>~'\"`/|#$%&@{}()[]\\";
+  const CIPHER_TO = "_.:;!?*+^-=<>~'\"`/|#$%&@{}()[]\\,";
   const IDENT_SET = {...IDENT_SET1, ...IDENT_SET2, ...IDENT_SET3};
 
   /**
@@ -540,29 +540,21 @@ function encodeText(
    * there's no need to explicitly write `.join(',')`.
    */
 
-  const alnumBase31 = (s: string) =>
-    `${(s.match(/[a-z\d]{9}|[a-z\d]+/g) || []).map(
-      x => [...`${parseInt(x, 36).toString(31)}`].map(x => CIPHER_FROM[CIPHER_TO.indexOf(x)]).join``
-    )}`;
+  const alnumBase32 = (s: string) =>
+    parseInt(s, 36).toString(32).split``.map(c => CIPHER_TO[CIPHER_FROM.indexOf(c)]).join``;
 
-  const alnumBase31Decode = (s: string) =>
-    s.split`,`
-      .map(x =>
-        parseInt([...x].map(x => CIPHER_TO[CIPHER_FROM.indexOf(x)]).join``, 31).toString(36)
-      )
-      .join(``);
+  const alnumBase32Decode = a =>
+    parseInt(a.split``.map(a => CIPHER_FROM[CIPHER_TO.indexOf(a)]).join``, 32).toString(36);
 
   const uniBase31 = (s: string) =>
     `${[...Array(s.length)].map(
       (x, i) => [...s.charCodeAt(i).toString(31)].map(c => CIPHER_TO[CIPHER_FROM.indexOf(c)]).join``
     )}`;
 
-  const uniBase31Decode = b =>
-    String.fromCharCode(
-      ...b.split`,`.map(s =>
-        parseInt([...s].map(c => CIPHER_FROM[CIPHER_TO.indexOf(c)]).join``, 31)
-      )
-    );
+  const uniBase31Decode = a =>
+    a.split`,`
+      .map(a => parseInt([...a].map(a => CIPHER_FROM[CIPHER_TO.indexOf(a)]).join``, 31))
+      .map(a => String.fromCharCode(a)).join``;
 
   /**
    * UTF-16 STRINGS
@@ -585,7 +577,8 @@ function encodeText(
    */
 
   const UNICODE_MACRO =
-    "a=>a.split`,`.map(a=>parseInt([...a].map(a=>[...Array(+(31)).keys()].map(a=>a.toString(31))[CIPHER_TO.indexOf(a)]).join``,31)).map(a=>String.fromCharCode(a)).join``"
+    "a=>a.split`,`.map(a=>parseInt(a.split``.map(a=>CIPHER_FROM[CIPHER_TO.indexOf(a)]).join``,31)).map(a=>String.fromCharCode(a)).join``"
+      .replace("CIPHER_FROM", "[...Array(+(36)).keys()].map(a=>a.toString(36))")
       .replace("CIPHER_TO", quote(CIPHER_TO))
       .replace(/\.toString\b/g, ident => `[${globalVar}[${quote("'")}]]`)
       .replace(/\b\d+\b/g, match => encodeString(match))
@@ -597,7 +590,22 @@ function encodeText(
       )
       .replace(/\b(Array|String)\b/g, match => `${CONSTRUCTORS[match]}[${globalVar}.$]`);
 
-  output += ";" + `${globalVar}[+![]]=${UNICODE_MACRO}`;
+  const ALNUM_MACRO =
+    "a=>parseInt(a.split``.map(a=>CIPHER_FROM[CIPHER_TO.indexOf(a)]).join``,32).toString(36)"
+      .replace("CIPHER_FROM", "[...Array(+(36)).keys()].map(a=>a.toString(36))")
+      .replace("CIPHER_TO", quote(CIPHER_TO))
+      .replace("Array", match => `[][${globalVar}.$]`)
+      .replace("parseInt", `${globalVar}[${quote("~")}]`)
+      .replace(/\.toString\b/g, ident => `[${globalVar}[${quote("'")}]]`)
+      .replace(/\b\d+\b/g, match => encodeString(match))
+      .replace(/\ba\b/g, "_" + globalVar)
+      .replace(
+        /\.\b(keys|map|indexOf|join)\b/g,
+        p1 => `[${globalVar}[${quote(IDENT_SET[p1.slice(1)])}]]`
+      );
+
+  output += ";" + `${globalVar}[+[]]=${UNICODE_MACRO}`;
+  output += ";" + `${globalVar}[~[]]=${ALNUM_MACRO}`;
 
   /**
    * UTF-16 STRINGS
@@ -700,7 +708,7 @@ function encodeText(
 
   output +=
     ";" +
-    `${globalVar}={...${globalVar},[~[]]:{` +
+    `${globalVar}={...${globalVar},[~-~[]]:{` +
     Object.entries(WORD_LIST).map(([word, key]) => `${quoteKey(key)}:${quote(uniBase31(word))}`) +
     "}}";
 
@@ -708,9 +716,9 @@ function encodeText(
     "globalVar[1]=Object.fromEntries(Object.entries(WORD_LIST).map(([k,v])=>[k,globalVar[0](v)]))"
       .replace(/\b(v)\b/g, match => "_" + globalVar)
       .replace(/\b(k)\b/g, match => "$" + globalVar)
-      .replace(/\b(0)\b/g, match => "+![]")
+      .replace(/\b(0)\b/g, match => "+[]")
       .replace(/\b(1)\b/g, match => `+!${quote("")}`)
-      .replace(/\b(WORD_LIST)\b/g, `${globalVar}[~[]]`)
+      .replace(/\b(WORD_LIST)\b/g, `${globalVar}[~-~[]]`)
       .replace(/\b(globalVar)\b/g, globalVar)
       .replace(/\b(Object)\b/g, match => `{}[${globalVar}.$]`)
       .replace(
@@ -729,6 +737,9 @@ function encodeText(
    * with empty elements in an array and returned with joins.
    */
 
+  const testParseInt = (x: string): boolean =>
+    x.length > 1 && /^[\da-z]+$/.test(x) && parseInt(x, 36) <= Number.MAX_SAFE_INTEGER;
+
   const testRawString = string => {
     try {
       if (/(?<!\\)\$\{/.test(string)) throw new Error();
@@ -745,24 +756,41 @@ function encodeText(
       switch (group) {
         case "unicode":
           const encoded = uniBase31(substring);
-          return `${globalVar}[+![]](${quote(encoded)})`;
+          return `${globalVar}[+[]](${quote(encoded)})`;
         case "word":
           switch (true) {
-            case /\b[\da-zA-FINORSU]\b/.test(substring):
+            case /\b[\da-zA-FINORSU]\b/.test(substring): {
               return encodeString(substring);
-            case typeof CONSTANTS[substring] == "string":
+            }
+
+            case typeof CONSTANTS[substring] == "string": {
               return `\`\${${CONSTANTS[substring]}}\``;
-            case typeof CONSTRUCTORS[substring] == "string":
+            }
+
+            case typeof CONSTRUCTORS[substring] == "string": {
               return `${CONSTRUCTORS[substring]}[${globalVar}.$][${globalVar}[${quote("?")}]]`;
-            case typeof IDENT_SET[substring] == "string":
+            }
+
+            case typeof IDENT_SET[substring] == "string": {
               if (isValidIdentifier(IDENT_SET[substring]))
                 return globalVar + "." + IDENT_SET[substring];
               else return globalVar + `[${quote(IDENT_SET[substring])}]`;
-            case typeof WORD_LIST[substring] == "string":
+            }
+
+            case typeof WORD_LIST[substring] == "string": {
               return `${globalVar}[${quote(WORD_LIST[substring])}]`;
-            default:
+            }
+
+            case testParseInt(substring): {
+              const encoded = alnumBase32(substring);
+
+              return `${globalVar}[~[]](${quote(encoded)})`;
+            }
+
+            default: {
               const encoded = uniBase31(substring);
-              return `${globalVar}[+![]](${quote(encoded)})`;
+              return `${globalVar}[+[]](${quote(encoded)})`;
+            }
           }
         default: {
           if (substring.includes("\\") && testRawString(substring))
