@@ -148,6 +148,19 @@ function encodeText(
     "[object Object]": "{}", // [object objectLiteral]
   };
 
+  // prettier-ignore
+  const CONSTANT_VARIANTS = {
+    "-1": [~[], ~{}],
+    0: [+[]],
+    1: [+!"", -~[]],
+    true: [!""],
+    false: [![], !{}],
+    NaN: [+{}, +""],
+    "[object Object]": [{}],
+    Infinity: [!""/![], !""/!{}, !""/+[]],
+    undefined: [""[""], ""[[]], ""[{}], [][""], [][[]], [][{}], {}[""], {}[[]], {}[{}]],
+  };
+
   /**
    * STEP 1: BASIC NUMBERS AND DIGITS
    *
@@ -206,18 +219,18 @@ function encodeText(
       : "") + `${globalVar}=~[];`;
 
   // STEP 1
-  const CHARSET_1 = {};
+  const CHARMAP_1 = {};
 
   for (const [constant, expression] of Object.entries(CONSTANTS))
     for (const char of constant)
-      if (/[\w\s]/.test(char) && !(char in CHARSET_1))
-        CHARSET_1[char] = [expression, constant.indexOf(char)];
+      if (/[\w\s]/.test(char) && !(char in CHARMAP_1))
+        CHARMAP_1[char] = [expression, constant.indexOf(char)];
 
-  const RES_CHARSET_1 =
+  const RES_CHARMAP_1 =
     `${globalVar}={` +
     [...Array(10)].map(($, digit) => [
       `${encodeDigit(digit)}:\`\${++${globalVar}}\``,
-      ...Object.entries(CHARSET_1)
+      ...Object.entries(CHARMAP_1)
         .filter(([, [, value]]) => value == digit)
         .map(
           ([char, [literal]]) =>
@@ -226,7 +239,7 @@ function encodeText(
     ]) +
     "}";
 
-  output += RES_CHARSET_1;
+  output += RES_CHARMAP_1;
 
   /**
    * STEP 2: LITERALS AND CONSTRUCTORS
@@ -268,31 +281,31 @@ function encodeText(
     String: quote(""),
   };
 
-  const CHARSET_2 = {...CHARSET_1};
+  const CHARMAP_2 = {...CHARMAP_1};
 
   for (const [key, expression] of Object.entries(CONSTRUCTORS)) {
     let index;
     const constructor = eval(key).toString();
     for (const char of constructor)
-      if (/[\w\s]/.test(char) && !(char in CHARSET_2))
-        CHARSET_2[char] = [expression, (index = constructor.indexOf(char))];
+      if (/[\w\s]/.test(char) && !(char in CHARMAP_2))
+        CHARMAP_2[char] = [expression, (index = constructor.indexOf(char))];
   }
 
-  for (const value of Object.entries(CHARSET_2)) {
+  for (const value of Object.entries(CHARMAP_2)) {
     const [char, [expression, index]] = value;
     const expansion = `\`\${${expression}[${globalVar}.$]}\`[${`${index}`.split``.map(
       digit => `${globalVar}.${encodeDigit(digit)}`
     ).join`+`}]`;
-    if (!(char in CHARSET_1)) CHARSET_2[char] = [expression, index, expansion];
+    if (!(char in CHARMAP_1)) CHARMAP_2[char] = [expression, index, expansion];
   }
 
   const objectDifference = (x: object, y: object) =>
-    Object.fromEntries(_.difference(_.keys(x), _.keys(y)).map(z => [z, x[z]]));
-  const CHARSET_2_DIFF = objectDifference(CHARSET_2, CHARSET_1);
+    Object.fromEntries(_.difference(Object.keys(x), Object.keys(y)).map(z => [z, x[z]]));
+  const CHARMAP_2_DIFF = objectDifference(CHARMAP_2, CHARMAP_1);
 
-  const RES_CHARSET_2 =
+  const RES_CHARMAP_2 =
     `${globalVar}={...${globalVar},` +
-    Object.entries(CHARSET_2_DIFF).map(
+    Object.entries(CHARMAP_2_DIFF).map(
       ([letter, [, , expansion]]) => `${quoteKey(encodeLetter(letter))}:${expansion}`
     ) +
     "}";
@@ -326,7 +339,6 @@ function encodeText(
    *    $['_|']
    */
 
-  // String encoding
   const encodeString = (str: string = ""): string =>
     [...`${str}`.replace(/\W/g, "")].map(
       char => do {
@@ -342,15 +354,15 @@ function encodeText(
       }
     ).join`+`;
 
-  const encodeIdentifiers = (identifiers: {[ident]: string}) =>
+  const encodeProps = (props: {[prop]: string}) =>
     `${globalVar}={...${globalVar},` +
-    Object.entries(identifiers)
-      .map(([ident, key]) => [key, encodeString(ident)])
+    Object.entries(props)
+      .map(([prop, key]) => [key, encodeString(prop)])
       .map(([key, expr]) => `${quoteKey(key)}:${expr}`) +
     "}";
 
-  output += ";" + encodeIdentifiers(IDENT_SET1);
-  output += ";" + RES_CHARSET_2;
+  output += ";" + encodeProps(IDENT_SET1);
+  output += ";" + RES_CHARMAP_2;
 
   const IDENT_SET2 = {
     entries: ";",
@@ -363,7 +375,7 @@ function encodeText(
     split: "|",
   };
 
-  output += ";" + encodeIdentifiers(IDENT_SET2);
+  output += ";" + encodeProps(IDENT_SET2);
 
   /**
    * STEP 3: FUNCTIONS
@@ -486,7 +498,7 @@ function encodeText(
     toUpperCase: '"',
   };
 
-  output += ";" + encodeIdentifiers(IDENT_SET3);
+  output += ";" + encodeProps(IDENT_SET3);
 
   /**
    * TRANSFORMATION

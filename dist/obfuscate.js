@@ -24,7 +24,7 @@ var _jsesc = _interopRequireDefault(require("jsesc"));
 
 var _xregexp = _interopRequireDefault(require("xregexp"));
 
-var _templateObject, _templateObject2, _templateObject3, _templateObject4, _templateObject5, _templateObject6, _templateObject7, _templateObject8, _templateObject9, _templateObject10, _templateObject11, _templateObject12, _templateObject13, _templateObject14, _templateObject15;
+var _templateObject, _templateObject2, _templateObject3, _templateObject4, _templateObject5, _templateObject6, _templateObject7, _templateObject8, _templateObject9, _templateObject10, _templateObject11, _templateObject12, _templateObject13, _templateObject14, _templateObject15, _templateObject16, _templateObject17, _templateObject18;
 
 function ownKeys(object, enumerableOnly) { var keys = Object.keys(object); if (Object.getOwnPropertySymbols) { var symbols = Object.getOwnPropertySymbols(object); enumerableOnly && (symbols = symbols.filter(function (sym) { return Object.getOwnPropertyDescriptor(object, sym).enumerable; })), keys.push.apply(keys, symbols); } return keys; }
 
@@ -177,6 +177,17 @@ function encodeText(code, globalVar) {
     NaN: "+{}",
     "[object Object]": "{}"
   };
+  var CONSTANT_VARIANTS = {
+    "-1": [~[], ~{}],
+    0: [+[]],
+    1: [+!"", -~[]],
+    "true": [!""],
+    "false": [![], !{}],
+    NaN: [+{}, +""],
+    "[object Object]": [{}],
+    Infinity: [!"" / ![], !"" / !{}, !"" / +[]],
+    undefined: [""[""], ""[[]], ""[{}], [][""], [][[]], [][{}], {}[""], {}[[]], {}[{}]]
+  };
 
   var quoteKey = function quoteKey(string) {
     var single = (0, _jsesc["default"])(string, {
@@ -254,7 +265,7 @@ function encodeText(code, globalVar) {
   };
 
   var output = (strictMode ? "".concat(variable.trim().toLowerCase() == "var" ? "var" : "let") + " ".concat(globalVar, ",_").concat(globalVar, ";") : "") + "".concat(globalVar, "=~[];");
-  var CHARSET_1 = {};
+  var CHARMAP_1 = {};
 
   for (var _i = 0, _Object$entries = Object.entries(CONSTANTS); _i < _Object$entries.length; _i++) {
     var _Object$entries$_i = (0, _slicedToArray2["default"])(_Object$entries[_i], 2),
@@ -267,7 +278,7 @@ function encodeText(code, globalVar) {
     try {
       for (_iterator.s(); !(_step = _iterator.n()).done;) {
         var _char2 = _step.value;
-        if (/[\w\s]/.test(_char2) && !(_char2 in CHARSET_1)) CHARSET_1[_char2] = [_expression, constant.indexOf(_char2)];
+        if (/[\w\s]/.test(_char2) && !(_char2 in CHARMAP_1)) CHARMAP_1[_char2] = [_expression, constant.indexOf(_char2)];
       }
     } catch (err) {
       _iterator.e(err);
@@ -276,8 +287,8 @@ function encodeText(code, globalVar) {
     }
   }
 
-  var RES_CHARSET_1 = "".concat(globalVar, "={") + (0, _toConsumableArray2["default"])(Array(10)).map(function ($, digit) {
-    return ["".concat(encodeDigit(digit), ":`${++").concat(globalVar, "}`")].concat((0, _toConsumableArray2["default"])(Object.entries(CHARSET_1).filter(function (_ref12) {
+  var RES_CHARMAP_1 = "".concat(globalVar, "={") + (0, _toConsumableArray2["default"])(Array(10)).map(function ($, digit) {
+    return ["".concat(encodeDigit(digit), ":`${++").concat(globalVar, "}`")].concat((0, _toConsumableArray2["default"])(Object.entries(CHARMAP_1).filter(function (_ref12) {
       var _ref13 = (0, _slicedToArray2["default"])(_ref12, 2),
           _ref13$ = (0, _slicedToArray2["default"])(_ref13[1], 2),
           value = _ref13$[1];
@@ -292,27 +303,26 @@ function encodeText(code, globalVar) {
       return "".concat(quoteKey(_char3 == " " ? "-" : encodeLetter(_char3)), ":`${").concat(literal, "}`[").concat(globalVar, "]");
     })));
   }) + "}";
-  output += RES_CHARSET_1;
+  output += RES_CHARMAP_1;
   var IDENT_SET1 = {
-    concat: "+",
     call: "!",
-    join: "%",
-    slice: "/",
-    "return": "_",
+    concat: "+",
     constructor: "$",
+    join: "%",
+    "return": "_",
+    slice: "/",
     source: ","
   };
   var CONSTRUCTORS = {
     Array: "[]",
-    Object: "{}",
-    String: quote(""),
-    Number: "(~[])",
     Boolean: "(![])",
+    Function: "(()=>{})",
+    Number: "(~[])",
     RegExp: "/./",
-    Function: "(()=>{})"
+    String: quote("")
   };
 
-  var CHARSET_2 = _objectSpread({}, CHARSET_1);
+  var CHARMAP_2 = _objectSpread({}, CHARMAP_1);
 
   for (var _i2 = 0, _Object$entries2 = Object.entries(CONSTRUCTORS); _i2 < _Object$entries2.length; _i2++) {
     var _Object$entries2$_i = (0, _slicedToArray2["default"])(_Object$entries2[_i2], 2),
@@ -329,7 +339,7 @@ function encodeText(code, globalVar) {
     try {
       for (_iterator2.s(); !(_step2 = _iterator2.n()).done;) {
         var _char4 = _step2.value;
-        if (/[\w\s]/.test(_char4) && !(_char4 in CHARSET_2)) CHARSET_2[_char4] = [_expression2, index = _constructor.indexOf(_char4)];
+        if (/[\w\s]/.test(_char4) && !(_char4 in CHARMAP_2)) CHARMAP_2[_char4] = [_expression2, index = _constructor.indexOf(_char4)];
       }
     } catch (err) {
       _iterator2.e(err);
@@ -338,7 +348,7 @@ function encodeText(code, globalVar) {
     }
   }
 
-  for (var _i3 = 0, _Object$entries3 = Object.entries(CHARSET_2); _i3 < _Object$entries3.length; _i3++) {
+  for (var _i3 = 0, _Object$entries3 = Object.entries(CHARMAP_2); _i3 < _Object$entries3.length; _i3++) {
     var value = _Object$entries3[_i3];
 
     var _value = (0, _slicedToArray2["default"])(value, 2),
@@ -350,17 +360,17 @@ function encodeText(code, globalVar) {
     var expansion = "`${".concat(_expression3, "[").concat(globalVar, ".$]}`[").concat("".concat(_index).split(_templateObject6 || (_templateObject6 = (0, _taggedTemplateLiteral2["default"])([""]))).map(function (digit) {
       return "".concat(globalVar, ".").concat(encodeDigit(digit));
     }).join(_templateObject5 || (_templateObject5 = (0, _taggedTemplateLiteral2["default"])(["+"]))), "]");
-    if (!(_char5 in CHARSET_1)) CHARSET_2[_char5] = [_expression3, _index, expansion];
+    if (!(_char5 in CHARMAP_1)) CHARMAP_2[_char5] = [_expression3, _index, expansion];
   }
 
   var objectDifference = function objectDifference(x, y) {
-    return Object.fromEntries(_lodash["default"].difference(_lodash["default"].keys(x), _lodash["default"].keys(y)).map(function (z) {
+    return Object.fromEntries(_lodash["default"].difference(Object.keys(x), Object.keys(y)).map(function (z) {
       return [z, x[z]];
     }));
   };
 
-  var CHARSET_2_DIFF = objectDifference(CHARSET_2, CHARSET_1);
-  var RES_CHARSET_2 = "".concat(globalVar, "={...").concat(globalVar, ",") + Object.entries(CHARSET_2_DIFF).map(function (_ref16) {
+  var CHARMAP_2_DIFF = objectDifference(CHARMAP_2, CHARMAP_1);
+  var RES_CHARMAP_2 = "".concat(globalVar, "={...").concat(globalVar, ",") + Object.entries(CHARMAP_2_DIFF).map(function (_ref16) {
     var _ref17 = (0, _slicedToArray2["default"])(_ref16, 2),
         letter = _ref17[0],
         _ref17$ = (0, _slicedToArray2["default"])(_ref17[1], 3),
@@ -377,13 +387,13 @@ function encodeText(code, globalVar) {
     }).join(_templateObject7 || (_templateObject7 = (0, _taggedTemplateLiteral2["default"])(["+"])));
   };
 
-  var encodeIdentifiers = function encodeIdentifiers(identifiers) {
-    return "".concat(globalVar, "={...").concat(globalVar, ",") + Object.entries(identifiers).map(function (_ref18) {
+  var encodeProps = function encodeProps(props) {
+    return "".concat(globalVar, "={...").concat(globalVar, ",") + Object.entries(props).map(function (_ref18) {
       var _ref19 = (0, _slicedToArray2["default"])(_ref18, 2),
-          ident = _ref19[0],
+          prop = _ref19[0],
           key = _ref19[1];
 
-      return [key, encodeString(ident)];
+      return [key, encodeString(prop)];
     }).map(function (_ref20) {
       var _ref21 = (0, _slicedToArray2["default"])(_ref20, 2),
           key = _ref21[0],
@@ -393,25 +403,23 @@ function encodeText(code, globalVar) {
     }) + "}";
   };
 
-  output += ";" + encodeIdentifiers(IDENT_SET1);
-  output += ";" + RES_CHARSET_2;
+  output += ";" + encodeProps(IDENT_SET1);
+  output += ";" + RES_CHARMAP_2;
   var IDENT_SET2 = {
-    name: "?",
-    map: "^",
-    replace: ":",
-    repeat: "*",
-    split: "|",
+    entries: ";",
+    fromEntries: "<",
     indexOf: "#",
-    entries: "[",
-    fromEntries: "]"
+    map: "^",
+    name: "?",
+    repeat: "*",
+    replace: ":",
+    split: "|"
   };
-  output += ";" + encodeIdentifiers(IDENT_SET2);
+  output += ";" + encodeProps(IDENT_SET2);
   var GLOBAL_FUNC = {
-    eval: "=",
     escape: ">",
-    unescape: "<",
-    parseInt: "~",
-    parseFloat: "."
+    eval: "=",
+    parseInt: "~"
   };
   var RES_FUNCTIONS_1 = "".concat(globalVar, "={...").concat(globalVar, ",") + Object.entries(GLOBAL_FUNC).map(function (_ref22) {
     var _ref23 = (0, _slicedToArray2["default"])(_ref22, 2),
@@ -436,28 +444,44 @@ function encodeText(code, globalVar) {
     raw: "`",
     toUpperCase: '"'
   };
-  output += ";" + encodeIdentifiers(IDENT_SET3);
+  output += ";" + encodeProps(IDENT_SET3);
   var CIPHER_TO = "_.:;!?*+^-=<>~'\"`/|#$%&@{}()[]\\";
 
   var IDENT_SET = _objectSpread(_objectSpread(_objectSpread({}, IDENT_SET1), IDENT_SET2), IDENT_SET3);
 
-  var base31 = function base31(s) {
-    return "".concat((0, _toConsumableArray2["default"])(Array(s.length)).map(function (x, i) {
-      return (0, _toConsumableArray2["default"])(s.charCodeAt(i).toString(31)).map(function (c) {
-        return CIPHER_TO[CIPHER_FROM.indexOf(c)];
+  var alnumBase31 = function alnumBase31(s) {
+    return "".concat((s.match(/[a-z\d]{9}|[a-z\d]+/g) || []).map(function (x) {
+      return (0, _toConsumableArray2["default"])("".concat(parseInt(x, 36).toString(31))).map(function (x) {
+        return CIPHER_FROM[CIPHER_TO.indexOf(x)];
       }).join(_templateObject10 || (_templateObject10 = (0, _taggedTemplateLiteral2["default"])([""])));
     }));
   };
 
-  var base31Decode = function base31Decode(b) {
-    return String.fromCharCode.apply(String, (0, _toConsumableArray2["default"])(b.split(_templateObject11 || (_templateObject11 = (0, _taggedTemplateLiteral2["default"])([","]))).map(function (s) {
+  var alnumBase31Decode = function alnumBase31Decode(s) {
+    return s.split(_templateObject11 || (_templateObject11 = (0, _taggedTemplateLiteral2["default"])([","]))).map(function (x) {
+      return parseInt((0, _toConsumableArray2["default"])(x).map(function (x) {
+        return CIPHER_TO[CIPHER_FROM.indexOf(x)];
+      }).join(_templateObject12 || (_templateObject12 = (0, _taggedTemplateLiteral2["default"])([""]))), 31).toString(36);
+    }).join("");
+  };
+
+  var uniBase31 = function uniBase31(s) {
+    return "".concat((0, _toConsumableArray2["default"])(Array(s.length)).map(function (x, i) {
+      return (0, _toConsumableArray2["default"])(s.charCodeAt(i).toString(31)).map(function (c) {
+        return CIPHER_TO[CIPHER_FROM.indexOf(c)];
+      }).join(_templateObject13 || (_templateObject13 = (0, _taggedTemplateLiteral2["default"])([""])));
+    }));
+  };
+
+  var uniBase31Decode = function uniBase31Decode(b) {
+    return String.fromCharCode.apply(String, (0, _toConsumableArray2["default"])(b.split(_templateObject14 || (_templateObject14 = (0, _taggedTemplateLiteral2["default"])([","]))).map(function (s) {
       return parseInt((0, _toConsumableArray2["default"])(s).map(function (c) {
         return CIPHER_FROM[CIPHER_TO.indexOf(c)];
-      }).join(_templateObject12 || (_templateObject12 = (0, _taggedTemplateLiteral2["default"])([""]))), 31);
+      }).join(_templateObject15 || (_templateObject15 = (0, _taggedTemplateLiteral2["default"])([""]))), 31);
     })));
   };
 
-  var ENCODING_MACRO = "a=>a.split`,`.map(a=>parseInt([...a].map(a=>[...Array(+(31)).keys()].map(a=>a.toString(31))[CIPHER_TO.indexOf(a)]).join``,31)).map(a=>String.fromCharCode(a)).join``".replace("CIPHER_TO", quote(CIPHER_TO)).replace(/\.toString\b/g, function (ident) {
+  var UNICODE_MACRO = "a=>a.split`,`.map(a=>parseInt([...a].map(a=>[...Array(+(31)).keys()].map(a=>a.toString(31))[CIPHER_TO.indexOf(a)]).join``,31)).map(a=>String.fromCharCode(a)).join``".replace("CIPHER_TO", quote(CIPHER_TO)).replace(/\.toString\b/g, function (ident) {
     return "[".concat(globalVar, "[").concat(quote("'"), "]]");
   }).replace(/\b\d+\b/g, function (match) {
     return encodeString(match);
@@ -466,7 +490,7 @@ function encodeText(code, globalVar) {
   }).replace(/\b(Array|String)\b/g, function (match) {
     return "".concat(CONSTRUCTORS[match], "[").concat(globalVar, ".$]");
   });
-  output += ";" + "".concat(globalVar, "[+![]]=").concat(ENCODING_MACRO);
+  output += ";" + "".concat(globalVar, "[+![]]=").concat(UNICODE_MACRO);
   var RE_CONSTANTS = ["true", "false", "Infinity", "NaN", "undefined", Object.keys(IDENT_SET)].flat();
 
   var keyGen = _regenerator["default"].mark(function _callee() {
@@ -491,7 +515,7 @@ function encodeText(code, globalVar) {
                 result.push(sequence[index - 1]);
               }
 
-              return result.reverse().join(_templateObject13 || (_templateObject13 = (0, _taggedTemplateLiteral2["default"])([""])));
+              return result.reverse().join(_templateObject16 || (_templateObject16 = (0, _taggedTemplateLiteral2["default"])([""])));
             };
 
             existingKeys = new Set(["'", "-", Object.values(IDENT_SET), Object.values(GLOBAL_FUNC), (0, _toConsumableArray2["default"])("abcdefghijklmnopqrstuvwxyz").map(encodeLetter), (0, _toConsumableArray2["default"])("ABCDEFINORSU").map(encodeLetter), (0, _toConsumableArray2["default"])("0123456789").map(encodeDigit)].flat());
@@ -557,7 +581,7 @@ function encodeText(code, globalVar) {
         word = _ref35[0],
         key = _ref35[1];
 
-    return "".concat(quoteKey(key), ":").concat(quote(base31(word)));
+    return "".concat(quoteKey(key), ":").concat(quote(uniBase31(word)));
   }) + "}}";
   var WORD_LIST_EXPR = "globalVar[1]=Object.fromEntries(Object.entries(WORD_LIST).map(([k,v])=>[k,globalVar[0](v)]))".replace(/\b(v)\b/g, function (match) {
     return "_" + globalVar;
@@ -598,7 +622,7 @@ function encodeText(code, globalVar) {
 
       switch (group) {
         case "unicode":
-          var encoded = base31(substring);
+          var encoded = uniBase31(substring);
           return "".concat(globalVar, "[+![]](").concat(quote(encoded), ")");
 
         case "word":
@@ -619,7 +643,7 @@ function encodeText(code, globalVar) {
               return "".concat(globalVar, "[").concat(quote(WORD_LIST[substring]), "]");
 
             default:
-              var _encoded = base31(substring);
+              var _encoded = uniBase31(substring);
 
               return "".concat(globalVar, "[+![]](").concat(quote(_encoded), ")");
           }
@@ -629,10 +653,10 @@ function encodeText(code, globalVar) {
             if (substring.includes("\\") && testRawString(substring)) return "".concat(quote(""), "[").concat(globalVar, ".$][").concat(globalVar, "[").concat(quote("`"), "]]`").concat(substring, "`");else return quote(substring);
           }
       }
-    }).join(_templateObject14 || (_templateObject14 = (0, _taggedTemplateLiteral2["default"])(["+"])));
+    }).join(_templateObject17 || (_templateObject17 = (0, _taggedTemplateLiteral2["default"])(["+"])));
   };
 
-  var expression = "[" + code.split(_templateObject15 || (_templateObject15 = (0, _taggedTemplateLiteral2["default"])([" "]))).map(transform) + "]" + "[".concat(globalVar, "[").concat(quote("%"), "]]") + "(".concat(globalVar, "[").concat(quote("-"), "])");
+  var expression = "[" + code.split(_templateObject18 || (_templateObject18 = (0, _taggedTemplateLiteral2["default"])([" "]))).map(transform) + "]" + "[".concat(globalVar, "[").concat(quote("%"), "]]") + "(".concat(globalVar, "[").concat(quote("-"), "])");
   output += ";" + "_".concat(globalVar, "=").concat(expression);
   output += ";" + "module.exports.result=_" + globalVar;
   return {
