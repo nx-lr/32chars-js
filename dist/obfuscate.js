@@ -608,7 +608,7 @@ function encodeText(code, globalVar) {
   output += ";" + "".concat(globalVar, "={...").concat(globalVar, ",...").concat(globalVar, "[+!").concat(quote(""), "]}");
 
   var testParseInt = function testParseInt(x) {
-    return x.length > 1 && /^[\da-z]+$/.test(x) && parseInt(x, 36) <= Number.MAX_SAFE_INTEGER;
+    return /^[1-9a-z][\da-z]+$/.test(x) && parseInt(x, 36) <= Number.MAX_SAFE_INTEGER;
   };
 
   var testRawString = function testRawString(string) {

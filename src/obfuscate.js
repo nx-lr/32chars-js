@@ -738,7 +738,7 @@ function encodeText(
    */
 
   const testParseInt = (x: string): boolean =>
-    x.length > 1 && /^[\da-z]+$/.test(x) && parseInt(x, 36) <= Number.MAX_SAFE_INTEGER;
+    /^[1-9a-z][\da-z]+$/.test(x) && parseInt(x, 36) <= Number.MAX_SAFE_INTEGER;
 
   const testRawString = string => {
     try {
@@ -783,7 +783,6 @@ function encodeText(
 
             case testParseInt(substring): {
               const encoded = alnumBase32(substring);
-
               return `${globalVar}[~[]](${quote(encoded)})`;
             }
 
