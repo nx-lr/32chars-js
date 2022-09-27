@@ -249,24 +249,23 @@ function encodeText(
 
   // These will be explained later in the next section.
   const IDENT_SET1 = {
-    concat: "+",
     call: "!",
-    join: "%",
-    slice: "/",
-    return: "_",
+    concat: "+",
     constructor: "$",
+    join: "%",
+    return: "_",
+    slice: "/",
     source: ",",
   };
 
   // And these are what we would achieve from there:
   const CONSTRUCTORS = {
     Array: "[]",
-    Object: "{}",
-    String: quote(""),
-    Number: "(~[])",
     Boolean: "(![])",
-    RegExp: "/./",
     Function: "(()=>{})",
+    Number: "(~[])",
+    RegExp: "/./",
+    String: quote(""),
   };
 
   const CHARSET_2 = {...CHARSET_1};
@@ -354,14 +353,14 @@ function encodeText(
   output += ";" + RES_CHARSET_2;
 
   const IDENT_SET2 = {
-    name: "?",
-    map: "^",
-    replace: ":",
-    repeat: "*",
-    split: "|",
+    entries: ";",
+    fromEntries: "<",
     indexOf: "#",
-    entries: "[",
-    fromEntries: "]",
+    map: "^",
+    name: "?",
+    repeat: "*",
+    replace: ":",
+    split: "|",
   };
 
   output += ";" + encodeIdentifiers(IDENT_SET2);
@@ -382,9 +381,8 @@ function encodeText(
    */
 
   const GLOBAL_FUNC = {
-    eval: "=",
     escape: ">",
-    unescape: "<",
+    eval: "=",
     parseInt: "~",
   };
 
@@ -481,7 +479,13 @@ function encodeText(
     ].map(x => x.join`:`) +
     "}";
 
-  const IDENT_SET3 = {fromCharCode: "@", keys: "&", raw: "`", toUpperCase: '"'};
+  const IDENT_SET3 = {
+    fromCharCode: "@",
+    keys: "&",
+    raw: "`",
+    toUpperCase: '"',
+  };
+
   output += ";" + encodeIdentifiers(IDENT_SET3);
 
   /**
@@ -524,12 +528,24 @@ function encodeText(
    * there's no need to explicitly write `.join(',')`.
    */
 
-  const base31 = (s: string) =>
+  const alnumBase31 = (s: string) =>
+    `${(s.match(/[a-z\d]{9}|[a-z\d]+/g) || []).map(
+      x => [...`${parseInt(x, 36).toString(31)}`].map(x => CIPHER_FROM[CIPHER_TO.indexOf(x)]).join``
+    )}`;
+
+  const alnumBase31Decode = (s: string) =>
+    s.split`,`
+      .map(x =>
+        parseInt([...x].map(x => CIPHER_TO[CIPHER_FROM.indexOf(x)]).join``, 31).toString(36)
+      )
+      .join(``);
+
+  const uniBase31 = (s: string) =>
     `${[...Array(s.length)].map(
       (x, i) => [...s.charCodeAt(i).toString(31)].map(c => CIPHER_TO[CIPHER_FROM.indexOf(c)]).join``
     )}`;
 
-  const base31Decode = b =>
+  const uniBase31Decode = b =>
     String.fromCharCode(
       ...b.split`,`.map(s =>
         parseInt([...s].map(c => CIPHER_FROM[CIPHER_TO.indexOf(c)]).join``, 31)
@@ -556,7 +572,7 @@ function encodeText(
    * a few surgical regex substitutions.
    */
 
-  const ENCODING_MACRO =
+  const UNICODE_MACRO =
     "a=>a.split`,`.map(a=>parseInt([...a].map(a=>[...Array(+(31)).keys()].map(a=>a.toString(31))[CIPHER_TO.indexOf(a)]).join``,31)).map(a=>String.fromCharCode(a)).join``"
       .replace("CIPHER_TO", quote(CIPHER_TO))
       .replace(/\.toString\b/g, ident => `[${globalVar}[${quote("'")}]]`)
@@ -569,7 +585,7 @@ function encodeText(
       )
       .replace(/\b(Array|String)\b/g, match => `${CONSTRUCTORS[match]}[${globalVar}.$]`);
 
-  output += ";" + `${globalVar}[+![]]=${ENCODING_MACRO}`;
+  output += ";" + `${globalVar}[+![]]=${UNICODE_MACRO}`;
 
   /**
    * UTF-16 STRINGS
@@ -673,7 +689,7 @@ function encodeText(
   output +=
     ";" +
     `${globalVar}={...${globalVar},[~[]]:{` +
-    Object.entries(WORD_LIST).map(([word, key]) => `${quoteKey(key)}:${quote(base31(word))}`) +
+    Object.entries(WORD_LIST).map(([word, key]) => `${quoteKey(key)}:${quote(uniBase31(word))}`) +
     "}}";
 
   const WORD_LIST_EXPR =
@@ -716,7 +732,7 @@ function encodeText(
       const [group, substring] = Object.entries(match.groups).filter(([, val]) => !!val)[0];
       switch (group) {
         case "unicode":
-          const encoded = base31(substring);
+          const encoded = uniBase31(substring);
           return `${globalVar}[+![]](${quote(encoded)})`;
         case "word":
           switch (true) {
@@ -733,7 +749,7 @@ function encodeText(
             case typeof WORD_LIST[substring] == "string":
               return `${globalVar}[${quote(WORD_LIST[substring])}]`;
             default:
-              const encoded = base31(substring);
+              const encoded = uniBase31(substring);
               return `${globalVar}[+![]](${quote(encoded)})`;
           }
         default: {
