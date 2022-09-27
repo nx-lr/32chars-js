@@ -10,39 +10,55 @@ This project is the spiritual successor to many JavaScript code obfuscators out 
 
 JavaScript is weird, in so many ways. But, you may disagree, but the one thing people hate the most about JavaScript is that it's weakly typed. And because of the way JavaScript evaluates expressions, it (sometimes) can lead to very surprising results.
 
-And because of this, people have tried many ways to exploit this very flaw of JavaScript, resulting in the emergence of JavaScript "compilers" that encodes JavaScript code into an obfuscated form using only a fixed set of symbols. That program was jjencode, with eighteen characters `[]()!+,\"$.:;_{}~=`. And soon enough, other entries propped up which brought down the minimum number of characters down to eight `[]()!+,/`, and then finally six `[]()!+` with JSF\*ck.
+And because of this, people have tried many ways to exploit this very flaw of JavaScript, resulting in the emergence of JavaScript "compilers" encoding JavaScript into an obfuscated form using only a fixed set of symbols. In theory, any JavaScript program can be written without any alphanumeric characters present.
 
-The fundamental thing is that these encoders follow a general _**pattern**_:
+The first such program was jjencode, with a set of 18 characters `[]()!+,\"$.:;_{}~=`. In Jan 2010, an informal competition was held in a security forum, bringing down the minimum number of characters down to 8 `[]()!+,/`. Contributors managed to remove the need for the characters `,` and `/`, bringing the minimum to 6 `[]()!+`.
 
-- evaluating an expression using only those characters to form a constant,
-- converting that constant to a string, and then
-- accessing that string with an index to get a single character.
+This process first yields numbers, which are made through repeatedly adding 1 to get the right digit. Higher numbers are then made by concatenating using the `+` operator which yields a string, and can be converted back into numbers by adding a prefix `+`.
 
-This process repeats itself a few times, first yielding numbers, then letters and the space, symbols, and then finally every other Unicode character with a suitable function like `String.fromCharCode` or `eval`.
+To get other characters, these encoders follow a general pattern: evaluating an expression (usually a nifty trick) to form a primitive value, casting that primitive value to a string, then accessing that string with a numeric index to get the desired character.
+
+This process may be repeated to yield new letters is formed, until a more general method of retrieving unmapped characters is found, either through `String.fromCharCode` or `eval`.
+
+And because of constant substitution, these encoders inherently spit out very long and almost repetitive outputs, with some expansions going up to the thousands, all just to get a single character.
 
 ## How it works, roughly
 
-In theory, any JavaScript program can be written, even without the need for any alphanumeric characters. However, they all produce very long sequences of characters. PunkScript does things a little differently.
+### Initialization
 
-It uses all 32 ASCII punctuation characters `` !"#$%&'()*+,-./:;<=>?@[\]^_`{|}~ ``. Which means there is enough syntax to form strings, data structures and other constructs _literally_ without needing to assemble them character by character, resulting in a very compact output.
+Since we have a fairly large character set, substrings with those combinations of those 32 punctuation symbols can be represented inside a string literal, optimizing escapes. Other sequences of characters would still need to be formed through operations.
 
-And because we live in the era of modern JavaScript, we should also use the latest version of JavaScript, with things like anonymous functions, spreads, string interpolation, raw strings, tagged templates, and a ton of new methods.
+The program starts out by assigning a global variable `$` with the value of `~[]`, which evaluates to `-1`. We increment this variable up to 9 in the following statement.
 
-We could assemble the input string character by character, and then substituting expressions for each, but that is very trivial and would result in a very long output. To shorten the output significantly, we should break it down into larger chunks or runs of characters instead. This can be done through "_tagged_" regular expressions (regular expressions with named groups).
+Meanwhile, using type coercion, we manipulate literals to evaluate to constants like `true`, `false`, `Infinity`, `NaN`, `undefined`, and the string `[object Object]`. There's so many ways that we can form these constants, and that's the beauty of JavaScript.
 
-Since we have a fairly large character set, substrings with those combinations of those 32 punctuation symbols can be represented literally as a single string. Other sequences of characters would still need to be formed through operations.
+We cast these expressions into strings by surrounding them with a template string literal `` `${}` ``, and then accessing them with our increment to get single character strings.
 
-The program starts out by assigning a global variable, say `$` to `~[]`. We increment this variable up to 9 while assigning the digits and also single characters of simple primitive constant values, wrapping them in a template string `` `${}` ``, ciphering them as properties of an object. Then the global variable is reassigned to said object within the same statement.
+This would yield us the following letters (case-sensitive): `a b c d e f i j I l n N o O r s t u y`, the space ` ` and the digits `0` to `9`.
 
-The space, the only non-alphanumeric character not part of the 32 characters, is created from the string `[object Object]` which has a space inside of it. It is assigned the property `-`
+The letters have two characters, the first defines its case and the second an arbitrary symbol, each unique to a letter in the English alphabet. The digits have keys defined in binary using combinations of `_` and `$`, padded to length 3. The space, the only non-alphanumeric and non-symbol character, is assigned the property `-`.
 
-The letters have two characters, the first defines its case and the second an arbitrary symbol, each unique to a letter in the English alphabet. The digits have keys defined in binary, padded to length 3.
+`$` is then reassigned to said object within the same statement, similar to jjencode.
 
-I use the letters to begin assembling words such as `constructor`, making sure to store every word made thereafter. We can access the constructors of literals like `()=>{}` or `/./` or expressions like `+{}`, then converting them to strings like we did be before, yielding us a string like `function Constructor { [native code] }`.
+We now would use the letters to begin assembling words like `constructor`, making sure to store every word with a unique key so that we can refer to it later on in our code.
 
-This way, we have the entire lowercase alphabet save for 5 `h k q w z` and 12 of the uppercase letters `A B C D E F I N O R S U`. The other 5 lowercase letters are made by passing a small number in base 36, which always lowercase. Two more uppercase letters `C` and `D` are created by indexing a URL with a single character like `<` or `=` with the `escape` function, and uppercase `U` is gotten from the `[object Undefined]` string, evaluated from `Object.toString.call().toString()`.
+With the `constructor` property, we can access the constructors of literals, like `Array`, `String`, `Number`, `Boolean`, `RegExp` and `Function` (leaving out `Object`), and just like what we did before, converting that constructor function into a string.
 
-With this, I now define these properties by spelling them out character by character, except `toString` itself which is formed from `to` and by accessing the `name` property on the `String` constructor. All these identifier strings are substituted with single character properties, which are needed to form functions.
+This yields something like `function Constructor { [native code] }`. This ishihihus the letters `A B E F g m p R S v x`.
+
+Now, we have 21 lowercase letters `a b c d e f g i j l m n o p r s t u v x y` and 9 of the uppercase letters `A B E F I N O R S`.
+
+The other 5 lowercase letters `h k q w z` are made by passing a small number in base 36 and calling the `toString` methods which always yields the higher alphabetic digits in lowercase.
+
+We now define these properties by spelling them out character by character, except `toString` itself which is formed from `to` and by accessing the `name` property on the `String` constructor. All these identifier strings are substituted with single character properties, which are needed to form functions.
+
+Two more uppercase letters `C` and `D` are created by indexing a URL with a single character like `<` or `=` with the `escape` function which always yields its code points in uppercase. Uppercase `U` is gotten from the `[object Undefined]` string, evaluated from `Object.toString.call().toString()`.
+
+We now have the entire lowercase alphabet, and forming the word `toUpperCase` we can now form the rest of the other 14 uppercase letters from the lowercase this way. `fromCharCode` allows us to form Unicode strings without us having to use `eval`, and when combined with `map`, `split` and `join` allows us to encode arbitrary Unicode strings using _some_ combinations of characters on the fly.
+
+`L` forms part of `toLowerCase`, allowing us to convert strings to and from both cases, hence "normalizing" them. `w` is also used to form the word `raw` in `String.raw` which allows us to express strings verbatim without interpreting escape sequences, as long as it does not break JavaScript's template literal `` ` ` `` and interpolation `${` syntax.
+
+These property and method names are assigned distinct single character keys which will make further expressions significantly shorter. Some properties reference global functions.
 
 ```js
 const props = {
@@ -57,14 +73,6 @@ const props = {
   constructor: "$",
   source: ",",
 
-  // 'to' + String.constructor.name
-  toString: "'",
-
-  // global functions
-  eval: "=",
-  escape: ">",
-  parseInt: "~",
-
   // second pass: constructors
   name: "?",
   map: "^",
@@ -74,6 +82,14 @@ const props = {
   indexOf: "#",
   entries: ";",
   fromEntries: "<",
+
+  // 'to' + String.constructor.name
+  toString: "'",
+
+  // global functions
+  eval: "=",
+  escape: ">",
+  parseInt: "~",
 
   // third pass: toString, escape and call
   fromCharCode: "@",
@@ -86,7 +102,25 @@ const props = {
 }
 ```
 
-Using these strings, I define one function that turns arbitrary UTF-16 sequences into a sequence of symbol characters. The code points are converted into base 31 and its digits ciphered using the 31 symbol characters, leaving the comma to separate each UTF-16 code unit.
+### Parsing and substitution
+
+PunkScript encodes PunkScript does things a little differently. It has a fairly large character set of 32, meaning there is enough syntax to represent strings literally without the need for substitution. JavaScript has changed quite a lot over the years and now we have string interpolation, anonymous functions, raw strings, (tagged) template strings and a ton of new methods for us to mess around with.
+
+We could go through the string character by character, substituting and expanding character by character, but this would result in a long output. Instead, we should try and break the string down into larger runs and do something differently to each on, so to minimize repetition.
+
+Using these methods, many of them returning strings, we can begin to define a few functions or macros. We would use numbers as our keys since they are functions, after all.
+
+There are two encoder and decoder functions defined in the compiler and the output respectively. Methods, functions and variables Inthe encoded are substituted with regular expressions.
+
+One function, assigned a property `-1`, made with the expression `~[]` yields case-insensitive alphanumeric characters while the other, assigned `1`, yields Unicode sequences. Both encode strings into arrays of integers.
+
+Those integers are then converted into base 31 alphanumerics and their digits substituted with one of the 31 other punctuation characters, before joining back into a string with commas.
+
+If the input string contains any Unicode characters, meaning anything beyond `U+7F`, both methods are used.
+
+Using these string and array methods, we can begin to define a few functions. From here on out, we will use letters as our keys.
+
+The keys of this object are also ciphered, but instead of normal base-31, we use bijective base 32, so that all combinations of symbols can be produced, skipping over combinations which already have been defined.
 
 Similar strings are defined from existing ones not only through concatenation, but repetition, substitution and slicing.
 
