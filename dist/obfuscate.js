@@ -14,6 +14,8 @@ var _taggedTemplateLiteral2 = _interopRequireDefault(require("@babel/runtime/hel
 
 var _voca = _interopRequireDefault(require("voca"));
 
+var _xregexp = _interopRequireDefault(require("xregexp"));
+
 var _lodash = _interopRequireDefault(require("lodash"));
 
 var _fs = _interopRequireDefault(require("fs"));
@@ -21,8 +23,6 @@ var _fs = _interopRequireDefault(require("fs"));
 var _isValidIdentifier = _interopRequireDefault(require("is-valid-identifier"));
 
 var _jsesc = _interopRequireDefault(require("jsesc"));
-
-var _xregexp = _interopRequireDefault(require("xregexp"));
 
 var _templateObject, _templateObject2, _templateObject3, _templateObject4, _templateObject5, _templateObject6, _templateObject7, _templateObject8, _templateObject9, _templateObject10, _templateObject11, _templateObject12, _templateObject13, _templateObject14, _templateObject15, _templateObject16, _templateObject17, _templateObject18, _templateObject19, _templateObject20;
 
@@ -41,8 +41,6 @@ var print = console.log;
 var text = _fs["default"].readFileSync("./input.txt", "utf8");
 
 function encodeText(code, globalVar) {
-  var _code$match, _ref32, _ref33;
-
   var _ref = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : {},
       _ref$strictMode = _ref.strictMode,
       strictMode = _ref$strictMode === void 0 ? false : _ref$strictMode,
@@ -55,7 +53,7 @@ function encodeText(code, globalVar) {
 
   var BUILTINS = /^(Array|ArrayBuffer|AsyncFunction|AsyncGenerator|AsyncGeneratorFunction|Atomics|BigInt|BigInt64Array|BigUint64Array|Boolean|DataView|Date|decodeURI|decodeURIComponent|encodeURI|encodeURIComponent|escape|eval|exports|Float32Array|Float64Array|Function|Generator|GeneratorFunction|globalThis|Infinity|Int16Array|Int32Array|Int8Array|Intl|isFinite|isNaN|JSON|Map|Math|module|NaN|Number|Object|parseFloat|parseInt|Promise|Proxy|Reflect|RegExp|Set|SharedArrayBuffer|String|Symbol|this|Uint16Array|Uint32Array|Uint8Array|Uint8ClampedArray|undefined|unescape|WeakMap|WeakSet|WebAssembly)$/;
   var REGEXPS = {
-    word: (0, _xregexp["default"])(String.raw(_templateObject || (_templateObject = (0, _taggedTemplateLiteral2["default"])(["[pLpN]+|[\0-\x1F\x7F]+"], ["[\\pL\\pN]+|[\\0-\\x1f\\x7f]+"]))), "g"),
+    word: (0, _xregexp["default"])(String.raw(_templateObject || (_templateObject = (0, _taggedTemplateLiteral2["default"])(["[pLpN]+|[\b\n\f\r\t\x0B]+"], ["[\\pL\\pN]+|[\\b\\n\\f\\r\\t\\v]+"]))), "g"),
     symbol: /[!-\/:-@[-`{-~]+/g,
     unicode: /[^ -~]+/g
   };
@@ -304,7 +302,7 @@ function encodeText(code, globalVar) {
     })));
   }) + "}";
   output += RES_CHARMAP_1;
-  var IDENT_SET1 = {
+  var IDENT_MAP_1 = {
     call: "!",
     concat: "+",
     constructor: "$",
@@ -363,14 +361,14 @@ function encodeText(code, globalVar) {
     if (!(_char5 in CHARMAP_1)) CHARMAP_2[_char5] = [_expression3, _index, expansion];
   }
 
-  var objectDifference = function objectDifference(x, y) {
+  var objDiff = function objDiff(x, y) {
     return Object.fromEntries(_lodash["default"].difference(Object.keys(x), Object.keys(y)).map(function (z) {
       return [z, x[z]];
     }));
   };
 
-  var CHARMAP_2_DIFF = objectDifference(CHARMAP_2, CHARMAP_1);
-  var RES_CHARMAP_2 = "".concat(globalVar, "={...").concat(globalVar, ",") + Object.entries(CHARMAP_2_DIFF).map(function (_ref16) {
+  var DIFF_CHARMAP_2 = objDiff(CHARMAP_2, CHARMAP_1);
+  var RES_CHARMAP_2 = "".concat(globalVar, "={...").concat(globalVar, ",") + Object.entries(DIFF_CHARMAP_2).map(function (_ref16) {
     var _ref17 = (0, _slicedToArray2["default"])(_ref16, 2),
         letter = _ref17[0],
         _ref17$ = (0, _slicedToArray2["default"])(_ref17[1], 3),
@@ -382,8 +380,14 @@ function encodeText(code, globalVar) {
   var encodeString = function encodeString() {
     var str = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : "";
     return (0, _toConsumableArray2["default"])("".concat(str).replace(/\W/g, "")).map(function (_char6) {
-      var encoded;
-      return /[$_]/.test(_char6) ? quote(_char6) : /\d/.test(_char6) ? "".concat(globalVar, ".").concat(encodeDigit(_char6)) : (encoded = encodeLetter(_char6), (0, _isValidIdentifier["default"])(encoded) ? "".concat(globalVar, ".").concat(encoded) : globalVar + "[".concat(quote(encoded), "]"));
+      if (/[$_]/.test(_char6)) {
+        return quote(_char6);
+      } else if (/\d/.test(_char6)) {
+        return "".concat(globalVar, ".").concat(encodeDigit(_char6));
+      } else {
+        var encoded = encodeLetter(_char6);
+        if ((0, _isValidIdentifier["default"])(encoded)) return "".concat(globalVar, ".").concat(encoded);else return globalVar + "[".concat(quote(encoded), "]");
+      }
     }).join(_templateObject7 || (_templateObject7 = (0, _taggedTemplateLiteral2["default"])(["+"])));
   };
 
@@ -403,9 +407,9 @@ function encodeText(code, globalVar) {
     }) + "}";
   };
 
-  output += ";" + encodeProps(IDENT_SET1);
+  output += ";" + encodeProps(IDENT_MAP_1);
   output += ";" + RES_CHARMAP_2;
-  var IDENT_SET2 = {
+  var IDENT_MAP_2 = {
     entries: ";",
     fromEntries: "<",
     indexOf: "#",
@@ -415,7 +419,7 @@ function encodeText(code, globalVar) {
     replace: ":",
     split: "|"
   };
-  output += ";" + encodeProps(IDENT_SET2);
+  output += ";" + encodeProps(IDENT_MAP_2);
   var GLOBAL_FUNC = {
     escape: ">",
     eval: "=",
@@ -438,16 +442,16 @@ function encodeText(code, globalVar) {
   }))).map(function (x) {
     return x.join(_templateObject9 || (_templateObject9 = (0, _taggedTemplateLiteral2["default"])([":"])));
   }) + "}";
-  var IDENT_SET3 = {
+  var IDENT_MAP_3 = {
     fromCharCode: "@",
     keys: "&",
     raw: "`",
     toUpperCase: '"'
   };
-  output += ";" + encodeProps(IDENT_SET3);
+  output += ";" + encodeProps(IDENT_MAP_3);
   var CIPHER_TO = "_.:;!?*+^-=<>~'\"`/|#$%&@{}()[]\\,";
 
-  var IDENT_SET = _objectSpread(_objectSpread(_objectSpread({}, IDENT_SET1), IDENT_SET2), IDENT_SET3);
+  var IDENT_MAP = _objectSpread(_objectSpread(_objectSpread({}, IDENT_MAP_1), IDENT_MAP_2), IDENT_MAP_3);
 
   var alnumBase32 = function alnumBase32(s) {
     return parseInt(s, 36).toString(32).split(_templateObject11 || (_templateObject11 = (0, _taggedTemplateLiteral2["default"])([""]))).map(function (c) {
@@ -484,7 +488,7 @@ function encodeText(code, globalVar) {
   }).replace(/\b\d+\b/g, function (match) {
     return encodeString(match);
   }).replace("parseInt", "".concat(globalVar, "[").concat(quote("~"), "]")).replace(/\ba\b/g, "_" + globalVar).replace(/\.\b(keys|split|map|indexOf|join|fromCharCode)\b/g, function (p1) {
-    return "[".concat(globalVar, "[").concat(quote(IDENT_SET[p1.slice(1)]), "]]");
+    return "[".concat(globalVar, "[").concat(quote(IDENT_MAP[p1.slice(1)]), "]]");
   }).replace(/\b(Array|String)\b/g, function (match) {
     return "".concat(CONSTRUCTORS[match], "[").concat(globalVar, ".$]");
   });
@@ -495,11 +499,11 @@ function encodeText(code, globalVar) {
   }).replace(/\b\d+\b/g, function (match) {
     return encodeString(match);
   }).replace(/\ba\b/g, "_" + globalVar).replace(/\.\b(keys|map|indexOf|join)\b/g, function (p1) {
-    return "[".concat(globalVar, "[").concat(quote(IDENT_SET[p1.slice(1)]), "]]");
+    return "[".concat(globalVar, "[").concat(quote(IDENT_MAP[p1.slice(1)]), "]]");
   });
   output += ";" + "".concat(globalVar, "[+[]]=").concat(UNICODE_MACRO);
   output += ";" + "".concat(globalVar, "[~[]]=").concat(ALNUM_MACRO);
-  var RE_CONSTANTS = ["true", "false", "Infinity", "NaN", "undefined", Object.keys(IDENT_SET)].flat();
+  var RE_CONSTANTS = ["true", "false", "Infinity", "NaN", "undefined", Object.keys(IDENT_MAP)].flat();
 
   var keyGen = _regenerator["default"].mark(function _callee() {
     var digitsTo, digitsFrom, bijective, existingKeys, i, _key;
@@ -526,7 +530,7 @@ function encodeText(code, globalVar) {
               return result.reverse().join(_templateObject18 || (_templateObject18 = (0, _taggedTemplateLiteral2["default"])([""])));
             };
 
-            existingKeys = new Set(["'", "-", Object.values(IDENT_SET), Object.values(GLOBAL_FUNC), (0, _toConsumableArray2["default"])("abcdefghijklmnopqrstuvwxyz").map(encodeLetter), (0, _toConsumableArray2["default"])("ABCDEFINORSU").map(encodeLetter), (0, _toConsumableArray2["default"])("0123456789").map(encodeDigit)].flat());
+            existingKeys = new Set(["'", "-", Object.values(IDENT_MAP), Object.values(GLOBAL_FUNC), (0, _toConsumableArray2["default"])("abcdefghijklmnopqrstuvwxyz").map(encodeLetter), (0, _toConsumableArray2["default"])("ABCDEFINORSU").map(encodeLetter), (0, _toConsumableArray2["default"])("0123456789").map(encodeDigit)].flat());
             i = 1;
 
           case 4:
@@ -561,54 +565,12 @@ function encodeText(code, globalVar) {
     }, _callee);
   })();
 
-  var WORD_LIST = (_ref33 = (_code$match = code.match(REGEXPS.word)) !== null && _code$match !== void 0 ? _code$match : [], (_ref32 = Object.entries(_lodash["default"].countBy(_ref33)).filter(function (_ref24) {
-    var _ref25 = (0, _slicedToArray2["default"])(_ref24, 2),
-        word = _ref25[0],
-        frequency = _ref25[1];
-
-    var alreadyDefined = [].concat((0, _toConsumableArray2["default"])(Object.keys(_objectSpread(_objectSpread(_objectSpread({}, IDENT_SET), CONSTRUCTORS), CONSTANTS))), (0, _toConsumableArray2["default"])(CIPHER_FROM + "ABCDEFINORSU"));
-    return !alreadyDefined.includes(word) && frequency > threshold;
-  }).sort(function (_ref26, _ref27) {
-    var _ref28 = (0, _slicedToArray2["default"])(_ref26, 2),
-        c = _ref28[0],
-        a = _ref28[1];
-
-    var _ref29 = (0, _slicedToArray2["default"])(_ref27, 2),
-        d = _ref29[0],
-        b = _ref29[1];
-
-    return b - a || c.length - d.length;
-  }).map(function (_ref30) {
-    var _ref31 = (0, _slicedToArray2["default"])(_ref30, 1),
-        word = _ref31[0];
-
-    return [word, keyGen.next().value];
-  }), Object.fromEntries(_ref32)));
-  output += ";" + "".concat(globalVar, "={...").concat(globalVar, ",[~-~[]]:{") + Object.entries(WORD_LIST).map(function (_ref34) {
-    var _ref35 = (0, _slicedToArray2["default"])(_ref34, 2),
-        word = _ref35[0],
-        key = _ref35[1];
-
-    return "".concat(quoteKey(key), ":").concat(quote(uniBase31(word)));
-  }) + "}}";
-  var WORD_LIST_EXPR = "globalVar[1]=Object.fromEntries(Object.entries(WORD_LIST).map(([k,v])=>[k,globalVar[0](v)]))".replace(/\b(v)\b/g, function (match) {
-    return "_" + globalVar;
-  }).replace(/\b(k)\b/g, function (match) {
-    return "$" + globalVar;
-  }).replace(/\b(0)\b/g, function (match) {
-    return "+[]";
-  }).replace(/\b(1)\b/g, function (match) {
-    return "+!".concat(quote(""));
-  }).replace(/\b(WORD_LIST)\b/g, "".concat(globalVar, "[~-~[]]")).replace(/\b(globalVar)\b/g, globalVar).replace(/\b(Object)\b/g, function (match) {
-    return "{}[".concat(globalVar, ".$]");
-  }).replace(/\.\b(map|entries|fromEntries)\b/g, function (p1) {
-    return "[".concat(globalVar, "[").concat(quote(IDENT_SET[p1.slice(1)]), "]]");
-  });
-  output += ";" + WORD_LIST_EXPR;
-  output += ";" + "".concat(globalVar, "={...").concat(globalVar, ",...").concat(globalVar, "[+!").concat(quote(""), "]}");
-
   var testParseInt = function testParseInt(x) {
     return /^[1-9a-z][\da-z]+$/.test(x) && parseInt(x, 36) <= Number.MAX_SAFE_INTEGER;
+  };
+
+  var testParseIntUpper = function testParseIntUpper(x) {
+    return /^[1-9A-Z][\dA-Z]+$/.test(x) && parseInt(x, 36) <= Number.MAX_SAFE_INTEGER;
   };
 
   var testRawString = function testRawString(string) {
@@ -621,11 +583,70 @@ function encodeText(code, globalVar) {
     }
   };
 
+  var WORD_MAP = function () {
+    var _code$match;
+
+    var words = (_code$match = code.match(REGEXPS.word)) !== null && _code$match !== void 0 ? _code$match : [];
+    var wordMap = Object.entries(_lodash["default"].countBy(words)).filter(function (_ref24) {
+      var _ref25 = (0, _slicedToArray2["default"])(_ref24, 2),
+          word = _ref25[0],
+          frequency = _ref25[1];
+
+      var alreadyDefined = [].concat((0, _toConsumableArray2["default"])(Object.keys(_objectSpread(_objectSpread(_objectSpread({}, IDENT_MAP), CONSTRUCTORS), CONSTANTS))), (0, _toConsumableArray2["default"])(CIPHER_FROM + "ABCDEFINORSU"));
+      return !alreadyDefined.includes(word) && frequency > threshold;
+    }).sort(function (_ref26, _ref27) {
+      var _ref28 = (0, _slicedToArray2["default"])(_ref26, 2),
+          c = _ref28[0],
+          a = _ref28[1];
+
+      var _ref29 = (0, _slicedToArray2["default"])(_ref27, 2),
+          d = _ref29[0],
+          b = _ref29[1];
+
+      return b - a || c.length - d.length;
+    }).map(function (_ref30) {
+      var _ref31 = (0, _slicedToArray2["default"])(_ref30, 1),
+          word = _ref31[0];
+
+      return [word, keyGen.next().value];
+    });
+    return Object.fromEntries(wordMap);
+  }();
+
+  output += ";" + "".concat(globalVar, "={...").concat(globalVar, ",[~-~[]]:{") + Object.entries(WORD_MAP).map(function (_ref32) {
+    var _ref33 = (0, _slicedToArray2["default"])(_ref32, 2),
+        word = _ref33[0],
+        key = _ref33[1];
+
+    var prefix = testParseInt(word) ? "-" : testParseIntUpper(word) ? "=" : "_";
+    var expansion = prefix + (prefix == "_" ? uniBase31(word) : alnumBase32(word));
+    return "".concat(quoteKey(key), ":").concat(quote(expansion));
+  }).sort(function (x, y) {
+    return x.length - y.length || x.localeCompare(y);
+  }) + "}}";
+  var WORD_MAP_EXPR = "globalVar[1]=Object.fromEntries(Object.entries(WORD_MAP).map(([k,v])=>[k,v[0]=='-'?globalVar[-1](v.slice(1)):v[0]=='='?globalVar[-1](v.slice(1)).toUpperCase():globalVar[0](v.slice(1))]))".replace(/\b(v)\b/g, function (match) {
+    return "_" + globalVar;
+  }).replace(/\b(k)\b/g, function (match) {
+    return "$" + globalVar;
+  }).replace(/\b(0)\b/g, function (match) {
+    return "+[]";
+  }).replace(/\b(-1)\b/g, function (match) {
+    return "~[]";
+  }).replace(/\b(1)\b/g, function (match) {
+    return "+!".concat(quote(""));
+  }).replace(/\b(WORD_MAP)\b/g, "".concat(globalVar, "[~-~[]]")).replace(/\b(globalVar)\b/g, globalVar).replace(/\b(Object)\b/g, function (match) {
+    return "{}[".concat(globalVar, ".$]");
+  }).replace(/\.\b(map|slice|entries|fromEntries|toUpperCase)\b/g, function (p1) {
+    return "[".concat(globalVar, "[").concat(quote(IDENT_MAP[p1.slice(1)]), "]]");
+  });
+  output += ";" + WORD_MAP_EXPR;
+  output += ";" + "".concat(globalVar, "={...").concat(globalVar, ",...").concat(globalVar, "[+!").concat(quote(""), "]}");
+
   var transform = function transform(substring) {
     return (0, _toConsumableArray2["default"])(substring.matchAll(REGEXP)).map(function (match) {
-      var _Object$entries$filte = (0, _slicedToArray2["default"])(Object.entries(match.groups).filter(function (_ref36) {
-        var _ref37 = (0, _slicedToArray2["default"])(_ref36, 2),
-            val = _ref37[1];
+      var _Object$entries$filte = (0, _slicedToArray2["default"])(Object.entries(match.groups).filter(function (_ref34) {
+        var _ref35 = (0, _slicedToArray2["default"])(_ref34, 2),
+            val = _ref35[1];
 
         return !!val;
       })[0], 2),
@@ -633,55 +654,59 @@ function encodeText(code, globalVar) {
           substring = _Object$entries$filte[1];
 
       switch (group) {
-        case "unicode":
-          var encoded = uniBase31(substring);
-          return "".concat(globalVar, "[+[]](").concat(quote(encoded), ")");
-
-        case "word":
-          switch (true) {
-            case /\b[\da-zA-FINORSU]\b/.test(substring):
-              {
-                return encodeString(substring);
-              }
-
-            case typeof CONSTANTS[substring] == "string":
-              {
-                return "`${".concat(CONSTANTS[substring], "}`");
-              }
-
-            case typeof CONSTRUCTORS[substring] == "string":
-              {
-                return "".concat(CONSTRUCTORS[substring], "[").concat(globalVar, ".$][").concat(globalVar, "[").concat(quote("?"), "]]");
-              }
-
-            case typeof IDENT_SET[substring] == "string":
-              {
-                if ((0, _isValidIdentifier["default"])(IDENT_SET[substring])) return globalVar + "." + IDENT_SET[substring];else return globalVar + "[".concat(quote(IDENT_SET[substring]), "]");
-              }
-
-            case typeof WORD_LIST[substring] == "string":
-              {
-                return "".concat(globalVar, "[").concat(quote(WORD_LIST[substring]), "]");
-              }
-
-            case testParseInt(substring):
-              {
-                var _encoded = alnumBase32(substring);
-
-                return "".concat(globalVar, "[~[]](").concat(quote(_encoded), ")");
-              }
-
-            default:
-              {
-                var _encoded2 = uniBase31(substring);
-
-                return "".concat(globalVar, "[+[]](").concat(quote(_encoded2), ")");
-              }
-          }
-
-        default:
+        case "symbol":
           {
             if (substring.includes("\\") && testRawString(substring)) return "".concat(quote(""), "[").concat(globalVar, ".$][").concat(globalVar, "[").concat(quote("`"), "]]`").concat(substring, "`");else return quote(substring);
+          }
+
+        case "unicode":
+          {
+            var encoded = uniBase31(substring);
+            return "".concat(globalVar, "[+[]](").concat(quote(encoded), ")");
+          }
+
+        case "word":
+          {
+            switch (true) {
+              case /\b[\da-zA-FINORSU]\b/.test(substring):
+                {
+                  return encodeString(substring);
+                }
+
+              case typeof CONSTANTS[substring] == "string":
+                {
+                  return "`${".concat(CONSTANTS[substring], "}`");
+                }
+
+              case typeof CONSTRUCTORS[substring] == "string":
+                {
+                  return "".concat(CONSTRUCTORS[substring], "[").concat(globalVar, ".$][").concat(globalVar, "[").concat(quote("?"), "]]");
+                }
+
+              case typeof IDENT_MAP[substring] == "string":
+                {
+                  if ((0, _isValidIdentifier["default"])(IDENT_MAP[substring])) return globalVar + "." + IDENT_MAP[substring];else return globalVar + "[".concat(quote(IDENT_MAP[substring]), "]");
+                }
+
+              case typeof WORD_MAP[substring] == "string":
+                {
+                  return "".concat(globalVar, "[").concat(quote(WORD_MAP[substring]), "]");
+                }
+
+              case testParseInt(substring):
+                {
+                  var _encoded = alnumBase32(substring);
+
+                  return "".concat(globalVar, "[~[]](").concat(quote(_encoded), ")");
+                }
+
+              default:
+                {
+                  var _encoded2 = uniBase31(substring);
+
+                  return "".concat(globalVar, "[+[]](").concat(quote(_encoded2), ")");
+                }
+            }
           }
       }
     }).join(_templateObject19 || (_templateObject19 = (0, _taggedTemplateLiteral2["default"])(["+"])));
