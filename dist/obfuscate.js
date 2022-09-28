@@ -12,18 +12,6 @@ var _slicedToArray2 = _interopRequireDefault(require("@babel/runtime/helpers/sli
 
 var _taggedTemplateLiteral2 = _interopRequireDefault(require("@babel/runtime/helpers/taggedTemplateLiteral"));
 
-var _voca = _interopRequireDefault(require("voca"));
-
-var _xregexp = _interopRequireDefault(require("xregexp"));
-
-var _lodash = _interopRequireDefault(require("lodash"));
-
-var _fs = _interopRequireDefault(require("fs"));
-
-var _isValidIdentifier = _interopRequireDefault(require("is-valid-identifier"));
-
-var _jsesc = _interopRequireDefault(require("jsesc"));
-
 var _templateObject, _templateObject2, _templateObject3, _templateObject4, _templateObject5, _templateObject6, _templateObject7, _templateObject8, _templateObject9, _templateObject10, _templateObject11, _templateObject12, _templateObject13, _templateObject14, _templateObject15, _templateObject16, _templateObject17, _templateObject18, _templateObject19, _templateObject20;
 
 function ownKeys(object, enumerableOnly) { var keys = Object.keys(object); if (Object.getOwnPropertySymbols) { var symbols = Object.getOwnPropertySymbols(object); enumerableOnly && (symbols = symbols.filter(function (sym) { return Object.getOwnPropertyDescriptor(object, sym).enumerable; })), keys.push.apply(keys, symbols); } return keys; }
@@ -36,8 +24,19 @@ function _unsupportedIterableToArray(o, minLen) { if (!o) return; if (typeof o =
 
 function _arrayLikeToArray(arr, len) { if (len == null || len > arr.length) len = arr.length; for (var i = 0, arr2 = new Array(len); i < len; i++) { arr2[i] = arr[i]; } return arr2; }
 
-var text = _fs["default"].readFileSync("./input.txt", "utf8");
+var fs = require("fs");
 
+var V = require("voca");
+
+var _ = require("lodash");
+
+var jsesc = require("jsesc");
+
+var XRegExp = require("xregexp");
+
+var isValidIdentifier = require("is-valid-identifier");
+
+var text = fs.readFileSync("./input.txt", "utf8");
 console.log("Compiling...");
 
 function encodeText(code, globalVar) {
@@ -53,7 +52,7 @@ function encodeText(code, globalVar) {
 
   var BUILTINS = /^(Array|ArrayBuffer|AsyncFunction|AsyncGenerator|AsyncGeneratorFunction|Atomics|BigInt|BigInt64Array|BigUint64Array|Boolean|DataView|Date|decodeURI|decodeURIComponent|encodeURI|encodeURIComponent|escape|eval|exports|Float32Array|Float64Array|Function|Generator|GeneratorFunction|globalThis|Infinity|Int16Array|Int32Array|Int8Array|Intl|isFinite|isNaN|JSON|Map|Math|module|NaN|Number|Object|parseFloat|parseInt|Promise|Proxy|Reflect|RegExp|Set|SharedArrayBuffer|String|Symbol|this|Uint16Array|Uint32Array|Uint8Array|Uint8ClampedArray|undefined|unescape|WeakMap|WeakSet|WebAssembly)$/;
   var REGEXPS = {
-    word: (0, _xregexp["default"])(String.raw(_templateObject || (_templateObject = (0, _taggedTemplateLiteral2["default"])(["[pLpN]+|[\b\n\f\r\t\x0B]+"], ["[\\pL\\pN]+|[\\b\\n\\f\\r\\t\\v]+"]))), "g"),
+    word: XRegExp(String.raw(_templateObject || (_templateObject = (0, _taggedTemplateLiteral2["default"])(["[pLpN]+|[\b\n\f\r\t\x0B]+"], ["[\\pL\\pN]+|[\\b\\n\\f\\r\\t\\v]+"]))), "g"),
     symbol: /[!-\/:-@[-`{-~]+/g,
     unicode: /[^ -~]+/g
   };
@@ -67,7 +66,7 @@ function encodeText(code, globalVar) {
   console.log("Generating header...");
 
   var checkIdentifier = function checkIdentifier(ident) {
-    return (ident = ident.trim()) && (0, _isValidIdentifier["default"])(ident) && !BUILTINS.test(ident);
+    return (ident = ident.trim()) && isValidIdentifier(ident) && !BUILTINS.test(ident);
   };
 
   if (!checkIdentifier(globalVar)) throw new Error("Invalid global variable: ".concat(quote(globalVar)));
@@ -79,15 +78,15 @@ function encodeText(code, globalVar) {
       quoteMode = quoteStyle.match(/\b(cycle|only|smart|random)\b/g)[0] || "smart";
 
   var quote = function quote(string) {
-    var single = (0, _jsesc["default"])(string, {
+    var single = jsesc(string, {
       quotes: "single",
       wrap: true
     }),
-        _double = (0, _jsesc["default"])(string, {
+        _double = jsesc(string, {
       quotes: "double",
       wrap: true
     }),
-        backtick = (0, _jsesc["default"])(string, {
+        backtick = jsesc(string, {
       quotes: "backtick",
       wrap: true
     });
@@ -148,7 +147,7 @@ function encodeText(code, globalVar) {
         }
     }
 
-    return (0, _jsesc["default"])(string, {
+    return jsesc(string, {
       quotes: current,
       wrap: true
     });
@@ -159,7 +158,7 @@ function encodeText(code, globalVar) {
   var SPACE = "-";
 
   var encodeLetter = function encodeLetter(_char) {
-    return (_voca["default"].isUpperCase(_char) ? "$" : "_") + CIPHER[LETTERS.indexOf(_char.toLowerCase())];
+    return (V.isUpperCase(_char) ? "$" : "_") + CIPHER[LETTERS.indexOf(_char.toLowerCase())];
   };
 
   var encodeDigit = function encodeDigit(number) {
@@ -189,15 +188,15 @@ function encodeText(code, globalVar) {
   };
 
   var quoteKey = function quoteKey(string) {
-    var single = (0, _jsesc["default"])(string, {
+    var single = jsesc(string, {
       quotes: "single",
       wrap: true
     }),
-        _double2 = (0, _jsesc["default"])(string, {
+        _double2 = jsesc(string, {
       quotes: "double",
       wrap: true
     }),
-        backtick = (0, _jsesc["default"])(string, {
+        backtick = jsesc(string, {
       quotes: "backtick",
       wrap: true
     });
@@ -222,7 +221,7 @@ function encodeText(code, globalVar) {
 
       case "smart":
         {
-          if ((0, _isValidIdentifier["default"])(string)) return string;
+          if (isValidIdentifier(string)) return string;
           var chosen;
           current = quoteSequence[0];
 
@@ -257,7 +256,7 @@ function encodeText(code, globalVar) {
         }
     }
 
-    return (0, _jsesc["default"])(string, {
+    return jsesc(string, {
       quotes: current,
       wrap: true
     });
@@ -363,7 +362,7 @@ function encodeText(code, globalVar) {
   }
 
   var objDiff = function objDiff(x, y) {
-    return Object.fromEntries(_lodash["default"].difference(Object.keys(x), Object.keys(y)).map(function (z) {
+    return Object.fromEntries(_.difference(Object.keys(x), Object.keys(y)).map(function (z) {
       return [z, x[z]];
     }));
   };
@@ -378,8 +377,7 @@ function encodeText(code, globalVar) {
     return "".concat(quoteKey(encodeLetter(letter)), ":").concat(expansion);
   }) + "}";
 
-  var encodeString = function encodeString() {
-    var str = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : "";
+  var encodeString = function encodeString(str) {
     return (0, _toConsumableArray2["default"])("".concat(str).replace(/\W/g, "")).map(function (_char6) {
       if (/[$_]/.test(_char6)) {
         return quote(_char6);
@@ -387,7 +385,7 @@ function encodeText(code, globalVar) {
         return "".concat(globalVar, ".").concat(encodeDigit(_char6));
       } else {
         var encoded = encodeLetter(_char6);
-        if ((0, _isValidIdentifier["default"])(encoded)) return "".concat(globalVar, ".").concat(encoded);else return globalVar + "[".concat(quote(encoded), "]");
+        if (isValidIdentifier(encoded)) return "".concat(globalVar, ".").concat(encoded);else return globalVar + "[".concat(quote(encoded), "]");
       }
     }).join(_templateObject7 || (_templateObject7 = (0, _taggedTemplateLiteral2["default"])(["+"])));
   };
@@ -590,7 +588,7 @@ function encodeText(code, globalVar) {
     var _code$match;
 
     var words = (_code$match = code.match(REGEXPS.word)) !== null && _code$match !== void 0 ? _code$match : [];
-    var wordMap = Object.entries(_lodash["default"].countBy(words)).filter(function (_ref24) {
+    var wordMap = Object.entries(_.countBy(words)).filter(function (_ref24) {
       var _ref25 = (0, _slicedToArray2["default"])(_ref24, 2),
           word = _ref25[0],
           frequency = _ref25[1];
@@ -690,7 +688,7 @@ function encodeText(code, globalVar) {
 
               case typeof IDENT_MAP[substring] == "string":
                 {
-                  if ((0, _isValidIdentifier["default"])(IDENT_MAP[substring])) return globalVar + "." + IDENT_MAP[substring];else return globalVar + "[".concat(quote(IDENT_MAP[substring]), "]");
+                  if (isValidIdentifier(IDENT_MAP[substring])) return globalVar + "." + IDENT_MAP[substring];else return globalVar + "[".concat(quote(IDENT_MAP[substring]), "]");
                 }
 
               case typeof WORD_MAP[substring] == "string":
@@ -730,7 +728,7 @@ function encodeText(code, globalVar) {
   console.log("Script complete!");
   return {
     result: output,
-    stats: "\n=====\nSTATS\n=====\nInput length: ".concat(enUS.format(code.length), "\nExpression length: ").concat(enUS.format(expression.length), "\nRatio: ").concat(expression.length / code.length, "\nOutput length: ").concat(enUS.format(output.length), "\n")
+    stats: "\n=====\nSTATS\n=====\nInput length: ".concat(enUS.format(code.length), "\nExpression length: ").concat(enUS.format(expression.length), "\nRatio: ").concat(expression.length / code.length, "\nOutput length: ").concat(enUS.format(output.length))
   };
 }
 
@@ -742,5 +740,4 @@ var _encodeText = encodeText(text, "$", {
     stats = _encodeText.stats;
 
 console.log(stats);
-
-_fs["default"].writeFileSync("./output.js", result);
+fs.writeFileSync("./output.js", result);

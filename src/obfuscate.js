@@ -1,9 +1,9 @@
-import V from "voca";
-import XRegExp from "xregexp";
-import _ from "lodash";
-import fs from "fs";
-import isValidIdentifier from "is-valid-identifier";
-import jsesc from "jsesc";
+const fs = require("fs");
+const V = require("voca");
+const _ = require("lodash");
+const jsesc = require("jsesc");
+const XRegExp = require("xregexp");
+const isValidIdentifier = require("is-valid-identifier");
 
 const text = fs.readFileSync("./input.txt", "utf8");
 
@@ -43,7 +43,7 @@ function encodeText(
   console.log("Generating header...");
 
   // Test whether an identifier can be made into a variable
-  const checkIdentifier = (ident: string): boolean =>
+  const checkIdentifier = ident =>
     (ident = ident.trim()) && isValidIdentifier(ident) && !BUILTINS.test(ident);
   if (!checkIdentifier(globalVar)) throw new Error(`Invalid global variable: ${quote(globalVar)}`);
 
@@ -129,10 +129,10 @@ function encodeText(
   const CIPHER = ";.!:_-,?/'*+#%&^\"|~$=<>`@\\";
   const SPACE = "-";
 
-  const encodeLetter = (char: Lower | Upper) =>
+  const encodeLetter = char =>
     (V.isUpperCase(char) ? "$" : "_") + CIPHER[LETTERS.indexOf(char.toLowerCase())];
 
-  const encodeDigit = (number: string | number) =>
+  const encodeDigit = number =>
     (+number).toString(2).padStart(3, 0).split``.map(x => (x == 1 ? "$" : "_")).join``;
 
   /**
@@ -301,7 +301,7 @@ function encodeText(
     if (!(char in CHARMAP_1)) CHARMAP_2[char] = [expression, index, expansion];
   }
 
-  const objDiff = (x: object, y: object) =>
+  const objDiff = (x, y) =>
     Object.fromEntries(_.difference(Object.keys(x), Object.keys(y)).map(z => [z, x[z]]));
   const DIFF_CHARMAP_2 = objDiff(CHARMAP_2, CHARMAP_1);
 
@@ -341,7 +341,7 @@ function encodeText(
    *    $['_|']
    */
 
-  const encodeString = (str: string = ""): string =>
+  const encodeString = str =>
     [...`${str}`.replace(/\W/g, "")].map(char => {
       if (/[$_]/.test(char)) {
         return quote(char);
@@ -354,7 +354,7 @@ function encodeText(
       }
     }).join`+`;
 
-  const encodeProps = (props: {[prop]: string}) =>
+  const encodeProps = props =>
     `${globalVar}={...${globalVar},` +
     Object.entries(props)
       .map(([prop, key]) => [key, encodeString(prop)])
@@ -540,13 +540,13 @@ function encodeText(
    * there's no need to explicitly write `.join(',')`.
    */
 
-  const alnumBase32 = (s: string) =>
+  const alnumBase32 = s =>
     parseInt(s, 36).toString(32).split``.map(c => CIPHER_TO[CIPHER_FROM.indexOf(c)]).join``;
 
   const alnumBase32Decode = a =>
     parseInt(a.split``.map(a => CIPHER_FROM[CIPHER_TO.indexOf(a)]).join``, 32).toString(36);
 
-  const uniBase31 = (s: string) =>
+  const uniBase31 = s =>
     `${[...Array(s.length)].map(
       (x, i) => [...s.charCodeAt(i).toString(31)].map(c => CIPHER_TO[CIPHER_FROM.indexOf(c)]).join``
     )}`;
@@ -661,7 +661,7 @@ function encodeText(
      * @return {String} The number's value expressed in uppercase bijective base-26
      */
 
-    const bijective = (int: number, sequence: string | string[]): string => {
+    const bijective = (int, sequence) => {
       const length = sequence.length;
       if (!int) return "";
       if (int <= 0) return bijective(-int, sequence);
@@ -696,9 +696,9 @@ function encodeText(
   })();
 
   // TESTS
-  const testParseInt = (x: string): boolean =>
+  const testParseInt = x =>
     /^[1-9a-z][\da-z]+$/.test(x) && parseInt(x, 36) <= Number.MAX_SAFE_INTEGER;
-  const testParseIntUpper = (x: string): boolean =>
+  const testParseIntUpper = x =>
     /^[1-9A-Z][\dA-Z]+$/.test(x) && parseInt(x, 36) <= Number.MAX_SAFE_INTEGER;
 
   const testRawString = string => {
@@ -843,8 +843,7 @@ STATS
 Input length: ${enUS.format(code.length)}
 Expression length: ${enUS.format(expression.length)}
 Ratio: ${expression.length / code.length}
-Output length: ${enUS.format(output.length)}
-`,
+Output length: ${enUS.format(output.length)}`,
   };
 }
 
