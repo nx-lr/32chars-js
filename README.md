@@ -4,7 +4,7 @@ Punctuation-Only JavaScript
 
 ## About
 
-32chars.js is a JavaScript code encoder that encrypts JavaScript code or any piece of text into the shortest possible valid JavaScript code made with only 32 ASCII symbol and punctuation characters; no letters, numbers, spaces, or special characters: `` `~!@#$%^&*()_+{}|:"<>?-=[]\;',./ ``.
+32chars.js is a JavaScript code encoder that outputs JavaScript code or any piece of text into the shortest possible valid JavaScript code made with only 32 ASCII symbol and punctuation characters; no letters, numbers, spaces, or special characters: `` `~!@#$%^&*()_+{}|:"<>?-=[]\;',./ ``.
 
 This project is the spiritual successor to many JavaScript code obfuscators out there such as JSF\*ck, XChars.js and Hieroglyphy, but is most influenced by the first, JJEncode.
 
@@ -20,11 +20,46 @@ It is because of this repetition that certain single characters require more tha
 
 ## How it works, roughly
 
+### Key differences
+
+Going over each character one by one is overly lengthy and repetitive, thus going against encoding. It is shorter and faster to break down the string into smaller, digestible pieces and doing different things to each one. This way we can effectively minimize the number of operations for the JavaScript engine, and also the overall length of the output code.
+
+That's why 32chars.js stands out from other encoders. It has a large character set, so that means we have syntax to form literal strings. But we _can_ use the latest JavaScript syntax and functionality; this means tons of new and nifty ways to represent, encode and create these strings:
+
+- Template strings
+- String interpolation
+- Arrow functions
+- RegExp literals
+- `BigInt` literals
+- ES6 `String`, `Array` and `Object` methods
+
+Because of the sheer number of ways that we can create and manipulate strings in JavaScript, its compiler has hundreds if not thousands of lines. Compilation takes somewhat a long time for a huge body of plain text, such as a piece of minified source code or a novel.
+
 ### Initialization
 
 The program uses a multi-phase substitution encoding. Characters and values are assigned to variables and properties, which then are referenced and used to build back the input string. Some strings are "edge cases" and hence require nifty hacks along the way.
 
-### Statement 1
+### The basics
+
+The text is parsed and categorized into tokens. But unlike a regular compiler that takes _source code_ and compiles it into _machine code_ following a strict _grammar_, this is an _encoder_ that takes _plain text_ and compiles it into _obfuscated source code_ following specific _encoding or encoding rules_.
+
+The text is recursively parsed into tokens: symbols (using the 32 characters), integers, ASCII alphanumerics (base62), words with diacritics, non-Latin writing systems, and Unicode or astral characters. Astral characters are Unicode characters with code point U+10000 and above, after the Basic Multilingual Plane.
+
+### Symbol sequences and string literals
+
+We have syntax to form strings. String literals in JavaScript can be created in three ways: single and double quoted strings, which are roughly equivalent, and template strings, which allows interpolation of values. In this context, strings are _very fundamental_ to obfuscation, so we are free to create our own encoding/decoding schemes.
+
+In the output string, substrings with only printable ASCII symbols are quoted into string literals. Usually the runs do not contain any of the quote characters `` ' " ` ``. The backslash `\`, and whatever symbol is being used for wrapping these literals, are escaped. In template literals, the sequence `${`, which normally begins an interpolation sequence, is also escaped.
+
+Each encoded substring in the output goes through a quoting function (`jsesc` library) which compares the lengths of the escaped substring and selects the string literal with the least number of escapes, in that case being the shortest. It also prioritizes a fallback quoting option for strings without escapes.
+
+### Parsing the input string
+
+By default, the parser would split the entire text with the space ` ` as its delimiter, with the split elements going into an array and separated with commas. JavaScript ignores trailing commas, and so we have to explicitly add a trailing comma if the final element of the output array is empty.
+
+The input string is further subdivided and categorized into substrings of different character types, as described in the sections below. Some of these variable-length substrings would be stored inside the global object later on, if they repeat.
+
+### Initialization: statement 1
 
 JavaScript variable names are flexible in the characters that can be used, so the above variable name of `$` is valid. So is `_`.
 
@@ -36,7 +71,7 @@ The program starts out by assigning a global variable `$` with the value of `~[]
 
 This line, ignoring the global variable, is exactly the same as in JJEncode. The second line shares a similar concept to it.
 
-### Statement 2
+### Initialization: statement 2
 
 The next statement is significantly longer than the first. `$` is then reassigned to a JavaScript object. Properties are defined within the braces in the form `key: value`, and individual properties are separated by commas. JavaScript defines object keys in three different ways
 
@@ -58,7 +93,7 @@ The letters have two characters, the first `_` or `$` defines its case and the s
 
 The digits have keys defined as binary, ciphered with combinations of `_` (digit 0) and `$` (digit 1), then padded to length 3 or 4, so `0` is `___`, `4` is `$__` and `9` is `$__$`. The space, the only non-alphanumeric and non-symbol character, is assigned the property `-`.
 
-### Statement 3
+### Initialization: statement 3
 
 From the third line, we will use the letters we have got to form new words by concatenating existing single case sensitive letters with the `+` operator to form property names as strings. These words, when inserted inside square brackets, are then used to access properties on values or call methods on them. For instance `{}["constructor"]`.
 
@@ -68,7 +103,7 @@ In total, this yields us with 22 lowercase `a b c d e f g i j l m n o p r s t u 
 
 To save up on statements, we use the spread operator `...` to "spread out". In this case, we are cloning the object by spreading out its properties on a _new_ object with new keys defined, before reassigning that object back to itself.
 
-### Statement 4 and beyond
+### Initialization: statement 4 and beyond
 
 We repeat statement 2 and 3 again this time with the new letters we have gotten in those steps:
 
@@ -119,6 +154,7 @@ const props = {
   indexOf: "#",
   entries: ";",
   fromEntries: "<",
+  reverse: '"',
 
   // statement 6: constructors
   // 'to' + String.constructor.name
@@ -143,74 +179,57 @@ const props = {
 
 ### Encoding
 
-32chars.js stands out from other encoders. With a large character set, we can form string literals without the need for substitution, other than escaping characters. Using strings, we are free to create custom encoding schemes to significantly shorten and randomize this output.
+The program has several encoding functions, and the decoding function with two parameters: the encoded substring itself, which mode to decode to, and a character set to use, encoded. All of the encoded strings will pass through this function, some which will be stored in the global object if the substring occurs more than once, or the substring is unique enough to be stored, based on its Jaro distance with other strings.
 
-For modernity sake, we _can_ use the newest JavaScript syntax and functionality; this means tons of new and nifty ways to represent, encode and create strings:
+A generator function yields us every possible string with those same characters (skipping the keys already defined) since each arbitrary string formed from a finite set of characters corresponds to a positive number. A one-on-one correspondence is called bijection.
 
-- Template strings
-- String interpolation
-- Arrow functions
-- RegExp literals
-- `BigInt` literals
-- ES6 `String`, `Array` and `Object` methods
+#### Similar strings
 
-A generator function yields us every possible string with those same characters (skipping the keys already defined) since each arbitrary string formed from a finite set of characters corresponds to positive number. A one-on-one correspondence is called bijection.
+Because we have string methods already, i.e. `join`, `slice`, `replace`, `repeat`, `split`, we can employ algorithms to help us produce these strings, because the goal of this program is to minimize repetition. We would therefore have to work backwards from there.
 
-Going over each character one by one is overly lengthy and repetitive, thus going against encryption. It is shorter and faster to break the string down into substrings and doing one thing to each. This way, we can effectively minimize the number of operations the interpreter has to execute, and also the overall length of the obfuscated output code.
+- The `slice` returns consecutive characters within a substring by specifying the start and end indices of the substring, such as `lace` from `replace`.
+- The `repeat` method can be used to repeat a "factored" substring a given number of times.
+- The `join` method, along with `split` is used to join an array of "strings" with a delimiter that is also a string. We would employ regular expressions to determine the optimal substring to delimit a given set of text (it may not be spaces after all).
+- The `replace` method is used to replace one or all substrings of a substring, through insertion, deletion or substitution to turn it into something similar. We would use a string difference checker.
 
-The algorithm tries its best to perform optimizations to minimize this repetition, though this performance drawback is somewhat unhampered. Compilation takes between 2 and 3 seconds for about a million characters in minified source code, and 5 seconds for an entire novel.
 
-The text is parsed and lexed into tokens, which then are assigned categories. But unlike a regular compiler, there is no _grammar_ to check against, so there is no errors. Instead, the text is (recursively) parsed into these tokens. The parser recognizes six different types of tokens: numbers, ASCII alphanumerics, control characters,
+#### Symbols
 
-By default, the parser would split the entire text with the space as its delimiter, with the split elements going into an array and separated with commas. JavaScript ignores trailing commas, and so we have to explicitly add a trailing comma if the final element of the output array is empty.
+We all know that we can represent sequences of symbols literally as strings without us performing any encoding. However, there is one additional optimization we can use: minimizing backslashes.
 
-The input string is further subdivided and categorized into substrings of different character types, such as alphanumerics (both cases treated separately), decimal numbers and arbitrary sequences of Unicode symbols from a given character set, minus CJK, symbol, punctuation and private-use characters.
+If the runs also contain many backslashes, then there are two other options for representing that string: using the `String.raw` function, or from a `RegExp` literal delimited with slashes when calling `toString`, or without, from the `source` property. However some strings when interpreted literally result in a syntax error, so those strings are escaped.
 
-The output contains an anonymous decryption function with two parameters: the encoded data itself, and the category of substring or mode to decrypt to. This second argument may also contain additional arguments such as encoded character ranges. All of the encoded strings will pass through the decryptor.
-
-### Symbol sequences and string literals
-
-Runs with only the printable ASCII symbols are quoted into string literals. Usually the runs do not contain any characters used to wrap strings: `` '"` ``. The backslash, and whatever symbol is being used for wrapping these literals, are escaped. In template literals, the sequence `${` which begins an interpolation sequence, is also escaped.
-
-Each (encoded) substring goes through a quoting function which compares the lengths of the stringified substring and selects the shortest. It also prioritizes the "fallback" quoting option, so most strings which do not contain any escaped characters would be quoted as such.
-
-If the runs also contain a backslash, then there are two other options for representing that string: using the `String.raw` function, or from a `RegExp` literal delimited with slashes when calling `toString`, or without, from the `source` property. However some strings when interpreted literally result in a syntax error, so those strings are escaped.
-
-### Numbers
+#### Integers
 
 From here on out, we would primarily use big integers, or the new primitive data type added in ES8, `BigInt` as an intermediate data type to store most of our strings. Many of the encoding methods use bijective encoding, due to the fact that any arbitrary sequence of digits from a given set has a single numeric representation.
 
 Numeric-only substrings are encoded as bijective base 32 using all the 32 characters. Zero padding is done as an additional step, for substrings with leading zeroes.
 
-### Alphanumerics
+#### Alphanumerics
 
 Alphanumeric substrings follow the same rules as numbers, except this time the substring is parsed as a number with a base higher than 10, depending on the position of the last letter in the substring. This number is encoded as bijective base 32.
 
 By default, `toString()` yields lowercase. So if the original substring contains uppercase letters, then the positions of those characters in the substring will be converted into uppercase using compressed ranges. If the entire string is uppercase, then the string would be converted directly into uppercase.
 
-### Words with diacritics
+Sometimes, the program does not encode specific substrings as we either have formed them letter by letter and stored them in the global object, or are created magically by manipulating primitive values, as we have explored in the above, such as `function`, `Array`, `undefined`, `object` and more. These substrings are extracted with the `slice` method and then used to form other words, wherever possible.
 
-For substrings which contain a mixture of ASCII letters and non-ASCII characters, including letters with diacritics.  
+#### Words with diacritics
 
-The non-ASCII characters are then inserted through an implementation of the _Bootstring_ algorithm. The substring does not go through Unicode normalization.
+For multilingual texts that use the Latin alphabet, along with a number of non-ASCII letters embedded inside. The initial substring is stripped of these non-ASCII characters and then encoded as a big integer (see above section). The non-ASCII characters are stored and encoded at the end of the string. Each insertion point consists of a substring and an insertion index.
+
+Throughout, no Unicode normalization is performed. This just creates even more complexity.
 
 ### Other writing systems and languages
 
-For substrings of a different Unicode script other than Latin, they are generated from a pool of characters sorted by frequency in the input text, case-insensitively. The result is encoded as bijective base 32 using the pool of characters, and converted from base 32.
+For substrings of a different Unicode script other than Latin, they are generated from a pool of characters from the script. The result is encoded as bijective base 32, using the pool of characters into a big integer, or in the case of extremely long words or CJK text, arrays of big integers.
 
-For bicameral scripts, like Cyrillic and Greek, see the section on [alphanumerics](#alphanumerics).
+For bicameral scripts like Cyrillic, Greek and Armenian, the result is encoded initially as lowercase and then a separate procedure converts selected characters into uppercase based on the input string.
 
-### Arbitrary Unicode sequences
+#### Arbitrary Unicode sequences
 
 For other Unicode characters, including CJK, special, private-use, non-printable and spacing characters, and even astral code points, they are converted from their hexadecimal values and grouped into smaller subsequences based on their leading digits. All leading zeroes are stripped when encoded and added back when decoded.
 
 This would yield values on two sides: the "keys" being the leading and the "values" being the trailing digits that are not encoded. Both key and value pairs are converted from bijective base 16 into bijective base 30. `,` and `:` are reserved for separating keys and values.
-
-### Other optimizations
-
-In string literals, if any part of the string contains backslashes, If a string contains a long enough repetitive pattern, then the string is "divided" then repeated by its "common factor".
-
-If two different substrings have a Jaro distance exceeding a certain threshold, then the insertions, substitutions and deletions would be performed with the `replace` function.
 
 ## Disclaimer
 
