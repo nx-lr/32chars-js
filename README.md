@@ -181,23 +181,30 @@ const props = {
 
 The program has several encoding functions, and the decoding function with two parameters: the encoded substring itself, which mode to decode to, and a character set to use, encoded. All of the encoded strings will pass through this function, some which will be stored in the global object if the substring occurs more than once, or the substring is unique enough to be stored, based on its Jaro distance with other strings.
 
-A generator function yields us every possible string with those same characters (skipping the keys already defined) since each arbitrary string formed from a finite set of characters corresponds to a positive number. A one-on-one correspondence is called bijection.
+A generator function yields us every possible string with those same 32 characters (skipping the keys already defined) since each arbitrary string formed from a finite set of characters corresponds to a natural number. This is called _bijective numeration_, the word _bijective_ meaning a one-on-one correspondence.
 
 #### Similar strings
 
 Because we have string methods already, i.e. `join`, `slice`, `replace`, `repeat`, `split`, we can employ algorithms to help us produce these strings, because the goal of this program is to minimize repetition. We would therefore have to work backwards from there.
+
+Sometimes, the program does not encode specific substrings as we either have formed them letter by letter and stored them in the global object, or are created magically by manipulating primitive values, as we have explored in the above, such as `function`, `Array`, `undefined`, `object` and more.
 
 - The `slice` returns consecutive characters within a substring by specifying the start and end indices of the substring, such as `lace` from `replace`.
 - The `repeat` method can be used to repeat a "factored" substring a given number of times.
 - The `join` method, along with `split` is used to join an array of "strings" with a delimiter that is also a string. We would employ regular expressions to determine the optimal substring to delimit a given set of text (it may not be spaces after all).
 - The `replace` method is used to replace one or all substrings of a substring, through insertion, deletion or substitution to turn it into something similar. We would use a string difference checker.
 
+The encoder would store all these substrings as a tree. The stems are either non-string values cast into strings, or strings we have already defined. Each branch represents a string in the output text generated from any of the operations above. If the stem does not contain a sequence present in the output text, it will be stored in the global object as an encoded string.
+
+Next, the compiler would do a depth first search of the words in the input text and generates statements that map to the stored values. Assignment statements are allowed since they also are expressions, and evaluate to their right hand side. This way, we can assign more than one new key to the global object.
+
+Only a subset of encoded substrings will be formed from this step.
 
 #### Symbols
 
 We all know that we can represent sequences of symbols literally as strings without us performing any encoding. However, there is one additional optimization we can use: minimizing backslashes.
 
-If the runs also contain many backslashes, then there are two other options for representing that string: using the `String.raw` function, or from a `RegExp` literal delimited with slashes when calling `toString`, or without, from the `source` property. However some strings when interpreted literally result in a syntax error, so those strings are escaped.
+If the substring contains many backslashes, then there are two other options for representing that string: using the `String.raw` function, or from a `RegExp` literal delimited with slashes when calling `toString`, or without, from the `source` property. However some strings when interpreted literally result in a syntax error, so the compiler represents them with the escapes.
 
 #### Integers
 
@@ -205,21 +212,17 @@ From here on out, we would primarily use big integers, or the new primitive data
 
 Numeric-only substrings are encoded as bijective base 32 using all the 32 characters. Zero padding is done as an additional step, for substrings with leading zeroes.
 
-#### Alphanumerics
+#### Alphanumeric substrings
 
 Alphanumeric substrings follow the same rules as numbers, except this time the substring is parsed as a number with a base higher than 10, depending on the position of the last letter in the substring. This number is encoded as bijective base 32.
 
 By default, `toString()` yields lowercase. So if the original substring contains uppercase letters, then the positions of those characters in the substring will be converted into uppercase using compressed ranges. If the entire string is uppercase, then the string would be converted directly into uppercase.
 
-Sometimes, the program does not encode specific substrings as we either have formed them letter by letter and stored them in the global object, or are created magically by manipulating primitive values, as we have explored in the above, such as `function`, `Array`, `undefined`, `object` and more. These substrings are extracted with the `slice` method and then used to form other words, wherever possible.
-
 #### Words with diacritics
 
-For multilingual texts that use the Latin alphabet, along with a number of non-ASCII letters embedded inside. The initial substring is stripped of these non-ASCII characters and then encoded as a big integer (see above section). The non-ASCII characters are stored and encoded at the end of the string. Each insertion point consists of a substring and an insertion index.
+For multilingual texts that use the Latin alphabet, along with a number of non-ASCII letters embedded inside. The initial substring is stripped of these non-ASCII characters and then encoded as a big integer (see above section). The non-ASCII characters are stored and encoded at the end of the string. Each insertion point consists of a substring and an insertion index. No Unicode normalization is performed, even if part of the encoding or decoding process.
 
-Throughout, no Unicode normalization is performed. This just creates even more complexity.
-
-### Other writing systems and languages
+#### Other writing systems and languages
 
 For substrings of a different Unicode script other than Latin, they are generated from a pool of characters from the script. The result is encoded as bijective base 32, using the pool of characters into a big integer, or in the case of extremely long words or CJK text, arrays of big integers.
 
