@@ -1,60 +1,56 @@
-# PunkScript: Punctuation-Only JavaScript
+# 32chars.js
+
+Punctuation-Only JavaScript
 
 ## About
 
-PunkScript is a JavaScript-based obfuscator that encodes any piece of text (which includes JavaScript programs) into valid JavaScript completely devoid of all letters, numbers and spacing characters. Its mission is to find the **shortest possible valid JavaScript** encoding from a piece of text using a combination of 32 symbol and punctuation characters.
+32chars.js is a JavaScript code encoder that encrypts JavaScript code or any piece of text into the shortest possible valid JavaScript code made with only 32 ASCII symbol and punctuation characters; no letters, numbers, spaces, or special characters: `` `~!@#$%^&*()_+{}|:"<>?-=[]\;',./ ``.
 
-This project is the spiritual successor to many JavaScript code obfuscators out there such as [Hieroglyphy](https://github.com/alcuadrado/hieroglyphy) and [JSF\*ck](https://github.com/aemkei/jsfuck), but is most inspired by Yosuke Hasegawa's [jjencode](https://utf-8.jp/public/jjencode.html).
+This project is the spiritual successor to many JavaScript code obfuscators out there such as JSF\*ck, XChars.js and Hieroglyphy, but is most influenced by the first, JJEncode.
 
 ## History
 
-JavaScript is weird, in so many ways. But the one thing people hate the most about JavaScript is that it's weakly typed. And because of the way JavaScript evaluates expressions, it (sometimes) can lead to very surprising results.
+JavaScript is weird. And one thing people _really_ hate about JavaScript is because of the way it evaluates expressions. And because of this, people have tried many ways to "exploit" this very "flaw" of JavaScript, which gave rise to "compilers" obfuscating JavaScript using only punctuation characters.
 
-And because of this, people have tried many ways to exploit this very flaw of JavaScript. This has, strangely enough, resulted in the emergence of JavaScript "compilers" encoding JavaScript into an obfuscated form using only a fixed set of symbols.
+The first such compiler was jjencode, which came out in Jul 2009, using 18 characters: `[]()!+,\"$.:;_{}~=`. A few months later in Jan 2010, an informal competition was held in the Slackers forum, bringing down the minimum number of characters to eight `[]()!+,/`. Soon enough, contributors managed to remove the need for the characters `,/`, thus bringing the minimum to 6 `[]()!+`.
 
-This has gave rise to the assumption that any JavaScript program can be written without the need for any alphanumeric characters at all.
+These encoders follow a pattern, first creating single digits by repeatedly adding 1, or concatenating digits to form higher numbers. Next, they evaluate an expression using said characters, converting them into strings and accessing a character with an index. This process is then repeated to yield new letters until a more general method of retrieving unmapped characters is found, such as `eval` or `String.fromCharCode`.
 
-The first such program was jjencode, with 18 possible characters. `[]()!+,\"$.:;_{}~=` which came out in 2009. The following year, an informal competition was held to bring down the minimum number of characters down to 8 `[]()!+,/`. Contributors managed to remove the need for the characters `,` and `/`, bringing the minimum to 6 `[]()!+`.
-
-This process first yields numbers, which are made through repeatedly adding the value `1` formed using those characters to get the right digit. Higher numbers are then made by concatenating using the `+` operator which yields a string, and can be converted back into numbers by adding a prefix `+`.
-
-To get other characters, these encoders follow a general pattern: evaluating an expression (usually a nifty trick) to form a primitive value, casting that primitive value to a string, then accessing that string with a numeric index to get the desired character.
-
-This process may be repeated to yield new letters is formed, until a more general method of retrieving unmapped characters is found, either through `String.fromCharCode` or `eval`.
-
-And because of constant substitution, these encoders inherently spit out very long and almost repetitive outputs, with some expansions going up to the thousands, all just to get a single character.
+It is because of this repetition that certain single characters require more than a thousand characters when expanded. However, we will take a step back and look on the other side of things: what if there was an encoder that does the same thing as all this: obfuscating code with only symbols; but achieves the minimum code length possible?
 
 ## How it works, roughly
 
 ### Initialization
 
-Since we have a fairly large character set, substrings with any combinations of those 32 punctuation characters can be represented inside a string literal, optimizing escapes and raw string literals if such can be formed without error. Other sequences of characters, including letters and numbers, would still need to be formed through operations.
+The program uses a multi-phase substitution encoding. Characters and values are assigned to variables and properties, which then are referenced and used to build back the input string. Some strings are "edge cases" and hence require nifty hacks along the way.
 
-The program is a substitution encoding that goes through two phases:
-
-* Initialization, where characters and values are assigned to properties or variables.
-* Substitution, where the variables are then used to build back the input string.
 ### Statement 1
 
-JavaScript variable names are pretty flexible in the characters that can be used, so the above variable name of `$` is a valid name. So is `_`.
+JavaScript variable names are flexible in the characters that can be used, so the above variable name of `$` is valid. So is `_`.
 
 Unlike a number of other languages, such as Python, PHP and Perl, the dollar sign is not a reserved character and therefore able to be used in any part of the variable name. This allows variables to e formed with any combination of `_` and `$` characters, such as `$_`, `$$$`, and `_$_`.
 
+Because you want to sound hip, yes, the dollar sign can be used in variables. `Ke$ha` and `A$AP_Rocky` are valid JavaScript identifier.
+
 The program starts out by assigning a global variable `$` with the value of `~[]`. The tilde, `~` indicates a unary bitwise NOT operation on an empty array which is numerically equivalent to `0`. This evaluates to `-1`.
+
+This line, ignoring the global variable, is exactly the same as in JJEncode. The second line shares a similar concept to it.
 
 ### Statement 2
 
-The next statement is significantly longer than the first. `$` is then reassigned to a JavaScript object. Properties are defined within the braces in the form `key: value`, and individual properties are separated by commas.
+The next statement is significantly longer than the first. `$` is then reassigned to a JavaScript object. Properties are defined within the braces in the form `key: value`, and individual properties are separated by commas. JavaScript defines object keys in three different ways
 
-JavaScript defines object keys in three different ways: *identifiers* which are any combination of (Unicode) letters, decimal numbers, underscores and dollar signs, strings encased inside single or double quotes, and *expressions* inside square brackets, like `[x+y]`. Property access is done either with dots, like `x.for`, or square brackets `x['y']`.
+JavaScript defines object keys in three different ways: _identifiers_ which are any combination of (Unicode) letters, decimal numbers, underscores and dollar signs, _strings_ encased inside single or double quotes, and _expressions_ inside square brackets, like `['fo'+'r']`. Property access is done either with dots, like `x.for`, or square brackets `x['for']`. Note, the last 2 are the same.
 
 The first property is `___`, three underscores. The value of this property is `` `${++$}` ``, which takes the value of `$` (currently `-1`), increments it (to `0`), and then assigns it to the property. So, in this statement, `$` is incremented by one to `0`, converted into a string by wrapping the expression inside a template literal `` `${}` ``, and then assigned to `$.___`. Note that since the object is still being built, `$` is still a number and not an object yet.
 
-The second property is `$$$$`. The value of this property is `` `${![]}`[$] ``. The first part of this is an array prepended with a logical NOT `!` operator, which turns into the Boolean value `false` ( `!{}` also yields the same result since it, just like an array, is a non-primitive and hence an object). Wrapping it inside an template literal turns the evaluated result into a string, therefore it evaluates to `"false"`.
+The second property is `$$$$`. The value of this property is `` `${![]}`[$] ``. The first part of this is an array prepended with a logical NOT `!` operator, which turns into the Boolean value `false`—`!{}` also yields the same result since it, just like an array, is a non-primitive and hence yields true when converted into a boolean. Wrapping it inside an template literal turns the evaluated result into a string, therefore it evaluates to `"false"`.
 
-There is a `[$]` after the string `"false"`. In JavaScript, a letter of a string can  be obtained by specifying the index of the character within brackets (string positions start at `0`). Here, `$` currently evaluates to 0, so this line is asking for the character at position `0` in the string `"false"`, or `"f"`.
+There is a `[$]` after the string `"false"`. In JavaScript, a letter of a string can be obtained by specifying the index of the character within brackets (string indices start at `0`). Here, `$` currently evaluates to `0`, so this line is asking for the character at position `0` in the string `"false"`, or `"f"`.
 
-The rest of the object properties are constructed in a similar fashion: incrementing the `$` variable, constructing a string, and grabbing a character out of the string by specifying its index. So, using type coercion, we manipulate literals to evaluate to constants like `true`, `false`, `Infinity`, `NaN`, `undefined`, and an empty object `{}` which becomes the string `"[object Object]"`. There's so many ways that we can form these constants, and that's the beauty of JavaScript.
+The rest of the object properties are constructed in a similar fashion: incrementing the `$` variable, constructing a string, and grabbing a character out of the string by specifying its index. These are the only times that the global variable is a number and not an object.
+
+So, using type coercion, we manipulate literals to evaluate to constants like `true`, `false`, `Infinity`, `NaN`, `undefined`, and an empty object `{}` which becomes the string `"[object Object]"`. There's so many ways that we can form these constants, without having to type a single letter, and that's the beauty of JavaScript.
 
 This would yield us the following letters (case-sensitive): `a b c d e f i j I l n N o O r s t u y`, the space and the digits `0` to `9`. Based on the output we have a cipher to store our characters. We have the hexadecimal alphabet for use in the later substitutions.
 
@@ -64,34 +60,34 @@ The digits have keys defined as binary, ciphered with combinations of `_` (digit
 
 ### Statement 3
 
-From the third line, we would use the letters we have gotten to form new words by concatenating individual letters with the `+` operator to form words. These words are then used to access properties on values or call methods on them. For instance `"constructor"`.
+From the third line, we will use the letters we have got to form new words by concatenating existing single case sensitive letters with the `+` operator to form property names as strings. These words, when inserted inside square brackets, are then used to access properties on values or call methods on them. For instance `{}["constructor"]`.
 
-With the `constructor` property, we can access the constructors of literals, like `Array` `[]`, `String` `''`, `Number` `+[]`, `Boolean` `![]`, `RegExp` `/./` and `Function` `()=>{}` (leaving out `Object`), and like what we did before, converting that constructor function into a string. This yields something like `function Array { [native code] }`, where when evaluated in a JavaScript interpreter. This will yield the letters `A B E F g m p R S v x`.
+With the `constructor` property, we can access the constructors of literals, like `Array` `[]`, `String` `''`, `Number` `+[]`, `Boolean` `![]`, `RegExp` `/./` and `Function` `()=>{}` (leaving out `Object`), and like what we did before, converting that constructor function into a string. This yields something like `function Array { [native code] }`, where when evaluated in a JavaScript interpreter. We now have the letters `A B E F g m p R S v x`.
 
-Now, we have 21 lowercase letters `a b c d e f g i j l m n o p r s t u v x y` and 9 of the uppercase letters `A B E F I N O R S`. We make sure to store every word and letter we have found with a unique key so that we can refer to it later on in our code.
+In total, this yields us with 22 lowercase `a b c d e f g i j l m n o p r s t u v x y` and 9 uppercase letters `A B E F I N O R S`. We make sure to store every word and letter we have found with a unique key so that we can refer to it later on in our code.
 
-To save up on statements, we can use the spread operator `...` to enumerate or "expand" all the previously defined properties of an object and "merge" them with the newly defined values on that same object. In this case, we are cloning the object by spreading out its properties on a new object, while also defining new keys on it, before reassigning that object back to the global variable.
+To save up on statements, we use the spread operator `...` to "spread out". In this case, we are cloning the object by spreading out its properties on a _new_ object with new keys defined, before reassigning that object back to itself.
+
 ### Statement 4 and beyond
 
 We repeat statement 2 and 3 again this time with the new letters we have gotten in those steps:
 
-* Evaluating expressions to get a value
-* Casting the result into a string
-* Indexing with a number to get a new letter
-* Shadow-cloning and then allocating new letters on the object
-* Forming property names by concatenating individual letters
-* Storing those property names as strings in the global object
-
+- Evaluating expressions to get a value
+- Casting the result into a string
+- Indexing with a number to get a new letter
+- Shadow-cloning and then allocating new letters on the object
+- Forming property names by concatenating individual letters
+- Storing those property names as strings in the global object
 
 But we can take shortcuts rather than having to form strings letter by letter, such as in `toString`, formed from concatenating the string `t` and `o`, and then the `name` property on the `String` constructor which yields `'String'`. With this method, we can retrieve five more lowercase letters `h k q w z` by passing a small number in base 36 and calling the `toString` methods which always yields the higher alphabetic digits in lowercase.
 
-Two more uppercase letters `C` and `D` are created by indexing a URL with an invalid character like `<` or `=` with the `escape` function which always yields its code points in uppercase. Uppercase `U` is gotten from the `[object Undefined]` string, evaluated from `` `${{}.constructor.toString.call()}` ``.
+Two more uppercase letters `C` and `D` are created by indexing a URL with an invalid character like `<` or `=` with the `escape` function which always yields its code points in uppercase. Uppercase `U` is created from the `` `${{}.constructor.toString.call()}` `` which evaluates to the string `[object Undefined]`.
 
 We now have the entire lowercase alphabet, and forming the word `toUpperCase` we can now form the rest of the other 14 uppercase letters from the lowercase, or even capitalize multiple lowercase letters into uppercase this way, because `toString` yields numbers in higher bases as lowercase.
 
-`fromCharCode` allows us to form Unicode strings in another way other than `eval`, and when combined with `map`, `split` and `join` allows us to encode arbitrary Unicode strings using *some* combinations of all 32 characters on the fly.
+`fromCharCode` allows us to form Unicode strings in another way other than `eval`, and when combined with `map`, `split` and `join` allows us to encode arbitrary Unicode strings using _some_ combinations of all 32 characters on the fly.
 
-The lowercase `w` is also used to form the word `raw` in `String.raw` which allows us to express strings verbatim without interpreting escape sequences, as long as it does not break JavaScript's template literal `` ` ` `` and interpolation `${ }` syntax.
+The lowercase `w` is also used to form the word `raw` in `String.raw` which allows us to express strings verbatim without interpreting escape sequences, as long as it does not break JavaScript's template literal ` `` ` and interpolation `${ }` syntax.
 
 These property and method names are assigned distinct single character keys which will make further expressions significantly shorter. Some properties reference global functions.
 
@@ -146,17 +142,75 @@ const props = {
 ```
 
 ### Encoding
-PunkScript encodes strings a little differently than the other encoders. With a fairly large character set there is syntax to represent strings literally without the need for performing encoding. And we can use the latest JavaScript syntax, that means there are tons of new ways to represent, encode and create strings now: raw and template strings, string interpolation, and new string, array and object methods for us to mess around with.
 
-It may be simpler to go over the string character by character and encode each one. This obviously would result in a longer output. It's better and shorter for us to try and break the string down into *runs* and do something different to each one. This way, we can minimize character repetition and minimize the number of evaluation operations for each substring, effectively turning this into a compiler. Compilers for most high level JavaScript also perform optimizations to help decrease code size and improve runtime and evaluation performance.
+32chars.js stands out from other encoders. With a large character set, we can form string literals without the need for substitution, other than escaping characters. Using strings, we are free to create custom encoding schemes to significantly shorten and randomize this output.
 
-We divide the input text by spaces because spaces are the most common character. Each space is represented with a comma in the output array. If there are multiple spaces in a row, and chances are that that would occur, we would just treat that as an empty element, which get converted into empty strings when joined without us having to add one ourselves. JavaScript ignores trailing commas, so if the input text does end in a space, we add an explicit trailing comma to indicate the end of the array so the output can include that one final space.
+For modernity sake, we _can_ use the newest JavaScript syntax and functionality; this means tons of new and nifty ways to represent, encode and create strings:
 
-Runs of other characters are joined with the string concatenation operator `+`. We divide the rest of the characters into runs of letters (uppercase letters and numbers are treated separately), numbers, symbols and Unicode characters. This also depends on the language of the input text, because some languages don't use spaces at all, including Chinese and Japanese. Some do use spaces but non-Latin scripts like Korean, Greek, Arabic, Armenian, Georgian, Hebrew or Russian.
+- Template strings
+- String interpolation
+- Arrow functions
+- RegExp literals
+- `BigInt` literals
+- ES6 `String`, `Array` and `Object` methods
 
-The output has a few additional macro functions defined in the object. Each macro takes a single parameter, an arbitrary sequence of the same 32 characters. Additional arguments are embedded inside the string itself, which we can then decide with the method strings we have definer on the global object. We will allocate these functions with simple numeric values using calculated object key syntax, `{[expr]: value}`, and their values are properties of that function, because in JavaScript, functions are first-class objects.
+A generator function yields us every possible string with those same characters (skipping the keys already defined) since each arbitrary string formed from a finite set of characters corresponds to positive number. A one-on-one correspondence is called bijection.
 
-These strings are stored as keys inside the global object, encoded in bijective base 32, skipping any keys which we have already defined. This is achievable with a simple generator function.
+Going over each character one by one is overly lengthy and repetitive, thus going against encryption. It is shorter and faster to break the string down into substrings and doing one thing to each. This way, we can effectively minimize the number of operations the interpreter has to execute, and also the overall length of the obfuscated output code.
+
+The algorithm tries its best to perform optimizations to minimize this repetition, though this performance drawback is somewhat unhampered. Compilation takes between 2 and 3 seconds for about a million characters in minified source code, and 5 seconds for an entire novel.
+
+The text is parsed and lexed into tokens, which then are assigned categories. But unlike a regular compiler, there is no _grammar_ to check against, so there is no errors. Instead, the text is (recursively) parsed into these tokens. The parser recognizes six different types of tokens: numbers, ASCII alphanumerics, control characters,
+
+By default, the parser would split the entire text with the space as its delimiter, with the split elements going into an array and separated with commas. JavaScript ignores trailing commas, and so we have to explicitly add a trailing comma if the final element of the output array is empty.
+
+The input string is further subdivided and categorized into substrings of different character types, such as alphanumerics (both cases treated separately), decimal numbers and arbitrary sequences of Unicode symbols from a given character set, minus CJK, symbol, punctuation and private-use characters.
+
+The output contains an anonymous decryption function with two parameters: the encoded data itself, and the category of substring or mode to decrypt to. This second argument may also contain additional arguments such as encoded character ranges. All of the encoded strings will pass through the decryptor.
+
+### Symbol sequences and string literals
+
+Runs with only the printable ASCII symbols are quoted into string literals. Usually the runs do not contain any characters used to wrap strings: `` '"` ``. The backslash, and whatever symbol is being used for wrapping these literals, are escaped. In template literals, the sequence `${` which begins an interpolation sequence, is also escaped.
+
+Each (encoded) substring goes through a quoting function which compares the lengths of the stringified substring and selects the shortest. It also prioritizes the "fallback" quoting option, so most strings which do not contain any escaped characters would be quoted as such.
+
+If the runs also contain a backslash, then there are two other options for representing that string: using the `String.raw` function, or from a `RegExp` literal delimited with slashes when calling `toString`, or without, from the `source` property. However some strings when interpreted literally result in a syntax error, so those strings are escaped.
+
+### Numbers
+
+From here on out, we would primarily use big integers, or the new primitive data type added in ES8, `BigInt` as an intermediate data type to store most of our strings. Many of the encoding methods use bijective encoding, due to the fact that any arbitrary sequence of digits from a given set has a single numeric representation.
+
+Numeric-only substrings are encoded as bijective base 32 using all the 32 characters. Zero padding is done as an additional step, for substrings with leading zeroes.
+
+### Alphanumerics
+
+Alphanumeric substrings follow the same rules as numbers, except this time the substring is parsed as a number with a base higher than 10, depending on the position of the last letter in the substring. This number is encoded as bijective base 32.
+
+By default, `toString()` yields lowercase. So if the original substring contains uppercase letters, then the positions of those characters in the substring will be converted into uppercase using compressed ranges. If the entire string is uppercase, then the string would be converted directly into uppercase.
+
+### Words with diacritics
+
+For substrings which contain a mixture of ASCII letters and non-ASCII characters, including letters with diacritics.  
+
+The non-ASCII characters are then inserted through an implementation of the _Bootstring_ algorithm. The substring does not go through Unicode normalization.
+
+### Other writing systems and languages
+
+For substrings of a different Unicode script other than Latin, they are generated from a pool of characters sorted by frequency in the input text, case-insensitively. The result is encoded as bijective base 32 using the pool of characters, and converted from base 32.
+
+For bicameral scripts, like Cyrillic and Greek, see the section on [alphanumerics](#alphanumerics).
+
+### Arbitrary Unicode sequences
+
+For other Unicode characters, including CJK, special, private-use, non-printable and spacing characters, and even astral code points, they are converted from their hexadecimal values and grouped into smaller subsequences based on their leading digits. All leading zeroes are stripped when encoded and added back when decoded.
+
+This would yield values on two sides: the "keys" being the leading and the "values" being the trailing digits that are not encoded. Both key and value pairs are converted from bijective base 16 into bijective base 30. `,` and `:` are reserved for separating keys and values.
+
+### Other optimizations
+
+In string literals, if any part of the string contains backslashes, If a string contains a long enough repetitive pattern, then the string is "divided" then repeated by its "common factor".
+
+If two different substrings have a Jaro distance exceeding a certain threshold, then the insertions, substitutions and deletions would be performed with the `replace` function.
 
 ## Disclaimer
 
