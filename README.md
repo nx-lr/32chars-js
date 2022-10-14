@@ -26,7 +26,7 @@ A few months later in Jan 2010, an informal competition was held in an online cy
 
 Contributors to the thread managed to remove the need for the characters `,/`, thus bringing the minimum to 6 `[]()!+`.
 
-These encoders follow a pattern: creating and repeatedly adding 1 to get the digits, casting expressions using type coercion into strings, and retrieving single characters with an index. This process repeats itself a number of times, until a general method of finding Unicode characters from their code points is reached.
+These encoders follow a pattern: creating and repeatedly adding 1 to get the digits, casting expressions into strings using type coercion, and retrieving single characters with an index. This process repeats itself a number of times, until a general means to find Unicode characters from their code points is reached.
 
 It is because of this repetition that certain characters end up being expanded to more than a thousand characters, hence the resulting code becomes very verbose.
 
@@ -53,7 +53,9 @@ Compilation takes somewhat a long time for a huge body of plain text, such as a 
 
 ### Initialization
 
-The program uses a multi-phase substitution encoding. Characters and values are assigned to variables and properties, decoded, and then referenced either to build new substrings, or used to build back the input string. Some strings, like `undefined`, are "edge cases" and hence require nifty hacks along the way.
+The program uses a multi-phase substitution encoding. Characters and values are assigned to variables and properties, decoded, and then referenced either to build new substrings, or to build back the input string.
+
+There are of course some edge cases and exceptions, as some strings could be produced by manipulating values or passing them to functions rather than encoding, such as the names of constants, constructors, tags and date strings.
 
 ### The basics
 
