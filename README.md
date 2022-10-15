@@ -34,13 +34,13 @@ In the output string, substrings with only printable ASCII symbols are quoted in
 
 Each encoded substring in the output goes through a quoting function (from the `jsesc` library) which compares the lengths of the escaped substring and selects the string literal with the least number of escapes, in that case being the shortest. It also prioritizes a fallback quoting option for strings without escapes.
 
-### Initialization: statement 1
+### Statement 1
 
 JavaScript allows the `_` and `$` characters to be used in variable names. So we can assign one of them, in this case, `$`, to be used to store values, characters and substrings, and the other, `_`, to store the actual string.
 
 The code starts out by assigning `$` to the value of `-1`, or by doing a bitwise NOT on an empty array: `~[]`. Numerically, an empty array, or implicitly, a _string_, is `0`, and `~0` is equal to `-1`.
 
-### Initialization: statement 2
+### Statement 2
 
 In the next statement, `$` is assigned to a JavaScript object. Properties are defined within the braces, in the form `key: value`, and individual properties, key-value pairs, are separated with commas.
 
@@ -54,17 +54,17 @@ The rest of the object properties are constructed in a similar fashion: incremen
 
 This would yield us the following letters (case-sensitive): `a b c d e f i j I l n N o O r s t u y`, the space and the digits `0 1 2 3 4 5 6 7 8 9`. We have syntax to form the hexadecimal alphabet as well as a number of uppercase and lowercase letters.
 
-The letters have two characters. The first `_` or `$` defines its case and the second an arbitrary symbol, each unique to a letter in the English alphabet, minus the three pairs of brackets `()[]{}`. The most common letters in English, `t` and `e` get the characters which form identifiers, `_` and `$`, while the least common, `j`, `q`, `x` get the quote characters, while `z` gets the backslash.
+The space, the only non-alphanumeric and non-symbol character, is assigned the property `-`.
 
 The digits have keys defined as binary, where `_` is digit `0` and `$` is digit 1, padded to length 3, as `__`, `_$`, `$_` and `$$` have keys defined. So `___` is `0` and `__$` is `1`.
 
-The space, the only non-alphanumeric and non-symbol character, is assigned the property `-`.
+The letters are encoded as a pair of characters. The first `_` or `$` defines its case and the second a symbol, each unique to a letter in the English alphabet, minus the three pairs of brackets `()[]{}`. The most common letters in English, `t` and `e` get the characters which form identifiers, `_` and `$`, while the least common, `j`, `q`, `x` get the quote characters, while `z` gets the backslash.
 
 ### Statement 3 and 4
 
-From the third line, we will use the letters we have formed to begin forming the names of properties in our expressions, by concatenating them with the `+` operator. We form the words `concat`, `join`, `slice`, `return`, `constructor` and `source`, each assigning then single or double character keys.
+From the third line, we will use the letters we have formed to begin forming the names of properties in our expressions, by concatenating them with the `+` operator. We form the words `concat`, `join`, `slice`, `return`, `constructor`, `filter`, `flat` and `source`, each assigning then single or double character keys.
 
-`[]` can be used to access properties on values, and by extension, to call methods ons them. For instance, `[]['flat']()` is semantically equivalent to `[].flat()`.
+`[]` can be used to access properties on values, and by extension, to call methods on them. For instance, `[]['flat']()` is semantically equivalent to `[].flat()`.
 
 We can now access the constructors, with the `constructor` property of literals. like `Array` `[]`, `String` `''`, `Number` `+[]`, `Boolean` `![]`, `RegExp` `/./` and `Function` `()=>{}` (leaving out `Object`), and like what we did before, casting that constructor function into a string. This yields a string like `function Array { [native code] }`, when evaluated in a JavaScript interpreter. We now have the letters `A B E F g m p R S v x`. The only letter not present in any of the constructor names is `v`, which is from the word `native`.
 
@@ -72,27 +72,31 @@ Now we have 22 lowercase `a b c d e f g i j l m n o p r s t u v x y` and 9 upper
 
 We use the spread operator, `...` to "spread out" its properties on a new object, in this case, itself, before reassigning it to itself.
 
-### Statements 4 and 5
-We repeat statement 2 and 3 again this time with the new letters we have gotten in those steps:
+In statement 4, by concatenating the letters, we form the method names `map`, `replace`, `repeat`, `split`, `indexOf`, `entries`, `fromEntries`, and `reverse`.
 
-- Evaluating expressions to get a value
-- Casting the result into a string
-- Indexing with a number to get a new letter
-- Shadow-cloning and then allocating new letters on the object
-- Forming property names by concatenating individual letters
-- Storing those property names as strings in the global object
+### Statement 5 and beyond
 
-But we can take shortcuts rather than having to form strings letter by letter, such as in `toString`, formed from concatenating the string `t` and `o`, and then the `name` property on the `String` constructor which yields `'String'`. With this method, we can retrieve five more lowercase letters `h k q w z` by passing a small number in base 36 and calling the `toString` methods which always yields the higher alphabetic digits in lowercase.
+In statement 5, we are more or less done, but there are still some things left. We are going to get the following letters: `h k q w z C D U`, make the strings `toString`, `fromCharCode`, `keys`, `raw`, and `toUpperCase`, and retrieve the functions `Date, BigInt`, `eval`, `escape` and `parseInt`.
 
-Two more uppercase letters `C` and `D` are created by indexing a URL with an invalid character like `<` or `=` with the `escape` function which always yields its code points in uppercase. Uppercase `U` is created from the expression `` `${{}.constructor.toString.call()}` `` which evaluates to the string `[object Undefined]`.
+`toString` is formed by concatenating the letters `t` and `o`, and then retrieving the string `"String"` from the `String` constructor, by accessing its `name` property. With `toString` formed, we can retrieve the rest of the lowercase alphabet, `h k q w z`, by passing a number in base 36, to yield a letter in lowercase.
 
-We now have the entire lowercase alphabet, and forming the word `toUpperCase` we can now form the rest of the other 14 uppercase letters from the lowercase, or even capitalize multiple lowercase letters into uppercase this way, because `toString` yields numbers in higher bases as lowercase.
+Using the `Function` constructor, we can trigger execution of code contained in a string as if it was native JavaScript code. So with an expression like `Function('return eval')`, we can return several important global functions, such as `eval`, `escape` and `parseInt`.
 
-`fromCharCode` allows us to form Unicode strings in another way other than `eval`, and when combined with `map`, `split` and `join` allows us to encode arbitrary Unicode strings using _some_ combinations of all 32 characters on the fly.
+The letters `C` and `D` are created by indexing a URL with an invalid character like `<` or `=` with the `escape` function which always yields its code points in uppercase.
 
-The lowercase `w` is also used to form the word `raw` in `String.raw`. This static method allows us to express strings verbatim without interpreting escape sequences, as long as it does not break JavaScript's template literal ` `` ` and interpolation `${ }` syntax.
+Uppercase `U` is created from the expression `` `${{}.constructor.toString.call()}` `` which evaluates to the string `[object Undefined]`.
 
-Property and method names are assigned distinct single or double character keys which will make further expressions significantly shorter. Some properties reference global functions. These include `eval`, `parseInt` and `escape`, and perhaps the `Date` and `BigInt` constructors.
+Both `eval` and `fromCharCode` allows us to form Unicode strings. `fromCharCode` generates a string from its code points, while `eval` generates a string from its escape sequence. `parseInt` enables numbers to be parsed in bases other than 10.
+
+The `String.raw` method when used on a template literal ignores all escape sequences, so backslashes are now interpreted as they are without getting "deleted" by the parser.
+
+> This depends entirely on engine and locale so this feature is considered experimental. The additional characters `G M T J W Z` can be retrieved with the `Date` constructor:
+>
+> The letters `G M T` are formed by converting a new instance of `Date`, i.e. `new Date()`, and calling `toString()`. This yields a string of the form `Thu Jan 01 1970 07:30:00 GMT+0XXX (Local Time)`.
+>
+> `Z` comes from `new Date().toISOString()` which evaluates to a string of the form `1970-01-01T00:00:00.000Z`. `Z` in this case represents zero UTC offset.
+>
+> Passing these arguments to the `Date` constructor, in a specific order, retrieves `J` and `W`: `Jan` - `0`, `Wed` - `0,0,3`.
 
 ```js
 const props = {
@@ -145,7 +149,6 @@ const props = {
 }
 ```
 
-
 ### Encoding
 
 The program has several encoding functions, and the decoding function with two parameters: the encoded substring itself, which mode to decode to, and a character set to use, encoded. All of the encoded strings will pass through this function, some which will be stored in the global object if the substring occurs more than once, or the substring is unique enough to be stored, based on its Jaro distance with other strings.
@@ -162,7 +165,7 @@ Sometimes, the program does not encode specific substrings as we either have for
 
 - The `slice` returns consecutive characters within a substring by specifying the start and end indices of the substring, such as `rep` or `ace` from `replace`.
 - The `repeat` method can be used to repeat a "factored" substring a given number of times. This would also use a regular expression to determine the shortest pattern within the substring and how much it is repeated.
-- The `join` method, along with `split` is used to join an array of "strings" with a delimiter that is also a string. We would employ regular expressions to determine the optimal substring to delimit a given set of text (it may not be spaces after all).
+- The `join` method, along with `split`, is used to join an array of "strings" with a delimiter that is also a string. We would employ regular expressions to determine the optimal substring to delimit a given set of text (it may not be spaces after all).
 - The `replace` method is used to replace one or all substrings of a substring, through insertion, deletion or substitution to turn it into something similar. We would use a string difference checker.
 
 Only a subset of encoded substrings will be formed from this step. The rest are stored in later statements, but before compilation, the compiler would build a derivation tree from the substrings it has captured from the input string.
