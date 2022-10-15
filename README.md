@@ -1,6 +1,6 @@
 # 32chars.js
 
-### Disclaimer
+## Disclaimer
 
 The program in this repository has a potential to be used maliciously, such as injecting obfuscated malicious code in websites. **I am solely never held responsible for any damage caused by this program or the code it outputs.**
 
@@ -207,3 +207,13 @@ For bicameral scripts like Cyrillic, Greek, Armenian and Georgian, the substring
 For other Unicode characters, including CJK, special, private-use, non-printable and spacing characters, and even astral code points, they are converted from their hexadecimal values and grouped into smaller subsequences based on their leading digits. All leading zeroes are stripped when encoded and added back when decoded.
 
 This yields pairs of symbol sequences: the "keys" being the leading and the "values" being the trailing digits that are not encoded. Both key and value pairs are converted from bijective base 16 into bijective base 30. `,` and `:` are reserved for separating keys and values.
+
+## Customization
+
+Here's a list of customization options available:
+
+- `globalVar` - the global variables to use in the output. Must be a valid undefined JavaScript variable. Default is `$` for the object, and `_` for the output string.
+- `export` - Which keys to export the string.
+- `defaultQuote` - Quoting style to fall back to, if smart quoting is enabled. One of `single`, `double` or `backtick`. Default is `double`.
+- `smartQuote` - Whether or not to enable smart quoting. This optimizes the quotes to use
+- `objectQuote` - Whether to quote keys inside objects, and which quotes to use. One of `single` or `double`. Default is `double`.
