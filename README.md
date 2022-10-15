@@ -1,128 +1,78 @@
 # 32chars.js
 
-Punctuation-Only JavaScript
+### Disclaimer
 
-## Disclaimer
-
-The program in this repository, like all other programs of its kind, has potential to be used maliciously, for example, injecting malicious code in websites. Doing so may lead to irreversible consequences which can affect anything from personal data to passwords and bank information.
-
-**I am not held responsible for any damage caused by the program in my repository, the generated code and your negligence in general.**
+The program in this repository has a potential to be used maliciously, such as injecting obfuscated malicious code in websites. **I am solely never held responsible for any damage caused by this program or the code it outputs.**
 
 ## Introduction
 
-32chars.js is a JavaScript encoder that obfuscates a piece of text into the shortest possible valid JavaScript code with only 32 ASCII symbol and punctuation characters: `` `~!@#$%^&*()_+{}|:"<>?-=[]\;',./ ``.
+32chars.js is a JavaScript encoder that obfuscates a piece of text into the shortest possible valid JavaScript code with only 32 ASCII symbol and punctuation characters: `` `~!@#$%^&*()_+{}|:"<>?-=[]\;',./ ``. This project is a testament to the many existing JavaScript encoders, and the spiritual successor to the OG encoder, [jjencode](https://utf-8.jp/public/jjencode.html).
 
-Both the Node and browser version will be implemented in the near future, but right now, the project is under halt and will not be maintained for a time. A major rewrite of the program is planned, based on this document.
+## Background
 
-## History
+We all know JavaScript is a programming language with lots of weird and tricky parts. But did you know that JavaScript can be written without any letters or numbers? You can make do with just [five](https://aem1k.com/five/) or [six characters](http://www.jsfuck.com/). But all these would result not only in heavily unreadable, but also _verbose_ code, where a single character could be expanded up to _thousands_ of characters.
 
-JavaScript is a weird programming language. And one thing people really do hate about it is the way it evaluates expressions.
+It's common sense that scripts that contain a wide variety of individual characters are shorter and perhaps a bit more readable and parsable code. So, this project still does not use any alphabets or numbers, but rather all 32 ASCII punctuation and symbol characters, most of which are significant JavaScript tokens. The goal of this project therefore is to produce the minimum possible JavaScript encoding using those 32 characters.
 
-Programmers have tried many ways to exploit this very flaw of JavaScript, resulting in the creation of many compilers that obfuscate JavaScript without using any alphanumeric characters.
+## Explanation
 
-The first such compiler was JJEncode, which came out in 2009. It had a total of 18 different characters: `[]()!+,\"$.:;_{}~=`.
+Rather than going over each character in the input string one by one and expanding it, as much as possible, we are breaking the input string into runs of _at least_ one character. This way we are minimizing the number of operations that can be performed by the engine, while also shortening the output by a lot.
 
-A few months later in Jan 2010, an informal competition was held in an online cybersecurity thread, and this brought down the minimum number of characters to 8 `[]()!+,/`.
+Since we have a large enough character set, we have literal syntax to form strings. Strings are very fundamental to obfuscation as we can use our own encoding schemes to represent different parts of the input string. There are also other ways to create strings with the latest JavaScript features, like template/raw strings and interpolation, `RegExp`s and `BigInt`s, and new `String`, `Array` and `Object` methods.
 
-Contributors to the thread managed to remove the need for the characters `,/`, thus bringing the minimum to 6 `[]()!+`.
+The program uses a two-phase substitution encoding. Characters and values are assigned to variables and properties, decoded, and then either used to construct new substrings or build back the input string. There are of course edge cases, as some expressions innately produce strings, such as constants (like `true`, `false`, etc.), string tags (like `[object Object]`), date strings (e.g. `2011-10-05T14:48:00.000Z`) and source code (e.g. `function Array() { [native code] }`).
 
-These encoders follow a pattern: creating and repeatedly adding 1 to get the digits, casting expressions into strings using type coercion, and retrieving single characters with an index. This process repeats itself a number of times, until a general means to find Unicode characters from their code points is reached.
+The text is parsed and assigned to tokens: symbol sequences using those 32 characters, integers, ASCII characters, words with diacritics, non-Latin writing systems, Unicode BMP characters (code point `U+0000` to `U+FFFF`) and astral characters (code point `U+10000` and above). JavaScript stores strings as UTF-16, so Basic
 
-It is because of this repetition that certain characters end up being expanded to more than a thousand characters, hence the resulting code becomes very verbose.
+The text is split by default with the space, with the split elements going into an array and separated with commas `,`. Sometimes the split result can have an empty string in between, so nothing goes in between the commas. JavaScript ignores trailing commas in arrays, objects and function arguments, so we have to explicitly add trailing commas if the final element of an output array is empty.
 
-So I thought to myself, is there a way to do the opposite: with all ASCII punctuation and symbol characters, how can we possibly achieve the shortest possible encoding length of a given substring?
+### Representing strings
 
-## Goals
-
-There is a key difference between 32chars.js and other encoders. Rather than going over each character in the input string one by one and then expanding it, we are breaking the input string into smaller substrings of _at least_ one character.
-
-This way we can effectively minimize the overall length of the output code, and also the number of operations for the JavaScript engine to bear.
-
-That's why 32chars.js stands out from other encoders. It has a large character set, so that means we have syntax to form literal strings. But we _can_ use the latest JavaScript syntax and functionality; this means tons of new and nifty ways to represent, encode and create these strings:
-
-- Template strings
-- String interpolation
-- Arrow functions
-- RegExp literals
-- `BigInt` literals
-- ES6 `String`, `Array` and `Object` methods
-
-Because of the sheer number of ways that we can create and manipulate strings in JavaScript, its compiler has hundreds if not thousands of lines. As a result, the number of possible operations the compiler needs to generate is huge.
-
-Compilation takes somewhat a long time for a huge body of plain text, such as a piece of minified source code or a novel.
-
-### Initialization
-
-The program uses a multi-phase substitution encoding. Characters and values are assigned to variables and properties, decoded, and then referenced either to build new substrings, or to build back the input string.
-
-There are of course some edge cases and exceptions, as some strings could be produced by manipulating values or passing them to functions rather than encoding, such as the names of constants, constructors, tags and date strings.
-
-### The basics
-
-The text is parsed and categorized into tokens. But unlike a regular compiler that takes _source code_ and compiles it into _machine code_ following a strict _grammar_, this is an _encoder_ that takes _plain text_ and compiles it into _obfuscated source code_ following specific _encoding rules_.
-
-The text is recursively parsed into tokens: symbols (using the 32 characters), integers, ASCII alphanumerics (base62), words with diacritics, non-Latin writing systems, and Unicode or astral characters. Astral characters are Unicode characters with code point U+10000 and above, after the Basic Multilingual Plane.
-
-### Symbol sequences and string literals
-
-We have syntax to form strings. String literals in JavaScript can be created in three ways: single and double quoted strings, which are roughly equivalent, and template strings, which allows interpolation of values. In this context, strings are _very fundamental_ to obfuscation, so we are free to create our own encoding/decoding schemes.
+String literals in JavaScript can be created in three ways: single and double quoted strings, which are roughly equivalent, and template strings, which allows interpolation of values. In this context, strings are _very fundamental_ to obfuscation, so we are free to create our own encoding/decoding schemes.
 
 In the output string, substrings with only printable ASCII symbols are quoted into string literals. Usually the runs do not contain any of the quote characters `` ' " ` ``. The backslash `\`, and whatever symbol is being used for wrapping these literals, are escaped. In template literals, the sequence `${`, which normally begins an interpolation sequence, is also escaped.
 
-Each encoded substring in the output goes through a quoting function ( `jsesc` library) which compares the lengths of the escaped substring and selects the string literal with the least number of escapes, in that case being the shortest. It also prioritizes a fallback quoting option for strings without escapes.
-
-### Parsing the input string
-
-By default, the parser would split the entire text with the space as its delimiter, with the split elements going into an array and separated with commas. JavaScript ignores trailing commas, and so we have to explicitly add a trailing comma if the final element of the output array is empty.
-
-The input string is further subdivided and categorized into substrings of different character types, as described in the sections below. Some of these variable-length substrings would be stored inside the global object later on, if they repeat.
+Each encoded substring in the output goes through a quoting function (from the `jsesc` library) which compares the lengths of the escaped substring and selects the string literal with the least number of escapes, in that case being the shortest. It also prioritizes a fallback quoting option for strings without escapes.
 
 ### Initialization: statement 1
 
-JavaScript variable names are flexible in the characters that can be used, so the above variable name of `$` is valid. So is `_`.
+JavaScript allows the `_` and `$` characters to be used in variable names. So we can assign one of them, in this case, `$`, to be used to store values, characters and substrings, and the other, `_`, to store the actual string.
 
-Unlike a number of other languages, such as Python, PHP and Perl, the dollar sign is not a reserved character and therefore able to be used in any part of the variable name. This allows variables to e formed with any combination of `_` and `$` characters, such as `$_`, `$$$`, and `_$_`.
-
-Because you want to sound hip, yes, the dollar sign can be used in variables. `Ke$ha` and `A$AP_Rocky` are valid JavaScript identifier.
-
-The program starts out by assigning a global variable `$` with the value of `~[]`. The tilde, `~` indicates a unary bitwise NOT operation on an empty array which is numerically equivalent to `0`. This evaluates to `-1`.
-
-This line, ignoring the global variable, is exactly the same as in JJEncode. The second line shares a similar concept to it.
+The code starts out by assigning `$` to the value of `-1`, or by doing a bitwise NOT on an empty array: `~[]`. Numerically, an empty array, or implicitly, a _string_, is `0`, and `~0` is equal to `-1`.
 
 ### Initialization: statement 2
 
-The next statement is significantly longer than the first. `$` is then reassigned to a JavaScript object. Properties are defined within the braces in the form `key: value`, and individual properties are separated by commas. JavaScript defines object keys in three different ways
+In the next statement, `$` is assigned to a JavaScript object. Properties are defined within the braces, in the form `key: value`, and individual properties, key-value pairs, are separated with commas.
 
-JavaScript defines object keys in three different ways: _identifiers_ which are any combination of (Unicode) letters, decimal numbers, underscores and dollar signs, _strings_ encased inside single or double quotes, and _expressions_ inside square brackets, like `['fo'+'r']`. Property access is done either with dots, like `x.for`, or square brackets `x['for']`. Note, the last 2 are the same.
+JavaScript has three different ways to represent keys: _identifiers_ without quotes (which also includes keywords) like `key:value`, _strings_ within single or double quotes like `'key':value`, and _expressions_ within square brackets `['key']:value`. Properties are either accessed with dots, like `x.key` or square brackets, like `x['key']`.
 
-The first property is `___`, three underscores. The value of this property is `` `${++$}` ``, which takes the value of `$` (currently `-1`), increments it (to `0`), and then assigns it to the property. So, in this statement, `$` is incremented by one to `0`, converted into a string by wrapping the expression inside a template literal `` `${}` ``, and then assigned to `$.___`. Note that since the object is still being built, `$` is still a number and not an object yet.
+The first property is `___`, with a value of `` `${++$}` ``. This takes the value of `$`, currently `-1`, and increments it to `0`, then casts that into a string by wrapping inside a template literal interpolation. While the object is still being built, `$` is still a number and not an object yet, since evaluation happens from the inside out.
 
-The second property is `$$$$`. The value of this property is `` `${![]}`[$] ``. The first part of this is an array prepended with a logical NOT `!` operator, which turns into the Boolean value `false`—`!{}` also yields the same result since it, just like an array, is a non-primitive and hence yields true when converted into a boolean. Wrapping it inside an template literal turns the evaluated result into a string, therefore it evaluates to `"false"`.
+The second property is `_$`, with a value of `` `${!''}`[$] ``. An empty string is prepended with the NOT operator, coercing it into `false` since it is falsy. `!` also negates the boolean, resulting in `true`, before wrapping it in a template literal, becoming the string `"true"`. The `[$]` construct returns the character at index `0` (string indices start at `0`), which returns `t`.
 
-There is a `[$]` after the string `"false"`. In JavaScript, a letter of a string can be obtained by specifying the index of the character within brackets (string indices start at `0`). Here, `$` currently evaluates to `0`, so this line is asking for the character at position `0` in the string `"false"`, or `"f"`.
+The rest of the object properties are constructed in a similar fashion: incrementing the `$` variable, constructing a string, and grabbing a character out of the string by specifying its index. We manipulate literals to evaluate to form the constants, `true`, `false`, `Infinity`, `NaN`, `undefined`, and an empty object `{}` which becomes the string `"[object Object]"`.
 
-The rest of the object properties are constructed in a similar fashion: incrementing the `$` variable, constructing a string, and grabbing a character out of the string by specifying its index. These are the only times that the global variable is a number and not an object.
+This would yield us the following letters (case-sensitive): `a b c d e f i j I l n N o O r s t u y`, the space and the digits `0 1 2 3 4 5 6 7 8 9`. We have syntax to form the hexadecimal alphabet as well as a number of uppercase and lowercase letters.
 
-So, using type coercion, we manipulate literals to evaluate to constants like `true`, `false`, `Infinity`, `NaN`, `undefined`, and an empty object `{}` which becomes the string `"[object Object]"`. There's so many ways that we can form these constants, without having to type a single letter, and that's the beauty of JavaScript. All of these variants are encoded as regular expressions and then expanded at runtime with the `genex` library.
+The letters have two characters. The first `_` or `$` defines its case and the second an arbitrary symbol, each unique to a letter in the English alphabet, minus the three pairs of brackets `()[]{}`. The most common letters in English, `t` and `e` get the characters which form identifiers, `_` and `$`, while the least common, `j`, `q`, `x` get the quote characters, while `z` gets the backslash.
 
-This would yield us the following letters (case-sensitive): `a b c d e f i j I l n N o O r s t u y`, the space and the digits `0` to `9`. Based on the output we have a cipher to store our characters. We have the hexadecimal alphabet for use in the later substitutions.
+The digits have keys defined as binary, where `_` is digit `0` and `$` is digit 1, padded to length 3, as `__`, `_$`, `$_` and `$$` have keys defined. So `___` is `0` and `__$` is `1`.
 
-The letters have two characters. The first `_` or `$` defines its case and the second an arbitrary symbol, each unique to a letter in the English alphabet, minus the three pairs of brackets `()[]{}`.
+The space, the only non-alphanumeric and non-symbol character, is assigned the property `-`.
 
-The digits have keys defined as binary, ciphered with combinations of `_` (digit 0) and `$` (digit 1), then padded to length 3 or 4, so `0` is `___`, `4` is `$__` and `9` is `$__$`. The space, the only non-alphanumeric and non-symbol character, is assigned the property `-`.
+### Statement 3 and 4
 
-### Initialization: statement 3
+From the third line, we will use the letters we have formed to begin forming the names of properties in our expressions, by concatenating them with the `+` operator. We form the words `concat`, `join`, `slice`, `return`, `constructor` and `source`, each assigning then single or double character keys.
 
-From the third line, we will use the letters we have got to form new words by concatenating existing single case-sensitive letters with the `+` operator to form property names as strings. These words, when inserted inside square brackets, are then used to access properties on values or call methods on them. For instance `{}["constructor"]`.
+`[]` can be used to access properties on values, and by extension, to call methods ons them. For instance, `[]['flat']()` is semantically equivalent to `[].flat()`.
 
-With the `constructor` property, we can access the constructors of literals, like `Array` `[]`, `String` `''`, `Number` `+[]`, `Boolean` `![]`, `RegExp` `/./` and `Function` `()=>{}` (leaving out `Object`), and like what we did before, converting that constructor function into a string. This yields a string like `function Array { [native code] }`, when evaluated in a JavaScript interpreter. We now have the letters `A B E F g m p R S v x`. The only letter not present in any of the constructor names is `v`, which is from the word `native`.
+We can now access the constructors, with the `constructor` property of literals. like `Array` `[]`, `String` `''`, `Number` `+[]`, `Boolean` `![]`, `RegExp` `/./` and `Function` `()=>{}` (leaving out `Object`), and like what we did before, casting that constructor function into a string. This yields a string like `function Array { [native code] }`, when evaluated in a JavaScript interpreter. We now have the letters `A B E F g m p R S v x`. The only letter not present in any of the constructor names is `v`, which is from the word `native`.
 
-In total, this yields us with 22 lowercase `a b c d e f g i j l m n o p r s t u v x y` and 9 uppercase letters `A B E F I N O R S`. We make sure to store every word and letter we have found with a unique key so that we can refer to it later on in our code.
+Now we have 22 lowercase `a b c d e f g i j l m n o p r s t u v x y` and 9 uppercase letters `A B E F I N O R S`. And just like before, we store every word and letter we have formed with a unique key, for reference later in our code.
 
-To save up on statements, we use the spread operator `...` to "spread out" its properties on another object. We can do the same thing for arrays and function arguments. In this case, we are cloning the object by "spreading" its properties on a _new_ object with the new properties defined, before reassigning that object back to itself.
+We use the spread operator, `...` to "spread out" its properties on a new object, in this case, itself, before reassigning it to itself.
 
-### Initialization: statement 4 and beyond
-
+### Statements 4 and 5
 We repeat statement 2 and 3 again this time with the new letters we have gotten in those steps:
 
 - Evaluating expressions to get a value
@@ -195,6 +145,7 @@ const props = {
 }
 ```
 
+
 ### Encoding
 
 The program has several encoding functions, and the decoding function with two parameters: the encoded substring itself, which mode to decode to, and a character set to use, encoded. All of the encoded strings will pass through this function, some which will be stored in the global object if the substring occurs more than once, or the substring is unique enough to be stored, based on its Jaro distance with other strings.
@@ -218,9 +169,9 @@ Only a subset of encoded substrings will be formed from this step. The rest are 
 
 The stems are either non-string values cast into strings, or strings we have already defined. Each branch represents a string in the output text generated from any of the operations above. If the stem does not contain a sequence present in the output text, it will be stored in the global object as an encoded string.
 
-The compiler would do a depth first travel of this tree and generates statements that map to the stored values.
+The compiler would do a depth first travel of this tree and generates statements that map to the stored values. Assignment is destructive.
 
-Assignment _expressions_ are also allowed and return their result, so a statement like `x={x:x.y=1}` assigns two properties `x.x` and `x.y` which both equal `1`; `x.y` is assigned before `x.x` since evaluation happens from the inside out.
+Assignment _expressions_ are also allowed and return their result, so a statement like `x={x:x.y=1}` assigns two properties `x.x` and `x.y` which both equal `1`; `x.y` is assigned before `x.x`, because expressions are evaluated from the inside.
 
 #### Symbols
 
