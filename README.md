@@ -46,7 +46,7 @@ In the next statement, `$` is assigned to a JavaScript object. Properties are de
 
 JavaScript has three different ways to represent keys: _identifiers_ without quotes (which also includes keywords) like `key:value`, _strings_ within single or double quotes like `'key':value`, and _expressions_ within square brackets `['key']:value`. Properties are either accessed with dots, like `x.key` or square brackets, like `x['key']`.
 
-The first property is `___`, with a value of `` `${++$}` ``. This takes the value of `$`, currently `-1`, and increments it to `0`, then casts that into a string by wrapping inside a template literal interpolation. While the object is still being built, `$` is still a number and not an object yet, since evaluation happens from the inside out.
+The first property is `___`, with a value of `` `${++$}` ``. This takes the value of `$`, currently `-1`, and increments it to `0`, then casts that into a string by wrapping inside a template literal interpolation (implicitly calling `.toString`). While the object is still being built, `$` is still a number and not an object yet, since evaluation happens from the inside out.
 
 The second property is `_$`, with a value of `` `${!''}`[$] ``. An empty string is prepended with the NOT operator, coercing it into `false` since it is falsy. `!` also negates the boolean, resulting in `true`, before wrapping it in a template literal, becoming the string `"true"`. The `[$]` construct returns the character at index `0` (string indices start at `0`), which returns `t`.
 
@@ -84,7 +84,7 @@ Using the `Function` constructor, we can trigger execution of code contained in 
 
 The letters `C` and `D` are created by indexing a URL with an invalid character like `<` or `=` with the `escape` function which always yields its code points in uppercase.
 
-Uppercase `U` is created from the expression `` `${{}.constructor.toString.call()}` `` which evaluates to the string `[object Undefined]`.
+Uppercase `U` is created from the expression `{}.toString.call().toString()` which evaluates to the string `[object Undefined]`.
 
 Both `eval` and `fromCharCode` allows us to form Unicode strings. `fromCharCode` generates a string from its code points, while `eval` generates a string from its escape sequence. `parseInt` enables numbers to be parsed in bases other than 10.
 
@@ -92,7 +92,7 @@ The `String.raw` method when used on a template literal ignores all escape seque
 
 > This depends entirely on engine and locale so this feature is considered experimental. The additional characters `G M T J W Z` can be retrieved with the `Date` constructor:
 >
-> - The letters `G M T` are formed by converting a new instance of `Date`, i.e. `new Date()`, and calling `toString()`. This yields a string of the form `Thu Jan 01 1970 07:30:00 GMT+0XXX (Local Time)`.
+> - The letters `G M T` are formed from the expression `new Date().toString()`. This yields a string of the form `Thu Jan 01 1970 07:30:00 GMT+0XXX (Local Time)`.
 > - `Z` comes from `new Date().toISOString()` which evaluates to a string of the form `1970-01-01T00:00:00.000Z`. `Z` in this case represents zero UTC offset.
 > - Passing these arguments to the `Date` constructor, in a specific order, retrieves `J` and `W`: `Jan` - `0`, `Wed` - `0,0,3`.
 
@@ -161,7 +161,7 @@ Because we have string methods already, i.e. `join`, `slice`, `replace`, `repeat
 
 Sometimes, the program does not encode specific substrings as we either have formed them letter by letter and stored them in the global object, or are created magically by manipulating primitive values, as we have explored in the above, such as `function`, `Array`, `undefined`, `object` and more.
 
-- The `slice` returns consecutive characters within a substring by specifying the start and end indices of the substring, such as `rep` or `ace` from `replace`.
+- The `slice` returns consecutive characters within a substring by specifying the start and (optional) end indices of the substring, such as `rep` or `ace` from `replace`.
 - The `repeat` method can be used to repeat a "factored" substring a given number of times. This would also use a regular expression to determine the shortest pattern within the substring and how much it is repeated.
 - The `join` method, along with `split`, is used to join an array of "strings" with a delimiter that is also a string. We would employ regular expressions to determine the optimal substring to delimit a given set of text (it may not be spaces after all).
 - The `replace` method is used to replace one or all substrings of a substring, through insertion, deletion or substitution to turn it into something similar. We would use a string difference checker.
