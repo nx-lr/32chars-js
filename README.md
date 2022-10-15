@@ -212,8 +212,9 @@ This yields pairs of symbol sequences: the "keys" being the leading and the "val
 
 Here's a list of customization options available:
 
-- `globalVar` - the global variables to use in the output. Must be a valid undefined JavaScript variable. Default is `$` for the object, and `_` for the output string.
-- `export` - Which keys to export the string.
+- `globalVar` - the global variables to use in the output. Must be a valid JavaScript identifier not defined yet. Default is `$` for the object, and `_` for the output string.
+- `strictMode` - Includes a `var` or `let` declaration, setting it at the beginning of the program.  Default is `null`, which does not include a declaration. 
+- `export` - Which key to export the string, if `moduleExports` is set to true. Default is `result`.
 - `defaultQuote` - Quoting style to fall back to, if smart quoting is enabled. One of `single`, `double` or `backtick`. Default is `double`.
-- `smartQuote` - Whether or not to enable smart quoting. This optimizes the quotes to use
 - `objectQuote` - Whether to quote keys inside objects, and which quotes to use. One of `single` or `double`. Default is `double`.
+- `smartQuote` - Whether or not to enable smart quoting; choosing quotes which have the least number of escapes. If disabled, all strings inside the output including object keys will be quoted to `defaultQuote` and `objectQuote`. Default is `true`.
