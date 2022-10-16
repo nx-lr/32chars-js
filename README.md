@@ -14,9 +14,11 @@ We all know JavaScript is a programming language with lots of weird and tricky p
 
 It's common sense that scripts that contain a wide variety of individual characters are shorter and perhaps a bit more readable and parsable code. So, this project still does not use any alphabets or numbers, but rather all 32 ASCII punctuation and symbol characters, most of which are significant JavaScript tokens. The goal of this project therefore is to produce the minimum possible JavaScript encoding using those 32 characters.
 
-## Explanation
-
 Rather than going over each character in the input string one by one and expanding it, as much as possible, we are breaking the input string into runs of _at least_ one character. This way we are minimizing the number of operations that can be performed by the engine, while also shortening the output by a lot.
+
+Much of the encoding is done piecewise, so there has to be a way to encode the string, and then get back what we encoded, and for every piece of the string to be accounted for and assembled in the correct order. So, there is a lot of working backwards and reverse engineering to find out which operations retrieve which results.
+
+## Explanation
 
 Since we have a large enough character set, we have literal syntax to form strings. Strings are very fundamental to obfuscation as we can use our own encoding schemes to represent different parts of the input string. There are also other ways to create strings with the latest JavaScript features, like template/raw strings and interpolation, `RegExp`s and `BigInt`s, and new `String`, `Array` and `Object` methods.
 
@@ -149,46 +151,46 @@ const props = {
 
 ### Encoding
 
-The program has several encoding functions, and the decoding function with two parameters: the encoded substring itself, which mode to decode to, and a character set to use, encoded. All of the encoded strings will pass through this function, some which will be stored in the global object if the substring occurs more than once, or the substring is unique enough to be stored, based on its Jaro distance with other strings.
+The program has several functions defined to decode the string. It can accept up to three arguments: the encoded substring itself, the decoding mode, and the character set to use, if any. All encoded strings are grouped according to their second (and third) arguments, decoded, and spread onto the global object, overriding the keys which they take. The character sets are stored inside numeric keys and will not be overwritten or set to undefined.
 
-Much of the encoding is done piecewise, so there has to be a way to encode the string, and then get back what we encoded, and for every piece of the string to be accounted for and assembled in the correct order. So, there is a lot of working backwards and reverse engineering to find out which operations retrieve which results.
+All of the encoded substrings pass through this function and stored in the global object, if the substring occurs more than once, or is unique enough to be stored, chosen based on Jaro distance, which takes into account character insertions, substitutions and deletions.
 
-A generator function yields us every possible string with those same 32 characters (skipping the keys already defined) since each arbitrary string formed from a finite set of characters corresponds to a natural number. This is called _bijective numeration_, the word _bijective_ meaning a one-on-one correspondence.
+Each arbitrary string formed from a finite set of characters corresponds to a contiguous natural number. This is called _bijective numeration_, the word _bijective_ meaning a one-on-one correspondence. A generator function yields us every possible string with those same 32 characters in order, and skipping the keys already defined.
 
 #### Similar strings
 
-Because we have string methods already, i.e. `join`, `slice`, `replace`, `repeat`, `split`, we can employ algorithms to help us produce these strings, because the goal of this program is to minimize repetition. We would therefore have to work backwards from there.
+Using the string methods `join`, `slice`, `replace`, `repeat`, `split`, we can employ algorithms by working backwards to help us produce these strings, because the goal of this program is to minimize repetition.
 
-Sometimes, the program does not encode specific substrings as we either have formed them letter by letter and stored them in the global object, or are created magically by manipulating primitive values, as we have explored in the above, such as `function`, `Array`, `undefined`, `object` and more.
+Sometimes, the program does not encode specific substrings as we either have formed them and stored them in the global object, or are magically created by manipulating primitive values, as we have explored in the above, such as `function`, `Array`, `undefined`, `object` and more.
 
-- The `slice` returns consecutive characters within a substring by specifying the start and (optional) end indices of the substring, such as `rep` or `ace` from `replace`.
-- The `repeat` method can be used to repeat a "factored" substring a given number of times. This would also use a regular expression to determine the shortest pattern within the substring and how much it is repeated.
-- The `join` method, along with `split`, is used to join an array of "strings" with a delimiter that is also a string. We would employ regular expressions to determine the optimal substring to delimit a given set of text (it may not be spaces after all).
+- The `slice` returns consecutive characters within a substring, by specifying a start and optional end index, for instance, `fin` and `fine` from `undefined`.
+- The `repeat` method can be used to repeat a "factored" substring a given number of times. This would use a regular expression to determine the shortest pattern within the substring and how much it is repeated.
+- The `split` and `join` method, is used to join an array of "strings" with a string as its delimiter. Using regular expressions we determine the optimal substring to delimit that is not a space.
 - The `replace` method is used to replace one or all substrings of a substring, through insertion, deletion or substitution to turn it into something similar. We would use a string difference checker.
 
-Only a subset of encoded substrings will be formed from this step. The rest are stored in later statements, but before compilation, the compiler would build a derivation tree from the substrings it has captured from the input string.
+A subset of all the strings will be formed from this step. The rest will be stored in later statements, but before compilation, the compiler builds a derivation tree from the substrings it has captured from the input. The stems are either non-string values cast into strings, or strings we have already defined.
 
-The stems are either non-string values cast into strings, or strings we have already defined. Each branch represents a string in the output text generated from any of the operations above. If the stem does not contain a sequence present in the output text, it will be stored in the global object as an encoded string.
+Each branch represents a string in the output text generated from any of the above operations. If the stem does not contain a sequence present in the output text, it will be stored in the global object as an encoded string. The compiler does a depth-first travel of this tree and generates statements that map to the stored values. A copy of this tree exists during encoding.
 
-The compiler would do a depth first travel of this tree and generates statements that map to the stored values. Assignment is destructive.
-
-Assignment _expressions_ are also allowed and return their result, so a statement like `x={x:x.y=1}` assigns two properties `x.x` and `x.y` which both equal `1`; `x.y` is assigned before `x.x`, because expressions are evaluated from the inside.
+Assignment _expressions_ are also allowed and return their result, so a statement like `x={x:x.y=1}` assigns two properties `x.x` and `x.y` which both equal `1`; `x.y` is assigned before `x.x`, because expressions are evaluated from the inside. Assignment is destructive, so .
 
 #### Symbols
 
-We all know that we can represent sequences of symbols literally as strings without us performing any encoding, or storing in the global object to be decoded or derived. However, there is one additional optimization we can use: minimizing backslashes.
+We can represent sequences of symbols literally as strings without us performing any encoding, or storing in the global object to be decoded or derived. However, we can also perform one additional optimization: minimizing backslashes.
 
-If the substring contains many backslashes, then there are two other options for representing that string: using the `String.raw` function, or from a `RegExp` literal delimited with slashes when calling `toString`, or without, from the `source` property. However some strings when interpreted literally result in a syntax error, so the compiler represents them with the escapes.
+If a substring contains many backslashes, then there are two options. The first is through a `RegExp` literal and calling `toString` which yields a string of the pattern between two slashes, or without using the `source` property. Alternatively, we could also use the `String.raw` function.
+
+However, if the compiler evaluates it to be a syntax error, despite using both the `replace` and `slice` methods, it falls back to using the normal substrings.
 
 #### Integers
 
-From here on out, we would primarily use big integers, or the new primitive data type added in ES8, `BigInt` as an intermediate data type to store most of our strings. Many of the encoding methods use bijective encoding, due to the fact that any arbitrary sequence of digits from a given set has a single numeric representation.
+From here on out, many of the encodings, in principle, use bijective numeration, with `Number`s or `BigInt`s as an intermediate data type to facilitate conversion. All substrings are encoded in **bijective base 32** using a specific order of characters, except otherwise specified. Again, any arbitrary sequence of digits from a given set has a single numeric representation.
 
-Numeric-only substrings are encoded as bijective base 32 using all the 32 characters. Zero padding is done as an additional step, for substrings with leading zeroes.
+Numeric-only substrings are decoded into `BigInt`s and embedded. Zero padding is done as an additional step, for substrings with leading zeroes.
 
 #### Alphanumeric substrings
 
-Alphanumeric substrings follow the same rules as numbers, except this time the substring is parsed as a number with a base higher than 10, depending on the position of the last letter in the substring. This number is encoded as bijective base 32.
+Alphanumeric substrings follow the same rules as numbers, except this time parsed as a number with a base higher than 10, depending on the position of the last letter in the substring.
 
 By default, `toString()` yields lowercase. So if the original substring contains uppercase letters, then the positions of those characters in the substring will be converted into uppercase using compressed ranges. If the entire string is uppercase, then the string would be converted directly into uppercase.
 
@@ -198,7 +200,7 @@ For multilingual texts that use the Latin alphabet, along with a number of non-A
 
 #### Other writing systems and languages
 
-For substrings of a different Unicode script other than Latin, they are generated from a pool of characters from the script. The result is encoded as bijective base 32, using the pool of characters into a big integer, or in the case of extremely long words or CJK text, _arrays_ of big integers.
+For substrings of a different Unicode script other than Latin, they are generated from a pool of characters from the script. The result is encoded using the pool of characters into a big integer, or in the case of extremely long words or CJK text, _arrays_ of big integers.
 
 For bicameral scripts like Cyrillic, Greek, Armenian and Georgian, the substring is encoded initially as lowercase and then a separate procedure converts selected characters into uppercase based on the input string.
 
@@ -213,7 +215,7 @@ This yields pairs of symbol sequences: the "keys" being the leading and the "val
 Here's a list of customization options available:
 
 - `globalVar` - the global variables to use in the output. Must be a valid JavaScript identifier not defined yet. Default is `$` for the object, and `_` for the output string.
-- `strictMode` - Includes a `var` or `let` declaration, setting it at the beginning of the program.  Default is `null`, which does not include a declaration. 
+- `strictMode` - Includes a `var` or `let` declaration, setting it at the beginning of the program. Default is `null`, which does not include a declaration.
 - `export` - Which key to export the string, if `moduleExports` is set to true. Default is `result`.
 - `defaultQuote` - Quoting style to fall back to, if smart quoting is enabled. One of `single`, `double` or `backtick`. Default is `double`.
 - `objectQuote` - Whether to quote keys inside objects, and which quotes to use. One of `single` or `double`. Default is `double`.
