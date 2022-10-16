@@ -250,4 +250,4 @@ You don't have to worry too much about code size because there is a lot of repet
 
 No for most cases, except for small inputs of probably a few thousand words, for debugging purposes. Since there are many characters in the output, and perhaps many tokens in the output, it would probably break your formatter or minifier or whatever is used to display your result.
 
-Source: During development, this was tested on minified source code with Prettier with its plugins enabled.
+Source: During development, this was tested on minified source code with Prettier with its plugins.
