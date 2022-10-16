@@ -86,13 +86,13 @@ Using the `Function` constructor, we can trigger execution of code contained in 
 
 The letters `C` and `D` are created by indexing a URL with an invalid character like `<` or `=` with the `escape` function which always yields its code points in uppercase.
 
-Uppercase `U` is created from the expression `{}.toString.call().toString()` which evaluates to the string `[object Undefined]`.
+Uppercase `U` is created from the expression `{}.toString.call().toString()` which evaluates to the string `[object Undefined]`. With it we can form the method `toUpperCase` which does what it says: convert an entire string into uppercase. Using this method we can get the remaining uppercase letters, and then reassign them with array destructuring which lets us assign and even swap variables by putting their values in an array on both sides.
 
 Both `eval` and `fromCharCode` allows us to form Unicode strings. `fromCharCode` generates a string from its code points, while `eval` generates a string from its escape sequence. `parseInt` enables numbers to be parsed in bases other than 10.
 
 The `String.raw` method when used on a template literal ignores all escape sequences, so backslashes are now interpreted as they are without getting "deleted" by the parser.
 
-> This depends entirely on engine and locale so this feature is considered experimental. The additional characters `G M T J W Z` can be retrieved with the `Date` constructor:
+> This depends entirely on current locale and JavaScript engine so this feature is considered _experimental_. The additional letters `G M T J W Z` can be retrieved with the `Date` constructor:
 >
 > - The letters `G M T` are formed from the expression `new Date().toString()`. This yields a string of the form `Thu Jan 01 1970 07:30:00 GMT+0XXX (Local Time)`.
 > - `Z` comes from `new Date().toISOString()` which evaluates to a string of the form `1970-01-01T00:00:00.000Z`. `Z` in this case represents zero UTC offset.
@@ -151,9 +151,9 @@ const props = {
 
 ### Encoding
 
-The program has several functions defined to decode the string. It can accept up to three arguments: the encoded substring itself, the decoding mode, and the character set to use, if any. All encoded strings are grouped according to their second (and third) arguments, decoded, and spread onto the global object, overriding the keys which they take. The character sets are stored inside numeric keys and will not be overwritten or set to undefined.
+The program has several functions defined. Pairs of functions exist in the output: one pair to encode or decode a character range with a custom delimiter and range separator, and another to encode or decode a bijective-encoded string to a big integer and back given a set of digits. These functions are stored inside numeric keys and minified with UglifyJS, and the minified code is passed through a custom algorithm. Calls between these functions are also obfuscated and map to the output.
 
-All of the encoded substrings pass through this function and stored in the global object, if the substring occurs more than once, or is unique enough to be stored, chosen based on Jaro distance, which takes into account character insertions, substitutions and deletions.
+If the substring occurs more than once, or is unique enough to be stored, chosen based on Jaro distance, which takes into account character insertions, substitutions and deletions, they have to be stored. All encoded strings are grouped according to their arguments, decoded with a looping function, and spread onto the global object, overriding the keys which they take.  
 
 Each arbitrary string formed from a finite set of characters corresponds to a contiguous natural number. This is called _bijective numeration_, the word _bijective_ meaning a one-on-one correspondence. A generator function yields us every possible string with those same 32 characters in order, and skipping the keys already defined.
 
@@ -172,7 +172,7 @@ A subset of all the strings will be formed from this step. The rest will be stor
 
 Each branch represents a string in the output text generated from any of the above operations. If the stem does not contain a sequence present in the output text, it will be stored in the global object as an encoded string. The compiler does a depth-first travel of this tree and generates statements that map to the stored values. A copy of this tree exists during encoding.
 
-Assignment _expressions_ are also allowed and return their result, so a statement like `x={x:x.y=1}` assigns two properties `x.x` and `x.y` which both equal `1`; `x.y` is assigned before `x.x`, because expressions are evaluated from the inside. Assignment is destructive, so .
+Assignment _expressions_ are also allowed and return their result, so a statement like `x={x:x.y=1}` assigns two properties `x.x` and `x.y` which both equal `1`; `x.y` is assigned before `x.x`, because expressions are evaluated from the inside. Assignment is _destructive_, so the compiler is designed not to override any keys so as to not risk breaking the output.
 
 #### Symbols
 
@@ -180,7 +180,7 @@ We can represent sequences of symbols literally as strings without us performing
 
 If a substring contains many backslashes, then there are two options. The first is through a `RegExp` literal and calling `toString` which yields a string of the pattern between two slashes, or without using the `source` property. Alternatively, we could also use the `String.raw` function.
 
-However, if the compiler evaluates it to be a syntax error, despite using both the `replace` and `slice` methods, it falls back to using the normal substrings.
+However, if the compiler evaluates it, with native `eval` to be a syntax error, despite using both the `replace` and `slice` methods, it falls back to using the normal substrings.
 
 #### Integers
 
