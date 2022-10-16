@@ -218,5 +218,5 @@ Here's a list of customization options available:
 - `strictMode` - Includes a `var` or `let` declaration, setting it at the beginning of the program. Default is `null`, which does not include a declaration.
 - `export` - Which key to export the string, if `moduleExports` is set to true. Default is `result`.
 - `defaultQuote` - Quoting style to fall back to, if smart quoting is enabled. One of `single`, `double` or `backtick`. Default is `double`.
-- `objectQuote` - Whether to quote keys inside objects, and which quotes to use. One of `single` or `double`. Default is `double`.
+- `objectQuote` - Whether to quote keys inside objects, and which quotes to use. `none` skips quoting identifier keys, so sequences of `_` and `$` will not be quoted. If `calc` is selected then all the keys would be quoted inside square brackets. Default is `none`. One of `none`, `single`, `double` or `calc`. 
 - `smartQuote` - Whether or not to enable smart quoting; choosing quotes which have the least number of escapes. If disabled, all strings inside the output including object keys will be quoted to `defaultQuote` and `objectQuote`. Default is `true`.
