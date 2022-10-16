@@ -223,7 +223,8 @@ Here's a list of customization options available:
 - `intThreshold` - Maximum length of decoded `BigInt`s. If the length of the decoded `BigInt` is greater than this value, arrays of bijective base-**31**-encoded `BigInt`s are used. Default is `200`.
 - `delimiter` - Which character to use to delimit `BigInt`-encoded values or ranges. Default is `,`.
 - `rangeDelimiter` - Which character to use to delimit `BigInt`-encoded ranges. Default is `-`.
-- `wrapInIIFE` - Whether to wrap the obfuscated code in an anonymous function call. Uses the `Function` constructor.
+- `wrapInIIFE` - Whether to wrap the obfuscated code in an anonymous function call. Uses the `Function` constructor. Default is `false`.
+- `logResult` - Whether or not to log the obfuscated code in the console. Default is `false`.
 
 ## FAQs
 
