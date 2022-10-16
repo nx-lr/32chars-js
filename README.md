@@ -223,6 +223,7 @@ Here's a list of customization options available:
 - `intThreshold` - Maximum length of decoded `BigInt`s. If the length of the decoded `BigInt` is greater than this value, arrays of bijective base-**31**-encoded `BigInt`s are used. Default is `200`.
 - `delimiter` - Which character to use to delimit `BigInt`-encoded values or ranges. Default is `,`.
 - `rangeDelimiter` - Which character to use to delimit `BigInt`-encoded ranges. Default is `-`.
+- `wrapInIIFE` - Whether to wrap the obfuscated code in an anonymous function call. Uses the `Function` constructor.
 
 ## FAQs
 
@@ -248,6 +249,6 @@ You don't have to worry too much about code size because there is a lot of repet
 
 #### Can I run a minifier or prettifier such as Prettier or UglifyJS on the obfuscated output?
 
-No for most cases, except for small inputs of probably a few thousand words, for debugging purposes. Since there are many characters in the output, and perhaps many tokens in the output, it would probably break your formatter or minifier or whatever is used to display your result.
+Yes. For most cases, like small inputs of probably a few thousand words. Since there are many characters in the output, and perhaps many tokens in the output, it would probably break your formatter or minifier or whatever is used to display your result, if your text is more than a million characters long.
 
 Source: During development, this was tested on minified source code with Prettier with its plugins.
