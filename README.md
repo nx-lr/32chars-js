@@ -151,9 +151,9 @@ const props = {
 
 ### Encoding
 
-The program has several functions defined. Pairs of functions exist in the output: one pair to encode or decode a character range with a custom delimiter and range separator, and another to encode or decode a bijective-encoded string to a big integer and back given a set of digits. These functions are stored inside numeric keys and minified with UglifyJS, and the minified code is passed through a custom algorithm. Calls between these functions are also obfuscated and map to the output.
+The program has several functions defined. Pairs of functions exist in the output: one pair to encode or decode a character range with a custom delimiter and range separator, and another to encode or decode a bijective-encoded string to a big integer and back given a set of digits. These functions are stored inside numeric keys and minified with UglifyJS; the minified code is passed through a custom algorithm. Calls between these functions are also substituted to their relevant keys in the output.
 
-If the substring occurs more than once, or is unique enough to be stored, chosen based on Jaro distance, which takes into account character insertions, substitutions and deletions, they have to be stored. All encoded strings are grouped according to their arguments, decoded with a looping function, and spread onto the global object, overriding the keys which they take.  
+If a substring within the input occurs more than once, or is unique enough to be stored based on Jaro distance, taking into account character insertions, substitutions and deletions, it will be stored. All encoded strings are grouped according to their arguments, decoded by looping over its keys, and spread onto the global object, overriding the keys which they take.
 
 Each arbitrary string formed from a finite set of characters corresponds to a contiguous natural number. This is called _bijective numeration_, the word _bijective_ meaning a one-on-one correspondence. A generator function yields us every possible string with those same 32 characters in order, and skipping the keys already defined.
 
@@ -218,5 +218,36 @@ Here's a list of customization options available:
 - `strictMode` - Includes a `var` or `let` declaration, setting it at the beginning of the program. Default is `null`, which does not include a declaration.
 - `export` - Which key to export the string, if `moduleExports` is set to true. Default is `result`.
 - `defaultQuote` - Quoting style to fall back to, if smart quoting is enabled. One of `single`, `double` or `backtick`. Default is `double`.
-- `objectQuote` - Whether to quote keys inside objects, and which quotes to use. `none` skips quoting identifier keys, so sequences of `_` and `$` will not be quoted. If `calc` is selected then all the keys would be quoted inside square brackets. Default is `none`. One of `none`, `single`, `double` or `calc`. 
+- `objectQuote` - Whether to quote keys inside objects, and which quotes to use. `none` skips quoting identifier keys, so sequences of `_` and `$` will not be quoted. If `calc` is selected then all the keys would be quoted inside square brackets. Default is `none`. One of `none`, `single`, `double` or `calc`.
 - `smartQuote` - Whether or not to enable smart quoting; choosing quotes which have the least number of escapes. If disabled, all strings inside the output including object keys will be quoted to `defaultQuote` and `objectQuote`. Default is `true`.
+- `intThreshold` - Maximum length of decoded `BigInt`s. If the length of the decoded `BigInt` is greater than this value, arrays of bijective base-**31**-encoded `BigInt`s are used. Default is `200`.
+- `delimiter` - Which character to use to delimit `BigInt`-encoded values or ranges. Default is `,`.
+- `rangeDelimiter` - Which character to use to delimit `BigInt`-encoded ranges. Default is `-`.
+
+## FAQs
+
+#### Why would I want to obfuscate my text?
+
+There are many reasons why it's a good idea to protect your work, so to prevent anyone from copying or pasting your work. This is especially important on private work, such as manuscripts for novels, personal or sensitive information, or even code like s client-side games or command-line interfaces,
+
+#### Is this obfuscator absolutely foolproof?
+
+The generated code "decrypts" or de-obfuscates itself only when run in a Node.JS environment, so it can only be considered a step in the process if you really want maximum privacy.
+
+This generated code, including the header, is programmatically generated from its parameters. And because there is a one to one correspondence between the sequence of substrings in the input and output, the source can obviously be recovered and reverse engineered, so it may not be obvious.
+
+#### Why is my obfuscated code larger than my original source?
+
+Because there are only 32 different kinds of characters in the output, the ratio of input to output depends heavily on which characters are in the string and how often they occur together.
+
+Sequences of any of these 32 symbol or punctuation characters are encoded literally in the string, they get a 1-to-1 encoding except for escape sequences `\`, `\'`, `\"` and `` \` ``. Spaces have a 1-to-1 correspondence because they are encoded as commas.
+
+Words, numbers and other alphanumerics are encoded once and stored in the global object, so any repeat sequence of any of these would only be encoded as a property of the global object.
+
+You don't have to worry too much about code size because there is a lot of repetition and only 32 characters.
+
+#### Can I run a minifier or prettifier such as Prettier or UglifyJS on the obfuscated output?
+
+No for most cases, except for small inputs of probably a few thousand words, for debugging purposes. Since there are many characters in the output, and perhaps many tokens in the output, it would probably break your formatter or minifier or whatever is used to display your result.
+
+Source: During development, this was tested on minified source code with Prettier with its plugins enabled.
