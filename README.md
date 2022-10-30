@@ -6,25 +6,37 @@ The program in this repository has a potential to be used maliciously, such as i
 
 ## Introduction
 
-32chars.js is a JavaScript encoder that obfuscates a piece of text into the shortest possible valid JavaScript code with only 32 ASCII symbol and punctuation characters: `` `~!@#$%^&*()_+{}|:"<>?-=[]\;',./ ``. This project is a testament to the many existing JavaScript encoders, and the spiritual successor to the OG encoder, [jjencode](https://utf-8.jp/public/jjencode.html).
+32chars.js is a JavaScript encoder that obfuscates a piece of text into the shortest possible valid JavaScript code with only 32 ASCII symbol and punctuation characters: `` `~!@#$%^&*()_+{}|:"<>?-=[]\;',./ ``. This project is a testament to the many existing JavaScript encoders, and the spiritual successor to the original encoder, [jjencode](https://utf-8.jp/public/jjencode.html).
 
 ## Background
 
-We all know JavaScript is a programming language with lots of weird and tricky parts. But did you know that JavaScript can be written without any letters or numbers? You can make do with just [five](https://aem1k.com/five/) or [six characters](http://www.jsfuck.com/). But all these would result not only in heavily unreadable, but also _verbose_ code, where a single character could be expanded up to _thousands_ of characters.
+We all know JavaScript is a programming language with lots of weird and tricky parts. Because of this, any piece of arbitrary JavaScript code could be represented without any letters or numbers, perhaps only with [five](https://aem1k.com/five/) or [six](http://www.jsfuck.com/) possible symbols. But all these would result not only in heavily unreadable, but also _verbose_ code, where a single character could be expanded up to _thousands_ of characters. The only practical use case for this is for people to obfuscate their code.
 
-It's common sense that scripts that contain a wide variety of individual characters are shorter and perhaps a bit more readable and parsable code. So, this project still does not use any alphabets or numbers, but rather all 32 ASCII punctuation and symbol characters, most of which are significant JavaScript tokens. The goal of this project therefore is to produce the minimum possible JavaScript encoding using those 32 characters.
+Meanwhile, most program code contains a wide variety of letters, numbers, symbols and spaces that make code shorter, more succinct and readable. This project aims to generate obfuscated code that is "just right", with just the right number of characters and just the right output length. That means, no letters, numbers or spaces, but rather all 32 ASCII punctuation and symbol characters, most of which are significant JavaScript tokens. The goal of this project therefore is to produce the minimum possible JavaScript encoding using those 32 characters.
 
-Rather than going over each character in the input string one by one and expanding it, as much as possible, we are breaking the input string into runs of _at least_ one character. This way we are minimizing the number of operations that can be performed by the engine, while also shortening the output by a lot.
-
-Much of the encoding is done piecewise, so there has to be a way to encode the string, and then get back what we encoded, and for every piece of the string to be accounted for and assembled in the correct order. So, there is a lot of working backwards and reverse engineering to find out which operations retrieve which results.
+So rather than going over each character in the input string one by one and then expanding it, we are breaking the input string into runs of length 1 or greater. This way, we are effectively minimizing the number of operations that are performed by the JavaScript engine, while also shortening the length of the output program. The encoding is done piecewise, so parts of the input string are still left untouched. By working backwards, this compiler determines which operations produce which results, doing so using only the built-in operations that JavaScript has.
 
 ## Explanation
 
-Since we have a large enough character set, we have literal syntax to form strings. Strings are very fundamental to obfuscation as we can use our own encoding schemes to represent different parts of the input string. There are also other ways to create strings with the latest JavaScript features, like template/raw strings and interpolation, `RegExp`s and `BigInt`s, and new `String`, `Array` and `Object` methods.
+We have a large enough character set, and most of these symbols also are valid JavaScript tokens. The most common of them are:
+
+- `'`, `"` and `` ` `` to delimit strings. The backtick `` ` `` delimits template strings, which allow for interpolation and tagged function calls
+- Combinations of `_` and `$` to represent variables and identifiers
+- `+` to concatenate strings, add numbers and cast things into numbers
+- Arithmetic `+ - * / % **` and bitwise `& | ^ ~ << >> >>>` operators with `Number`s and `BigInt`s on either side.
+- `.` to access properties of objects
+- `,` to separate array, object and function elements
+- `()` to call functions and group expressions
+- `[]` to access array and object elements and create array literals
+- `{}` to delimit objects and blocks of code
+- `${}` to interpolate expressions in template strings
+- `/` to delimit regular expression literals
+
+Strings are very fundamental to obfuscation, as we can encode and store custom data without breaking the compiler. There are also other ways to create strings with some of JavaScript's newest syntax and functionality, such as `RegExp`s, `BigInt`s, and new methods for `String`s, `Array`s and `Object`s.
 
 The program uses a two-phase substitution encoding. Characters and values are assigned to variables and properties, decoded, and then either used to construct new substrings or build back the input string. There are of course edge cases, as some expressions innately produce strings, such as constants (like `true`, `false`, etc.), string tags (like `[object Object]`), date strings (e.g. `2011-10-05T14:48:00.000Z`) and source code (e.g. `function Array() { [native code] }`).
 
-The text is parsed and assigned to tokens: symbol sequences using those 32 characters, integers, ASCII characters, words with diacritics, non-Latin writing systems, Unicode BMP characters (code point `U+0000` to `U+FFFF`) and astral characters (code point `U+10000` and above). JavaScript stores strings as UTF-16, so Basic
+The text is parsed and assigned to tokens: symbol sequences using those 32 characters, integers, ASCII characters, words with diacritics, non-Latin writing systems, Unicode BMP (Basic Multilingual Plane) characters (code point `U+0000` to `U+FFFF`) and astral characters (code point `U+10000` and above). JavaScript stores strings as UTF-16, so all BMP characters would receive _two_ bytes while the rest would receive _four_.
 
 The text is split by default with the space, with the split elements going into an array and separated with commas `,`. Sometimes the split result can have an empty string in between, so nothing goes in between the commas. JavaScript ignores trailing commas in arrays, objects and function arguments, so we have to explicitly add trailing commas if the final element of an output array is empty.
 
