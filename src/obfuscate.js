@@ -3,7 +3,7 @@ const V = require("voca");
 const _ = require("lodash");
 const jsesc = require("jsesc");
 const XRegExp = require("xregexp");
-const isValidIdentifier = require("is-valid-identifier");
+const isValidIdent = require("is-valid-identifier");
 
 const text = fs.readFileSync("./input.txt", "utf8");
 
@@ -15,11 +15,7 @@ const text = fs.readFileSync("./input.txt", "utf8");
  */
 console.log("Compiling...");
 
-function encodeText(
-  code,
-  globalVar,
-  {strictMode = false, quoteStyle = "", variable = "var", threshold = 2} = {}
-) {
+function encodeText(code, globalVar, {strictMode = false, variable = "var", threshold = 2} = {}) {
   const BUILTINS =
     /^(Array|ArrayBuffer|AsyncFunction|AsyncGenerator|AsyncGeneratorFunction|Atomics|BigInt|BigInt64Array|BigUint64Array|Boolean|DataView|Date|decodeURI|decodeURIComponent|encodeURI|encodeURIComponent|escape|eval|exports|Float32Array|Float64Array|Function|Generator|GeneratorFunction|globalThis|Infinity|Int16Array|Int32Array|Int8Array|Intl|isFinite|isNaN|JSON|Map|Math|module|NaN|Number|Object|parseFloat|parseInt|Promise|Proxy|Reflect|RegExp|Set|SharedArrayBuffer|String|Symbol|this|Uint16Array|Uint32Array|Uint8Array|Uint8ClampedArray|undefined|unescape|WeakMap|WeakSet|WebAssembly)$/;
 
@@ -44,7 +40,7 @@ function encodeText(
 
   // Test whether an identifier can be made into a variable
   const checkIdentifier = ident =>
-    (ident = ident.trim()) && isValidIdentifier(ident) && !BUILTINS.test(ident);
+    (ident = ident.trim()) && isValidIdent(ident) && !BUILTINS.test(ident);
   if (!checkIdentifier(globalVar)) throw new Error(`Invalid global variable: ${quote(globalVar)}`);
 
   // Reject strings above the length of 2^29 to avoid going over the max string limit
@@ -67,48 +63,31 @@ function encodeText(
 
   let count = 0;
 
-  const quoteSequence = quoteStyle.match(/\b(single|double|backtick)\b/g) || ["single"],
-    quoteMode = quoteStyle.match(/\b(cycle|only|smart|random)\b/g)[0] || "smart";
+  function quote(string, key = false) {
+    if (key && isValidIdent(string)) return string;
 
-  const quote = string => {
-    const single = jsesc(string, {quotes: "single", wrap: true}),
-      double = jsesc(string, {quotes: "double", wrap: true}),
-      backtick = jsesc(string, {quotes: "backtick", wrap: true});
+    const quoteSequence = ["single", "double", "backtick"];
+    if (key) quoteSequence.splice(2, 1);
+    let quotedStrings = quoteSequence.map(quotes => [quotes, jsesc(string, {quotes, wrap: true})]);
+    quotedStrings = _.fromPairs(quotedStrings);
 
-    let current;
-    switch (quoteMode) {
-      case "only":
-        current = quoteSequence[0];
-        break;
-      case "cycle":
-        current = quoteSequence[count++ % quoteSequence.length];
-        break;
-      case "random":
-        current = quoteSequence[~~(Math.random() * quoteSequence.length)];
-        break;
-      case "smart": {
-        let chosen;
-        current = quoteSequence[0];
-        const lengthMap = {single: single.length, double: double.length, backtick: backtick.length},
-          lengthSorted = Object.entries(lengthMap).sort(([, a], [, b]) => a - b),
-          [short, mid] = lengthSorted;
-        switch (new Set(Object.values(lengthMap)).size) {
-          case 3:
-            chosen = short[0];
-            break;
-          case 2:
-            chosen = short[0] == current || mid[0] == current ? current : short[0];
-            break;
-          case 1:
-            chosen = current || short[0];
-            break;
-        }
-        current = chosen;
-      }
+    let lengthMap = _.mapValues(quotedStrings, x => x.length);
+
+    let lengthSorted = _.toPairs(lengthMap).sort(([, a], [, b]) => a - b);
+    let [short, mid] = lengthSorted;
+    let lengthSet = new Set(_.values(lengthMap));
+    let quotes = quoteSequence[count++ % quoteSequence.length];
+
+    if ((key && lengthSet.size == 2) || (!key && lengthSet.size == 3)) {
+      quotes = short[0];
+    } else if (!key && lengthSet.size == 2) {
+      quotes = [short[0], mid[0]].includes(quotes) ? quotes : short[0];
+    } else {
+      quotes = quotes || short[0];
     }
 
-    return jsesc(string, {quotes: current, wrap: true});
-  };
+    return jsesc(string, {quotes, wrap: true});
+  }
 
   /**
    * We have 32 characters: `` ;.!:_-,?/'*+#%&^"|~$=<>`@\()[]{} ``
@@ -125,8 +104,8 @@ function encodeText(
    * are slightly longer.
    */
 
-  const LETTERS = "abcdefghijklmnopqrstuvwxyz";
-  const CIPHER = ";.!:_-,?/'*+#%&^\"|~$=<>`@\\";
+  const LETTERS = "etaoinshrdlucmfwypvbgkqjxz";
+  const CIPHER = "_$-,;:!?.@*/&#%^+<=>|~'\"`\\";
   const SPACE = "-";
 
   const encodeLetter = char =>
@@ -173,46 +152,9 @@ function encodeText(
    * single characters from stringified representations of the constants.
    */
 
-  const quoteKey = string => {
-    const single = jsesc(string, {quotes: "single", wrap: true}),
-      double = jsesc(string, {quotes: "double", wrap: true}),
-      backtick = jsesc(string, {quotes: "backtick", wrap: true});
-
-    let current;
-    switch (quoteMode) {
-      case "only":
-        current = quoteSequence[0];
-        if (current == "backtick") return `[${backtick}]`;
-        break;
-      case "cycle":
-        current = quoteSequence[count++ % quoteSequence.length];
-        if (current == "backtick") return `[${backtick}]`;
-        break;
-      case "random":
-        current = quoteSequence[~~(Math.random() * quoteSequence.length)];
-        if (current == "backtick") return `[${backtick}]`;
-        break;
-      case "smart": {
-        if (isValidIdentifier(string)) return string;
-        let chosen;
-        current = quoteSequence[0];
-        const lengthMap = {single: single.length, double: double.length},
-          lengthSorted = Object.entries(lengthMap).sort(([, a], [, b]) => a - b),
-          [short, mid] = lengthSorted;
-        switch (new Set(Object.values(lengthMap)).size) {
-          case 2:
-            chosen = short[0];
-            break;
-          case 1:
-            chosen = current == "backtick" ? "single" : current || short[0];
-            break;
-        }
-        current = chosen;
-      }
-    }
-
-    return jsesc(string, {quotes: current, wrap: true});
-  };
+  function quoteKey(string) {
+    return quote(string, true);
+  }
 
   // The separator is a semicolon, not a comma.
   let output =
@@ -342,14 +284,14 @@ function encodeText(
    */
 
   const encodeString = str =>
-    [...`${str}`.replace(/\W/g, "")].map(char => {
+    String(str).replace(/\W/g, "").split``.map(char => {
       if (/[$_]/.test(char)) {
         return quote(char);
       } else if (/\d/.test(char)) {
         return `${globalVar}.${encodeDigit(char)}`;
       } else {
         const encoded = encodeLetter(char);
-        if (isValidIdentifier(encoded)) return `${globalVar}.${encoded}`;
+        if (isValidIdent(encoded)) return `${globalVar}.${encoded}`;
         else return globalVar + `[${quote(encoded)}]`;
       }
     }).join`+`;
@@ -402,13 +344,8 @@ function encodeText(
     `${globalVar}={...${globalVar},` +
     Object.entries(GLOBAL_FUNC).map(
       ([ident, shortcut]) =>
-        `${quoteKey(shortcut)}:` +
-        "(()=>{})" +
-        `[${globalVar}.$]` +
-        "(" +
-        `${globalVar}._+${globalVar}[${quote("-")}]+${encodeString(ident)}` +
-        ")" +
-        "()"
+        `${quoteKey(shortcut)}:(()=>{})[${globalVar}.$]` +
+        `(${globalVar}._+${globalVar}[${quote("-")}]+${encodeString(ident)})()`
     ) +
     "}";
 
@@ -522,6 +459,93 @@ function encodeText(
 
   const CIPHER_TO = "_.:;!?*+^-=<>~'\"`/|#$%&@{}()[]\\,";
   const IDENT_MAP = {...IDENT_MAP_1, ...IDENT_MAP_2, ...IDENT_MAP_3};
+
+  /**
+   * TRANSFORMATION
+   *
+   * In the transformation stage, the text is split into runs of
+   * different sizes, each containing a different set of characters,
+   * which include:
+   *
+   * - Whitespace.
+   * - All 32 ASCII punctuation and symbol characters, which are
+   *   included literally without change.
+   * - All strings already defined in the output document, which are:
+   *   - strings used for properties and method names
+   *   - constructor names
+   *   - constants (except null)
+   *   and all substrings, 2 characters or more thereof, all
+   *   next to word boundaries.
+   * - Runs of all other characters, including Unicode sequences,
+   *   ignoring all boundaries.
+   */
+
+  function encodeBijective(int, chars) {
+    chars = [...new Set(chars)];
+    var b = BigInt;
+    var base = b(chars.length);
+    var index = (int = b(int)) % base || base;
+    var result = chars[index - 1n];
+    if (int > 0n)
+      while ((int = (int - 1n) / base) > 0n)
+        result = chars[(index = int % base || base) - 1n] + result;
+    else return "";
+    return result;
+  }
+
+  function decodeBijective(str, chars) {
+    chars = [...new Set(chars)];
+    str = [...str];
+    var b = BigInt;
+    var result = 0n;
+    var base = b(chars.length);
+    var strLen = str.length;
+    for (var index = 0; index < strLen; index++)
+      result += b(chars.indexOf(str[index]) + 1) * base ** b(strLen - index - 1);
+    return result;
+  }
+
+  function compressRange(chars, digits, sep = ",", sub = ".") {
+    digits = [...new Set(digits)].filter(digit => digit != sep && digit != sub).join``;
+
+    return [...new Set(chars)]
+      .map(char => char.codePointAt())
+      .sort((x, y) => x - y)
+      .reduce((acc, cur, idx, src) => {
+        var prev = src[idx - 1];
+        var diff = cur - prev;
+        if (idx > 0 && diff == prev - src[idx - 2]) {
+          var last = acc.length - 1;
+          acc[last][1] = cur;
+          if (diff > 1) acc[last][2] = diff;
+        } else acc.push([cur]);
+        return acc;
+      }, [])
+      .map(num => num.map(x => encodeBijective(x, digits)).join(sub))
+      .join(sep);
+  }
+
+  function expandRange(run, digits, sep = ",", sub = ".") {
+    function range(start, end, step, offset) {
+      var len = (Math.abs(end - start) + (offset || 0) * 2) / (step || 1) + 1;
+      var direction = start < end ? 1 : -1;
+      var begin = start - direction * (offset || 0);
+      var delta = direction * (step || 1);
+      return [...Array(len).keys()].map(index => begin + delta * index);
+    }
+
+    digits = [...new Set(digits)].filter(digit => digit != sep && digit != sub).join``;
+
+    return run
+      .split(sep)
+      .map(end => {
+        var res = end.split(sub).map(num => parseInt(decodeBijective(num, digits)));
+        return res.length == 1 ? res : range(...res);
+      })
+      .flat()
+      .map(p => String.fromCodePoint(p))
+      .sort((x, y) => x.localeCompare(y)).join``;
+  }
 
   /**
    * UTF-16 STRINGS
@@ -652,14 +676,6 @@ function encodeText(
   const keyGen = (function* () {
     const digitsTo = CIPHER_TO,
       digitsFrom = "0123456789abcdefghijklmnopqrstuvwxyz";
-
-    /**
-     * Convert an integer to bijective notation.
-     * https://stackoverflow.com/questions/8603480/how-to-create-a-function-that-converts-a-number-to-a-bijective-hexavigesimal
-     *
-     * @param {Number} int - A positive integer above zero
-     * @return {String} The number's value expressed in uppercase bijective base-26
-     */
 
     const bijective = (int, sequence) => {
       const length = sequence.length;
@@ -796,8 +812,7 @@ function encodeText(
               return `${CONSTRUCTORS[substring]}[${globalVar}.$][${globalVar}[${quote("?")}]]`;
             }
             case typeof IDENT_MAP[substring] == "string": {
-              if (isValidIdentifier(IDENT_MAP[substring]))
-                return globalVar + "." + IDENT_MAP[substring];
+              if (isValidIdent(IDENT_MAP[substring])) return globalVar + "." + IDENT_MAP[substring];
               else return globalVar + `[${quote(IDENT_MAP[substring])}]`;
             }
             case typeof WORD_MAP[substring] == "string": {
@@ -849,7 +864,6 @@ Output length: ${enUS.format(output.length)}`,
 
 const {result, stats} = encodeText(text, "$", {
   strictMode: true,
-  quoteStyle: "smart backtick",
 });
 
 console.log(stats);
