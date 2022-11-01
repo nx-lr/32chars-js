@@ -6,7 +6,7 @@ The program in this repository has the potential to be used maliciously, such as
 
 ## Introduction
 
-32chars.js is a JavaScript encoder that obfuscates a piece of text into the shortest possible valid JavaScript code with only 32 ASCII symbols and punctuation: "`~!@#$%^&\*()\_+{}|: "<>?-=[]\;',./". This project is a testament to the many existing JavaScript encoders and the spiritual successor to the original encoder, [jjencode](https://utf-8.jp/public/jjencode.html).
+32chars.js is a JavaScript encoder that obfuscates a piece of text into the shortest possible valid JavaScript code with only 32 ASCII symbol and punctuation characters: `` `~!@#$%^&*()_+{}|:"<>?-=[]\;',./ ``. This project is a testament to the many existing JavaScript encoders, and the spiritual successor to the original encoder, [jjencode](https://utf-8.jp/public/jjencode.html).
 
 ## Background
 
@@ -20,17 +20,17 @@ So rather than going over each character in the input string one by one and then
 
 We have a large enough character set, and most of these symbols also are valid JavaScript tokens. The most significant of them are:
 
-- `'`, `"` and `` ` `` to delimit strings. The backtick "` "delimits template strings, which allow for interpolation and tagged function calls
+- `'`, `"` and `` ` `` to delimit strings. The backtick "` "delimits template strings, which allow for interpolation and tagged function calls.
 - Combinations of `_` and `$` to represent variables and identifiers
-- `+` to concatenate strings, add numbers and cast things into numbers
+- `+` to concatenate strings, add numbers and cast things into numbers.
 - Arithmetic `+ - * / % **` and bitwise `& | ^ ~ << >> >>>` operators with a `Number` and `BigInt` on either side.
-- `.` to access properties of objects
-- `,` to delimit array, object, and function elements
-- `()` to call functions and group expressions
-- `[]` to access array and object elements and create array literals
-- `{}` to delimit objects and blocks of code
-- `${}` to interpolate expressions in template strings
-- `/` to delimit regular expression literals
+- `.` to access properties of objects.
+- `,` to delimit array, object, and function elements.
+- `()` to call functions and group expressions.
+- `[]` to access array and object elements and create array literals.
+- `{}` to delimit objects and blocks of code.
+- `${}` to interpolate expressions in template strings.
+- `/` to delimit regular expression literals.
 
 Strings are fundamental to obfuscation, as we can encode and store custom data without breaking the compiler. However, there are other ways to create strings with some of JavaScript's newest syntax and functionality, such as `RegExp`, `BigInt`, and JavaScript's new `String`, `Array`, and `Object` methods.
 
@@ -39,14 +39,6 @@ The program uses a two-phase substitution encoding. First, characters and values
 The text is parsed and assigned to tokens: symbol sequences using those 32 characters, integers, ASCII characters, words with diacritics, non-Latin writing systems, Unicode BMP (Basic Multilingual Plane) characters (code point `U+0000` to `U+FFFF`), and astral characters (code point `U+10000` and above). JavaScript stores strings as UTF-16, so all BMP characters would receive _two_ bytes while the rest would receive _four_.
 
 The text is split by default with the space. The split elements go into an array, delimited with commas `,`. The split result can also have an empty string, so nothing goes in between the commas. Unfortunately, JavaScript ignores trailing commas in arrays, objects, and function arguments, so we have to explicitly add trailing commas if the final element of an output array is empty.
-
-### Representing strings
-
-String literals in JavaScript can be created in three ways: single and double-quoted strings, which are roughly equivalent, and template strings, which allow interpolation of values. In this context, strings are _very fundamental_ to obfuscation, so we are free to create our encoding/decoding schemes.
-
-In the output string, substrings with only printable ASCII symbols are quoted into string literals. Usually, the runs do not contain any quote characters `` ' " ` ``. The backslash `\`, and whatever symbol is being used for wrapping these literals, are escaped. In template literals, the sequence `${`, which begins an interpolation sequence, is also escaped.
-
-Each encoded substring in the output goes through a quoting function (from the `jsesc` library) which compares the lengths of the escaped substring and selects the string literal with the least number of escapes, in that case being the shortest. It also prioritizes a fallback quoting option for strings without escapes.
 
 ### Representing strings
 
@@ -240,45 +232,45 @@ This yields pairs of symbol sequences: the "keys" being the leading and the "val
 
 ## Customization
 
-Here's a list of customization options available:
+Here is a list of customization options available:
 
-- `globalVar` - the global variable defined to store the encoded values. Must be a valid, undefined JavaScript identifier. Default is `$`.
-- `resultVar` - the global variables to store the output string. Must be a valid, undefined JavaScript identifier. Default is `_`.
-- `strictMode` - Includes a `var` or `let` declaration, setting it at the beginning of the program. Default is `null`, which does not include a declaration.
-- `export` - Which key to export the string, if `moduleExports` is set to true. Default is `result`.
-- `defaultQuote` - Quoting style to fall back to, if smart quoting is enabled. One of `single`, `double` or `backtick`. Default is `double`.
-- `objectQuote` - Whether to quote keys inside objects, and which quotes to use. `none` skips quoting identifier keys, so sequences of `_` and `$` will not be quoted. If `calc` is selected then all the keys would be quoted inside square brackets. Default is `none`. One of `none`, `single`, `double` or `calc`.
-- `smartQuote` - Whether or not to enable smart quoting; choosing quotes which have the least number of escapes. If disabled, all strings inside the output including object keys will be quoted to `defaultQuote` and `objectQuote`. Default is `true`.
-- `intThreshold` - Maximum length of decoded `BigInt's. If the length of the decoded `BigInt`is greater than this value, arrays of bijective base-**31**-encoded`BigInt's are used. Default is `200`.
-- `delimiter` - Which character to use to delimit `BigInt`-encoded substrings or character sets. Default is `,`.
-- `rangeDelimiter` - Which character to use to delimit ranges that `BigInt`-encoded character sets. Default is `-`.
-- `wrapInIIFE` - Whether to wrap the obfuscated code in an anonymous function call. Uses the `Function` constructor. Default is `false`.
-- `logResult` - Whether or not to log the obfuscated code in the console. Default is `false`.
+- `globalVar` - the global variable defined to store the encoded values. It must be a valid, undefined JavaScript identifier. The default is `$`.
+- `resultVar` - the global variables to store the output string. It must be a valid, undefined JavaScript identifier. The default is `_`.
+- `strictMode` - Includes a `var` or `let` declaration, setting it at the beginning of the program. The default is `null`, which does not include a declaration.
+- `export` - Which key to export the string if `moduleExports` is true. The default is `result`.
+- `defaultQuote` - Quoting style to fall back to, if smart quoting is enabled. One of `single`, `double`, or `backtick`. The default is `double`.
+- `objectQuote` - Whether to quote keys inside objects and which quotes to use. `none` skips quoting identifier keys, so sequences of `_` and `$` will not be quoted. If `calc` is selected, all the keys will be quoted inside square brackets. The default is `none`; options are `none`, `single`, `double` or `calc`.
+- `smartQuote` - Whether or not to enable smart quoting; choosing quotes with the least number of escapes. If disabled, all strings inside the output, including object keys, will be quoted to `defaultQuote` and `objectQuote`. The default is `true`.
+- `intThreshold` - Maximum length of decoded `BigInt` values. Suppose the length of the decoded `BigInt`is greater than this value, arrays of bijective base-**31**-encoded `BigInt` values will be used instead. Default is `200`.
+- `delimiter` - Which character to use to delimit `BigInt`-encoded substrings or character sets. The default is `,`.
+- `rangeDelimiter` - Which character to use to delimit ranges that `BigInt`-encoded character sets. The default is `-`.
+- `wrapInIIFE` - Whether to wrap the obfuscated code in an anonymous function call, using the `Function` constructor. The default is `false`.
+- `logResult` - Whether or not to log the obfuscated code in the console. The default is `false`.
 
 ## FAQs
 
-#### Why would I want to obfuscate my text?
+#### Why would I want to obfuscate?
 
-There are many reasons why it's a good idea to protect your work, so to prevent anyone from copying or pasting your work. This is especially important on private work, such as manuscripts for novels, personal or sensitive information, or even code like s client-side games or command-line interfaces,
+There are many reasons people obfuscate their text code: The most basic is to prevent anyone from copying or pasting it or putting hidden messages inside their texts. One might use it for private works, such as manuscripts for novels, personal or sensitive information, or even code like client-side games or command-line interfaces.
 
-#### Is this obfuscator absolutely foolproof?
+#### Is the program foolproof?
 
-The generated code "decrypts" or de-obfuscates itself only when run in a Node.JS environment, so it can only be considered a step in the process if you really want maximum privacy.
+The generated code "decrypts" or de-obfuscates itself only when run in a Node.JS environment, so it can only be considered a step in the process if you want maximum privacy.
 
-This generated code, including the header, is programmatically generated from its parameters. And because there is a one to one correspondence between the sequence of substrings in the input and output, the source can obviously be recovered and reverse engineered, so it may not be obvious.
+This generated code, including the header, is programmatically generated from its parameters. Moreover, because there is a one-to-one correspondence between the sequence of substrings in the input and output, the source can be recovered and reverse-engineered, so it may not be obvious.
 
-#### Why is my obfuscated code larger than my original source?
+#### Why is my output code larger than my source?
 
 Because there are only 32 different kinds of characters in the output, the ratio of input to output depends heavily on which characters are in the string and how often they occur together.
 
-Sequences of any of these 32 symbol or punctuation characters are encoded literally in the string, they get a 1-to-1 encoding except for escape sequences `\`, `\", `\"` and "\` ". Spaces have a 1-to-1 correspondence because they are encoded as commas.
+Sequences of any of these 32 symbol or punctuation characters are encoded literally in the string; they get a 1-to-1 encoding except for escape sequences, which add one character, the backslash every time they occur. Spaces have a 1-to-1 correspondence because the compiler splits them up into commas.
 
-Words, numbers and other alphanumerics are encoded once and stored in the global object, so any repeat sequence of any of these would only be encoded as a property of the global object.
+Words, numbers, and other alphanumerics are encoded once and stored in the global object. Any repeat sequence is represented and encoded as a property in the global object, then referenced later when they build back the original string.
 
-You don't have to worry too much about code size because there is a lot of repetition and only 32 characters.
+Code size is not something to worry about as there is a lot of repetition and only 32 characters.
 
-#### Can I run a minifier or prettifier such as Prettier or UglifyJS on the obfuscated output?
+#### Can I run a JavaScript _minifier_ or _prettifier_ on the output code?
 
-Yes. For most cases, like small inputs of probably a few thousand words. Since there are many characters in the output, and perhaps many tokens in the output, it would probably break your formatter or minifier or whatever is used to display your result, if your text is more than a million characters long.
+Yes. In most cases, like small inputs of a few thousand words. Since there are many characters in the output, and many tokens in the output, it would break your formatter or _minifier_ or whatever is used to display your result if your text is more than a million characters long.
 
 Source: During development, this was tested on minified source code with Prettier with its plugins.
