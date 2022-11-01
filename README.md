@@ -163,9 +163,11 @@ const props = {
 
 ### Encoding
 
-The output ships with several functions, defined with numeric keys within the range `-1` to `-2`. These functions are stored inside numeric keys in the global object, minified with UglifyJS, and further processed using a custom algorithm which substitutes all the letters and numbers with sequences of letters. The script is then passed onto `eval` as an anonymous function, with the calls between the functions substituted inside the string.
+The output ships with several functions, defined with numeric keys with two pairs of values. These functions are stored inside numeric keys in the global object, minified with UglifyJS, and further processed using a custom algorithm which substitutes all the letters, numbers, spaces and function calls with their respective keys. Calls between these functions are embedded inside the string, and not interpolated. The function is passed into `eval`.
 
-One pair compresses and expands ranges of Unicode characters with reserved delimiters, while another encodes and decodes strings to and from `BigInt's, using a given character set. Because of the concept of [bijective numeration](https://en.wikipedia.org/wiki/Bijective_numeration), a generator function yields every possible string with those same 32 characters in order and skips the keys already defined.
+One function, assigned `$[0]` or `$[+[]]` compresses and expands numeric ranges defined as an array of function arguments. A second assigned `$[-1]` or `$[~[]]` compresses and expands ranges of Unicode characters with reserved delimiters. A third assigned `$[1]` or `$[+!'']` encodes and decodes strings to and from `BigInt`s, using a given character set.
+
+Because of the concept of [bijective numeration](https://en.wikipedia.org/wiki/Bijective_numeration), a generator function yields every possible string with those same 32 characters in order and skips the keys already defined.
 
 If a substring within the input occurs more than once or appears just frequently enough based on Jaro distance, then it will be encoded and stored in the global object. All encoded strings are grouped according to their writing system, decoded by looping over the keys, and finally spread out into the global object.
 
@@ -184,8 +186,8 @@ Using the string methods `join`, `slice`, `replace`, `repeat`, and `split`, we c
 Sometimes, the program does not encode specific substrings as we either have formed them and stored them in the global object or are magically created by manipulating primitive values, such as `function`, `Array`, `undefined`, `object`, and more.
 
 - The `slice` returns consecutive characters within a substring by specifying a start and optional end index, for instance, `fin` and `fine` from `undefined`.
-- The `repeat` method can repeat a "factored" substring many times, using a regular expression to determine the shortest pattern within the substring and how much it repeats.
-- The `split` and `join` method is used to join an array of "strings" with a string as its delimiter. Then, using regular expressions, we determine the optimal substring to delimit that is not a space.
+- The `repeat` method repeats a substring. We use a regular expression to determine the shortest pattern within the substring and how much it repeats.
+- The `split` and `join` method is used to join an array of "strings" with a string as its delimiter. Then, using regular expressions, we determine the optimal substring to delimit, then we recursively split and encode both the substrings and the delimiter.
 - The `replace` method is used to replace one or all substrings of a substring through insertion, deletion, or substitution to turn it into something similar. We would use a string difference checker.
 
 We form a subset of all the strings from this step. The rest are stored in later statements, but before compilation, the compiler builds a derivation tree from the substrings it has captured from the input. The stems are either non-string values cast into strings or strings we have already defined.
@@ -220,9 +222,9 @@ For multilingual texts, use the Latin alphabet, along with a number of non-ASCII
 
 #### Other writing systems and languages
 
-For substrings of a different Unicode script other than Latin, they are generated from a pool of characters from the script. The result is encoded using the pool of characters into a big integer, or in the case of extremely long words or CJK text, _arrays_ of big integers.
+For substrings of a non-Latin Unicode script, they are generated from a _case-insensitive_ character pool comprised of letters from that script. The result is encoded using the pool into a `BigInt`, or in the case of extremely long words or CJK text, _arrays_ of big integers.
 
-For bicameral scripts like Cyrillic, Greek, Armenian and Georgian, the substring is encoded initially as lowercase and then a separate procedure converts selected characters into uppercase based on the input string.
+For bicameral scripts, the substring is converted into lowercase and then a separate procedure converts selected characters based on their encoded indices into uppercase based on the input string.
 
 #### Arbitrary Unicode sequences
 
