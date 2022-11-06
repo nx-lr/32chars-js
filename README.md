@@ -182,10 +182,10 @@ const props = {
   // statement 9
   keys: "&",
   length: ":",
-  new: "+_",
   raw: "`",
-
   toUpperCase: "@",
+
+  new: "+_",
 }
 ```
 
