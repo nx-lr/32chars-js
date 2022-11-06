@@ -116,7 +116,7 @@ In this case, for base above 10, the letters of the alphabet indicate digits gre
 
 With the `Function` constructor, we can execute code contained inside a string as native JavaScript. For example, with an expression such as `Function('return eval')`, we retrieve the builtin functions `eval`, `escape`.
 
-The letters `C` (from `<` or `%3C`) and D (from `=` or `%3D`) and `D` come from indexing the last hexadecimal digit from a URL string. All characters that are not an ASCII letter, number, or one of the symbols `-`, `_`, `.`, and `~`), that is, with the `escape` function and prefixes it with a percent `%`. This function outputs these escape sequences in uppercase.
+The letters `C` (from `<` or `%3C`) and D (from `=` or `%3D`) and `D` come from indexing the last hexadecimal digit from a URL string. All characters that are not an ASCII letter, number, or one of the symbols `-`, `_`, `.`, and `~`, are percent-encoded, into a form `%XX` or `%uXXXX` for higher code points, where X is an _uppercase_ hexadecimal digit.
 
 The expression `{}.toString.call().toString()`, or `` `${{}.toString.call()}` `` evaluates to the string `'[object Undefined]'` which yields us the character `U`.
 
