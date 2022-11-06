@@ -106,19 +106,19 @@ We use the spread operator, `...`, to "spread out" its properties on a new objec
 
 ### Statement 5 and beyond
 
-We are going to get the following letters: `h k q w z C D U`, make the strings `keys`, `length`, `raw` and `toUpperCase`, and the keyword `new`.
+We retrieve the following letters: `h k q w z C D U` (and additionally `G J M T W Z`), make the strings `toString`, `keys`, `length`, `raw` and `toUpperCase`, and the keyword `new`. Initiating a `Set` must have the `new` keyword, otherwise JavaScript throws an exception.
 
-Using the `Function` constructor, we can trigger the execution of code contained in a string as native JavaScript code. For example, with an expression such as `Function('return eval')`, we can retrieve critical global functions, such as `eval`, `escape`.
+`toString` is formed by concatenating the letters `t` and `o`, and then retrieving the string `'String'` from the `String` constructor, by accessing its `name` property. With `toString`, we can retrieve the rest of the lowercase alphabet, `h k q w z`.
 
-Initiating a `Set` must have the `new` keyword, otherwise JavaScript throws an exception.
+We assign these properties through array destructuring. The right hand side is the values we need to convert, and an anonymous `map` function which transforms all the values inside the array. In this case, we are converting strings from base 10 to 36, to yield a single digit that corresponds to the letter in question.
 
-The letters `C` and `D` are created by indexing the last character from a URL string with an invalid character (not an ASCII letter, digit or the characters `-`, `_`, `.`, and `~`), that is, `<` (`%3C`) or `=` (`%3D`) with the `escape` function and prefixes it with a percent `%`. The `escape` function yields these escape sequences in uppercase.
+In this case, for base above 10, the letters of the alphabet indicate digits greater than 9. For example, for hexadecimal numbers (base 16) `a` through `f` are used.
 
-The expression `{}.toString.call().toString()` creates the letter `U`, which derives from the string `[object Undefined]`. With it, we can form the method `toUpperCase`, which does what it says: convert an entire string into uppercase.
+With the `Function` constructor, we can execute code contained inside a string as native JavaScript. For example, with an expression such as `Function('return eval')`, we retrieve the builtin functions `eval`, `escape`.
 
-`toString` is formed by concatenating the letters `t` and `o`, and then retrieving the string `'String'` from the `String` constructor, by accessing its `name` property. With `toString`, we can retrieve the rest of the lowercase alphabet, `h k q w z`, by passing a number in base 36, to yield a lowercase letter.
+The letters `C` (from `<` or `%3C`) and D (from `=` or `%3D`) and `D` come from indexing the last hexadecimal digit from a URL string. All characters that are not an ASCII letter, number, or one of the symbols `-`, `_`, `.`, and `~`), that is, with the `escape` function and prefixes it with a percent `%`. This function outputs these escape sequences in uppercase.
 
-Using this method, we can get the remaining uppercase letters by using array destructuring, since we are getting the remaining characters through mapping.
+The expression `{}.toString.call().toString()`, or `` `${{}.toString.call()}` `` evaluates to the string `'[object Undefined]'` which yields us the character `U`.
 
 Both `eval` and `fromCodePoint` allows us to form Unicode strings. `fromCodePoint` generates a string from its code points. In contrast, `eval` generates a string from its escape sequence.
 
