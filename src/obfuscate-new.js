@@ -153,9 +153,6 @@ function encode(text, globalVar = "$") {
   }
 
   function encodeChar(char) {
-    let letters = "etaoinshrdlucmfwypvbgkqjxz";
-    let cipher = "_$-,;:!?.@*/&#%^+<=>|~'\"`\\";
-
     if (/[a-zA-FINORSU]/.test(char)) {
       let key = (V.isUpperCase(char) ? "$" : "_") + cipher[letters.indexOf(char.toLowerCase())];
       if (isValidIdent(key)) return `${globalVar}.${key}`;
@@ -219,9 +216,9 @@ function encode(text, globalVar = "$") {
       ).join`+`;
 
     // DEBUG
-    return result;
+    // return result;
 
-    // return `${globalVar}[${quote("=")}](${result})`;
+    return `${globalVar}[${quote("=")}](${result})`;
   }
 
   // HEADER
