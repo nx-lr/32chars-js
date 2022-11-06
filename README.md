@@ -48,7 +48,7 @@ JavaScript stores strings as **UTF-16**, so all BMP characters, code points `U+0
 
 The text is split by a delimiter such as a space, or the most common substring which the compiler detects. The split elements go into an array and delimited with commas. There could be empty array slots, so nothing goes in between the commas. Unfortunately, JavaScript ignores trailing commas, so we have to explicitly add trailing comma if the final element of an output array is empty.
 
-### Representing strings
+### Quoting string literals
 
 We create string literals in JavaScript in three ways: single-quoted `''`, double-quoted `""` and _template_ (backtick) strings ` `` `. Both single and double-quoted strings are functionally the same. Template strings allow for interpolating values with the `${}` syntax. In the output, we quote sequences of ASCII symbols directly as they are in any of these three quotes.
 
@@ -106,13 +106,15 @@ In statement 4, by concatenating the letters, we form the method names `map`, `r
 
 We are going to get the following letters: `h k q w z C D U`, make the strings `toString`, `fromCharCode`, `keys`, `raw`, and `toUpperCase`, and retrieve the functions `Date`, `BigInt`, `eval`, `escape` and `parseInt`.
 
-`toString` is formed by concatenating the letters `t` and `o`, and then retrieving the string `'String'` from the `String` constructor, by accessing its`name`property. With `toString`, we can retrieve the rest of the lowercase alphabet, `h k q w z`, by passing a number in base 36, to yield a lowercase letter.
-
 Using the `Function` constructor, we can trigger the execution of code contained in a string as if it was native JavaScript. For example, with an expression such as `Function('return eval')`, we can retrieve critical global functions, such as `eval`, `escape`, and `parseInt`.
 
 The letters `C` and `D` are created by indexing the last character from a URL string with an invalid character (not an ASCII letter, digit or the characters `-`, `_`, `.`, and `~`), that is, `<` (`%3C`) or `=` (`%3D`) with the `escape` function and prefixes it with a percent `%`. The `escape` function yields these escape sequences in uppercase.
 
-The expression `{}.toString.call().toString()` creates the letter `U`, which derives from the string `[object Undefined]`. With it, we can form the method `toUpperCase`, which does what it says: convert an entire string into uppercase. Using this method, we can get the remaining uppercase letters and then reassign them with array destructuring. This lets us assign and swap variables by putting their values in an array on both sides.
+The expression `{}.toString.call().toString()` creates the letter `U`, which derives from the string `[object Undefined]`. With it, we can form the method `toUpperCase`, which does what it says: convert an entire string into uppercase.
+
+`toString` is formed by concatenating the letters `t` and `o`, and then retrieving the string `'String'` from the `String` constructor, by accessing its `name` property. With `toString`, we can retrieve the rest of the lowercase alphabet, `h k q w z`, by passing a number in base 36, to yield a lowercase letter.
+
+Using this method, we can get the remaining uppercase letters by using array destructuring, since we are getting the remaining characters through mapping.
 
 Both `eval` and `fromCharCode` allows us to form Unicode strings. `fromCharCode` generates a string from its code points. In contrast, `eval` generates a string from its escape sequence. `parseInt` enables numbers to be parsed in bases other than 10.
 
@@ -134,46 +136,75 @@ const props = {
   space: "-",
 
   // statement 3
-  concat: "+",
   call: "!",
-  join: "%",
-  slice: "/",
-  return: "_",
+  concat: "+",
   constructor: "$",
-  source: ",",
+  filter: "||",
+  flat: "><",
+  join: "%",
+  reduce: "<>",
+  return: "_",
+  slice: "/",
+  sort: "--",
+  source: ",,",
+
+  for: "*_",
+  if: "!_",
 
   // statement 4: constructors
   // A B E F g m p R S v x
 
   // statement 5
-  name: "?",
-  map: "^",
-  replace: ":",
-  repeat: "*",
-  split: "|",
-  indexOf: "#",
+  abs: "|-",
   entries: ";",
-  fromEntries: "<",
-  reverse: '"',
+  fromEntries: ";;",
+  indexOf: "#",
+  map: "^",
+  name: "?",
+  parseFloat: "~,",
+  parseInt: "~",
+  repeat: "*",
+  replace: ":",
+  reverse: "<<",
+  split: "|",
+  values: "&&",
+
+  BigInt: "~~",
+  Set: "::",
+
+  var: "=_",
 
   // statement 6: constructors
   // 'to' + String.constructor.name
   // C, D (from 'escape')
-  toString: "  '",
+  toString: "'",
 
   // statement 7: global functions
+  escape: "\\",
+  unescape: "//",
   eval: "=",
-  escape: ">",
-  parseInt: "~",
 
   // statement 8: toString, escape and call
   // h k q w z U
 
   // statement 9
-  fromCharCode: "@",
   keys: "&",
-  raw: " `",
-  toUpperCase: ".",
+  length: "==",
+  new: "**",
+  raw: "`",
+  push: "+=",
+
+  Date: "++",
+  toUpperCase: "@",
+
+  // statement 10: toString, escape and call
+  // G H J K L M P Q T V W X Y Z
+
+  // statement 11
+  fromCodePoint: ">",
+  codePointAt: "<",
+  toLowerCase: "@@",
+  Math: "%%",
 }
 ```
 
@@ -191,7 +222,7 @@ If a substring within the input occurs more than once or appears just frequently
 
 <!-- prettier-ignore -->
 ```js
-const expandRange=(e,i,t=",",o=".")=>{return i=[...new Set(i)].filter(e=>e!=t&&e!=o).join``,e.split(t).map(e=>{var t,a,n,r,e=e.split(o).map(e=>parseInt(decodeBijective(e,i)));return 1==e.length?e:([t,e,a=1,n=0]=[...e],r=t<e?1:-1,[...Array((Math.abs(e-t)+2*n)/a+1).keys()].map(e=>t-r*n+r*a*e))}).flat().map(e=>String.fromCodePoint(e)).sort((e,t)=>e.localeCompare(t)).join``}
+const expandRange=(e,i,t=",",o=".")=>{return i=[...new Set(i)].filter(e=>e!=t&&e!=o).join``,e.split(t).map(e=>{var t,a,n,r,e=e.split(o).map(e=>+([]+decodeBijective(e,i)));return 1==e.length?e:([t,e,a=1,n=0]=[...e],r=t<e?1:-1,[...Array((Math.abs(e-t)+2*n)/a+1).keys()].map(e=>t-r*n+r*a*e))}).flat().map(e=>String.fromCodePoint(e)).sort((e,t)=>e.localeCompare(t)).join``}
 const compressRange=(e,n,t=",",o=".")=>{return n=[...new Set(n)].filter(e=>e!=t&&e!=o).join``,[...new Set(e)].map(e=>e.codePointAt()).sort((e,n)=>e-n).reduce((e,n,t,o)=>{var r=o[t-1],i=n-r;return 0<t&&i==r-o[t-2]?(e[r=e.length-1][1]=n,1<i&&(e[r][2]=i)):e.push([n]),e},[]).map(e=>e.map(e=>encodeBijective(e,n)).join(o)).join(t)}
 const encodeBijective=(n,e)=>{e=[...new Set(e)];var t=BigInt,r=t(e.length),i=e[((n=t(n))%r||r)-1n];if(n<=0n)return"";for(;0n<(n=(n-1n)/r);)i=e[(n%r||r)-1n]+i;return i}
 const decodeBijective=(e,n)=>{n=[...new Set(n)],e=[...e];for(var t=BigInt,i=0n,r=t(n.length),c=e.length,d=0;d<c;d++)i+=t(n.indexOf(e[d])+1)*r**t(c-d-1);return i}
@@ -222,9 +253,9 @@ However, if the compiler evaluates it, with native `eval` as a syntax error, des
 
 #### Integers
 
-From here on out, many of the encodings, in principle, use bijective numeration, with `Number` or `BigInt` as an intermediate data type during conversion. All substrings are hashed in *bijective* depending on the number and order of the digit characters. 
+From here on out, many of the encodings, in principle, use bijective numeration, with `Number` or `BigInt` as an intermediate data type during conversion. All substrings are hashed in _bijective_ depending on the number and order of the digit characters.
 
-Because of *bijective numeration*, any arbitrary sequence of characters from an indexed character set corresponds to a unique natural number. 
+Because of _bijective numeration_, any arbitrary sequence of characters from an indexed character set corresponds to a unique natural number.
 
 Numeric-only substrings are decoded into `BigInt` and embedded directly inside the substring, stripping the `n` suffix to distinguish between `Number` and `BigInt`. Zero-padding is done as an additional step for substrings with leading zeroes.
 
