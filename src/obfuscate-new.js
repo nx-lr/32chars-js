@@ -49,6 +49,7 @@ function encode(text, globalVar = "$") {
     sort: ">",
     join: "+",
     filter: "%",
+    source: ".",
 
     for: "*_",
     if: "!_",
@@ -77,10 +78,10 @@ function encode(text, globalVar = "$") {
   let wordCipher3 = {
     keys: "&",
     length: ":",
-    new: "+_",
     raw: "`",
-
     toUpperCase: "@",
+
+    new: "+_",
   };
 
   let wordCiphers = {
