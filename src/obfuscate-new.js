@@ -293,7 +293,7 @@ function encode(code, globalVar = "$") {
     return `${globalVar}[${quote("=")}](${result})`;
   }
 
-  //
+  // HEADER
 
   let header = `${globalVar}=~[];`;
 
