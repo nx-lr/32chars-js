@@ -1,328 +1,510 @@
-# 32chars.js
-
-## Disclaimer
-
-This program is meant to be used for experimental purposes: for hashing and encoding text and code to protect private work. **This program shall not be used for malicious purposes. I am not held responsible for any damages it may cause.**
-
-## Introduction
-
-32chars.js is a JavaScript hasher that hashes a piece of text into the shortest possible valid JavaScript code with only 32 ASCII symbol characters: `` !"#$%&'()*+,-./:;<=>?@[\]^_`{|}~ ``.
-
-This project is a testament to the many existing JavaScript hashers out there, and the spiritual successor to the original, [jjhashe](https://utf-8.jp/public/jjhashe.html).
-
-## Background
-
-JavaScript is a programming language with many weird and tricky parts. One can write programs without any letters or numbers, and to an extreme, only [five](https://aem1k.com/five/) or [six](http://www.jsfuck.com/) possible symbols. These compilers output _extremely verbose_ code, where a single character may expand to thousands of characters.
-
-Program code contains a wide variety of letters, numbers, symbols, and spaces, making code terser, parsable and readable. This project aims to output code that is still unreadable, but with a wide variety of characters while keeping the output length to a minimum. There are 32 ASCII symbol characters, most of them being valid JavaScript tokens.
-
-Rather than encoding every character in the input string one by one, we break the input string into runs that have a length of at least one. This way, we minimize the number of operations performed by the JavaScript engine, while keeping the overall output short.
-
-The compiler hashes the string piece by piece. Parts of the input string which are combinations of those 32 characters remain untouched. It works backward, determining which JavaScript's built-in operations produce the original string.
-
-## Explanation
-
-With a large character set, most of these symbols also are valid JavaScript tokens. The most significant of them are:
-
-- `'`, `"` and `` ` `` delimit strings. The backtick `` ` `` delimits template strings, which allow for interpolation and tagged function calls
-- Combinations of `_` and `$` to form variables and identifiers
-- `+` to concatenate strings, add numbers and cast things into numbers
-- Arithmetic `+ - * / % **` and bitwise `& | ^ ~ << >> >>>` operators with a `Number` and `BigInt` on either side
-- `.` to access properties of objects
-- `,` to delimit array, object, and function elements
-- `()` to call functions and group expressions
-- `[]` to access array and object elements and create array literals
-- `{}` to delimit object literals and code blocks
-- `${}` to interpolate expressions in template strings
-- `/` to delimit regular expression literals
-
-We have syntax to form strings. Strings are very fundamental to obfuscation, as we can store and hash custom data. However, there are many other ways to create strings, using JavaScript's newest syntax and functionality: `RegExp` and `BigInt` data types, and many new `String`, `Array`, and `Object` methods.
-
-The compiler uses a two-step substitution encoding. First, characters and functions are assigned to variables and properties with programmatically generated keys, These are then decoded through these operations, and used either to construct new substrings or build back the original string.
-
-There are of course edge cases. Some expressions innately produce strings: constants (e.g. `true`, `false`, `0`), string tags (e.g. `[object Object]`), date strings (e.g. `2011-10-05T14:48:00.000Z`) and source code (e.g. `function Array() { [native code] }`).
-
-The compiler parses the text into categorical tokens depending on the type of character. This includes ASCII punctuation, digits and letters, words with diacritics, non-Latin scripts, and Unicode code points.
-
-JavaScript stores strings as **UTF-16**, so all BMP characters, code points `U+0000` to `U+FFFF` are encoded as _two_ bytes while the rest are encoded as _four_.
-
-The text is split by a delimiter such as a space, or the most common substring which the compiler detects. The split elements go into an array and delimited with commas. There could be empty array slots, so nothing goes in between the commas. Unfortunately, JavaScript ignores trailing commas, so we have to explicitly add trailing comma if the final element of an output array is empty.
-
-### Quoting string literals
-
-We create string literals in JavaScript in three ways: single-quoted `''`, double-quoted `""` and _template_ (backtick) strings ` `` `. Both single and double-quoted strings are functionally the same. Template strings allow for interpolating values with the `${}` syntax. In the output, we quote sequences of ASCII symbols directly as they are in any of these three quotes.
-
-Usually, the runs do not contain any of the quote characters `` ' " ` ``, or the backslash `\`, so any type of quote would do without escapes. If any of these above-mentioned characters are present, then the backslash, and the corresponding quote character is escaped, by prefixing it with a backslash (like `'\\'`), preventing the string from abruptly ending.
-
-In template literals delimited with backticks `` ` ``, the sequence `${`, which begins interpolation, is also escaped to avoid opening interpolation.
-
-Each substring in the output goes through a quoting function, and calls `jsesc` on each. The number of escapes in all the three strings are counted, and the string literal with the least number of escapes is selected. Else, the compiler just falls back cycling between the three delimiters.
-
-The rules for quoting object keys are different: backtick-delimited strings cannot be used, as they throw a syntax error; string keys which are valid identifiers, i.e. combinations of `_` and `$`, do not need to be quoted.
-
-### Statement 1
-
-The symbols `_` and `$` are valid JavaScript identifier characters, so we can use combinations of those two characters to form different variables. We assign one of them, in this case, `$`, to be used to store and reference values and substrings, and the other, `_`, to assign the actual string.
-
-We assign the global variable `$` to the value of `-1`, or by doing a bitwise NOT on an empty array: `~[]`. An empty array, or implicitly, a _string_, is `0`, and `~0` is equal to `-1`.
-
-### Statement 2
-
-In the following statement, we assign `$` is assigned to a JavaScript object, with curly braces `{}`. We define properties inside the braces in the form `key: value`, and individual _key-value pairs_ or _properties_ are separated with commas.
-
-JavaScript has three different ways to represent keys: _identifiers_ without quotes (which also includes keywords) like `key:value`, _strings_ within single or double quotes like `'key':value`, and _expressions_ within square brackets `['key']:value`. In addition, one can access object properties with dots, like `x.key`, or square brackets, like `x['key']`.
-
-The first property is `___`, with a value of `` `${++$}` ``. This takes the value of `$`, currently `-1`, and increments it to `0`, then casts that into a string by interpolating it inside a template literal, implicitly calling `.toString()`. While the object is still being built, `$` is still a number and not an object yet, since evaluation happens outward.
-
-The second property is `_$`, with a value of `` `${!''}`[$] ``. An empty string is prepended with the NOT operator, coercing it into `false` as it is considered _falsy_ in JavaScript. `!` also negates the boolean, resulting in `true`, before wrapping it in a template literal, becoming the string `"true"`. The `[$]` construct returns the character at index `0` (string indices start at `0`), which returns `t`.
-
-We repeat the above steps: incrementing the `$` variable, constructing a string, and grabbing a character out of the string by specifying its index. Next, we manipulate literals to evaluate to form the constants, `true`, `false`, `Infinity`, `NaN`, `undefined`, and an empty object `{}` which becomes the string `'[object Object]'`.
-
-The constants yield the following letters (case-sensitive): `a b c d e f i j I l n N o O r s t u y`, the space and the digits `0` to `9`. We have syntax to form the hexadecimal alphabet and several other uppercase and lowercase letters.
-
-We cipher the numbers in binary, substituting `_` for digit `0` and `$` for digit `1`. Then we pad the result to a length of 3 by adding `_` (as `__`, `_$`, `$_` and `$$` have keys defined). So `___` is `0` and `__$` is `1`.
-
-We cipher the letters as a pair of characters. The first `_` or `$` defines its case, and the second a symbol, each unique to a letter in the English alphabet, minus the three pairs of brackets `()[]{}`. The most common letters in English, `t` and `e` get the characters which form identifiers, `_` and `$`, while the least common, `j`, `q`, `x` get the quote characters, while `z` gets the backslash.
-
-The space is assigned the key `-`.
-
-### Statement 3 and 4
-
-From the third line, we use the letters we have retrieved to form the names of properties in our expressions by concatenating them letter by letter with the `+` operator. We form the words `concat`, `join`, `slice`, `return`, `constructor`, `filter`, `flat` and `source`, each assigning single or double character keys to each one of them so they don't conflict with one another.
-
-`[]` can be used to access properties on values and, by extension, to call methods on them. For instance, `[]['flat']()` is semantically equivalent to `[].flat()`.
-
-We can now access the constructors with the `constructor` property of literals: `Array` (`[]`), `String` (`''`), `Number` (`+[]`), `Boolean` (`![]`), `RegExp` (`/./`), and `Function` (`()=>{}`) (leaving out `Object`), and like before, casting that constructor function into a string.
-
-When evaluated in a JavaScript interpreter, the constructor yields a string like `function Array { [native code] }`. We now have the letters `A B E F g m p R S v x`. The only letter not present in any of the constructor names is `v`, which is from the word `native`.
-
-Now we have 22 lowercase `a b c d e f g i j l m n o p r s t u v x y` and 9 uppercase letters `A B E F I N O R S`. Furthermore, like before, we store every word and letter we have formed with a unique key for reference later in our code.
-
-We use the spread operator, `...`, to "spread out" its properties on a new object. In this case we are cloning the object and then spreading it out along with new properties. This saves up on having to assign every single property on the object, one by one. This saves having to repeat the global variable every time.
-
-In statement 4, by concatenating the letters, we form the method names `map`, `replace`, `repeat`, `split`, `indexOf`, `entries`, `fromEntries`, and `reverse`.
-
-### Statement 5 and beyond
-
-We are going to get the following letters: `h k q w z C D U`, make the strings `toString`, `fromCharCode`, `keys`, `raw`, and `toUpperCase`, and retrieve the functions `Date`, `BigInt`, `eval`, `escape` and `parseInt`.
-
-Using the `Function` constructor, we can trigger the execution of code contained in a string as if it was native JavaScript. For example, with an expression such as `Function('return eval')`, we can retrieve critical global functions, such as `eval`, `escape`, and `parseInt`.
-
-The letters `C` and `D` are created by indexing the last character from a URL string with an invalid character (not an ASCII letter, digit or the characters `-`, `_`, `.`, and `~`), that is, `<` (`%3C`) or `=` (`%3D`) with the `escape` function and prefixes it with a percent `%`. The `escape` function yields these escape sequences in uppercase.
-
-The expression `{}.toString.call().toString()` creates the letter `U`, which derives from the string `[object Undefined]`. With it, we can form the method `toUpperCase`, which does what it says: convert an entire string into uppercase.
-
-`toString` is formed by concatenating the letters `t` and `o`, and then retrieving the string `'String'` from the `String` constructor, by accessing its `name` property. With `toString`, we can retrieve the rest of the lowercase alphabet, `h k q w z`, by passing a number in base 36, to yield a lowercase letter.
-
-Using this method, we can get the remaining uppercase letters by using array destructuring, since we are getting the remaining characters through mapping.
-
-Both `eval` and `fromCharCode` allows us to form Unicode strings. `fromCharCode` generates a string from its code points. In contrast, `eval` generates a string from its escape sequence. `parseInt` enables numbers to be parsed in bases other than 10.
-
-When used on a template literal, the `String.raw` method ignores all escape sequences, so backslashes are now interpreted as they are without getting "deleted" by the parser.
-
----
-
-This depends entirely on the current locale and JavaScript engine so this feature is considered _experimental_. The additional letters `G M T J W Z` can be retrieved with the `Date` constructor:
-
-- The letters `G M T` is formed from the expression `new Date().toString()`. This yields a string of the form `Thu Jan 01 1970 07:30:00 GMT+0XXX (Local Standard Time)`.
-- `Z` comes from `new Date().toISOString()` which evaluates to a string of the form `1970-01-01T00:00:00.000Z`. `Z` in this case represents zero UTC offset.
-- Passing these arguments to the `Date` constructor, in a specific order, retrieves `J` and `W`: `Jan` - `0`, `Wed` - `0,0,3`.
-
-```js
-const props = {
-  // statement 2: constants
-  // 0 1 2 3 4 5 6 7 8 9
-  // a b c d e f i j I l n N o O r s t u y [space]
-  space: "-",
-
-  // statement 3
-  call: "!",
-  concat: "+",
-  constructor: "$",
-  filter: "||",
-  flat: "><",
-  join: "%",
-  reduce: "<>",
-  return: "_",
-  slice: "/",
-  sort: "--",
-  source: ",,",
-
-  for: "*_",
-  if: "!_",
-
-  // statement 4: constructors
-  // A B E F g m p R S v x
-
-  // statement 5
-  abs: "|-",
-  entries: ";",
-  fromEntries: ";;",
-  indexOf: "#",
-  map: "^",
-  name: "?",
-  parseFloat: "~,",
-  parseInt: "~",
-  repeat: "*",
-  replace: ":",
-  reverse: "<<",
-  split: "|",
-  values: "&&",
-
-  BigInt: "~~",
-  Set: "::",
-
-  var: "=_",
-
-  // statement 6: constructors
-  // 'to' + String.constructor.name
-  // C, D (from 'escape')
-  toString: "'",
-
-  // statement 7: global functions
-  escape: "\\",
-  unescape: "//",
-  eval: "=",
-
-  // statement 8: toString, escape and call
-  // h k q w z U
-
-  // statement 9
-  keys: "&",
-  length: "==",
-  new: "**",
-  raw: "`",
-  push: "+=",
-
-  Date: "++",
-  toUpperCase: "@",
-
-  // statement 10: toString, escape and call
-  // G H J K L M P Q T V W X Y Z
-
-  // statement 11
-  fromCodePoint: ">",
-  codePointAt: "<",
-  toLowerCase: "@@",
-  Math: "%%",
+let fs = require("fs");
+let V = require("voca");
+let _ = require("lodash");
+let jsesc = require("jsesc");
+let XRegExp = require("xregexp");
+let isValidIdent = require("is-valid-identifier");
+let uglify = require("uglify-js");
+let genex = require("genex");
+
+let text = fs.readFileSync("./input.txt", "utf8");
+
+function encode(text, globalVar = "$") {
+  // CONSTANTS
+
+  let letters = "etaoinshrdlucmfwypvbgkqjxz";
+  let cipher = "_$-,;:!?.@*/&#%^+<=>|~'\"`\\";
+  let alnum = "0123456789abcdefghijklmnopqrstuvwxyz";
+
+  let constantExprs = {
+    "-1": /[+~]\[]/,
+    0: /\+(\[]|""|''|``)/,
+    1: /\+!(""|''|``)|-~\[]/,
+    true: /!(""|''|``)/,
+    false: /!({}|\[])/,
+    NaN: /\+{}/,
+    "[object Object]": /{}/,
+    Infinity: /!(""|''|``)\/(!({}|\[])|\+(\[]|""|''|``))/,
+    undefined: /(""|''|``|\[])\[(""|''|``|\[]|{})\]/,
+  };
+
+  constantExprs = _.mapValues(constantExprs, x => genex(x).generate());
+
+  let constructorExprs = {
+    Array: /\[]/,
+    Boolean: /\(!(""|''|``|{}|\[])\)/,
+    Function: /\([_$]=>(""|''|``|{}|\[])\)/,
+    Number: /\([+~](""|''|``|{}|\[])\)/,
+    String: /""|''|``/,
+    RegExp: /\/[!-',-.:->@\]-`{-~]\//,
+    Object: /{}/,
+  };
+
+  constructorExprs = _.mapValues(constructorExprs, x => genex(x).generate());
+
+  let wordCipher1 = {
+    constructor: "$",
+    return: "_",
+    slice: "/",
+    sort: ">",
+    join: "+",
+    filter: "%",
+
+    for: "*_",
+    if: "!_",
+  };
+
+  let wordCipher2 = {
+    indexOf: "#",
+    map: "^",
+    name: "?",
+    repeat: "*",
+    replace: '"',
+    reverse: "<",
+    split: "|",
+
+    BigInt: "++",
+    Set: "--",
+
+    var: "=_",
+  };
+
+  let globalFunctions = {
+    escape: "\\",
+    eval: "=",
+  };
+
+  let wordCipher3 = {
+    keys: "&",
+    length: ":",
+    new: "+_",
+    raw: "`",
+
+    toUpperCase: "@",
+  };
+
+  let wordCiphers = {
+    ...wordCipher1,
+    ...wordCipher2,
+    ...wordCipher3,
+  };
+
+  let functionCiphers = {
+    encodeBijective: "+[]",
+    decodeBijective: "~[]",
+    compressRange: "![]",
+    expandRange: "!''",
+  };
+
+  // HELPER FUNCTIONS
+
+  function cycle(arr) {
+    return arr[arrCount++ % arr.length];
+  }
+
+  let quoteCount = 0;
+  let arrCount = 0;
+
+  function quoteKey(string) {
+    return quote(string, true);
+  }
+
+  function quote(string, key = false) {
+    if (key && isValidIdent(string)) return string;
+
+    let quoteSequence = ["single", "double", "backtick"];
+    if (key) quoteSequence.splice(2, 1);
+    let quotedStrings = quoteSequence.map(quotes => [quotes, jsesc(string, {quotes, wrap: true})]);
+    quotedStrings = _.fromPairs(quotedStrings);
+
+    let lengthMap = _.mapValues(quotedStrings, x => x.length);
+
+    let lengthSorted = _.toPairs(lengthMap).sort(([, a], [, b]) => a - b);
+    let [short, mid] = lengthSorted;
+    let lengthSet = new Set(_.values(lengthMap));
+    let quotes = quoteSequence[quoteCount++ % quoteSequence.length];
+
+    if ((key && lengthSet.size == 2) || (!key && lengthSet.size == 3)) {
+      quotes = short[0];
+    } else if (!key && lengthSet.size == 2) {
+      quotes = [short[0], mid[0]].includes(quotes) ? quotes : short[0];
+    } else {
+      quotes = quotes || short[0];
+    }
+
+    return jsesc(string, {quotes, wrap: true});
+  }
+
+  function encodeCharKey(char) {
+    char = String(char);
+    let key;
+
+    if (/[a-zA-Z]/.test(char)) {
+      key = (V.isUpperCase(char) ? "$" : "_") + cipher[letters.indexOf(char.toLowerCase())];
+    }
+
+    if (/\d/.test(char)) {
+      key = [...(+char).toString(2).padStart(3, 0)].map(x => (+x ? "$" : "_")).join``;
+    }
+
+    if (char == " ") key = "-";
+
+    return quoteKey(key);
+  }
+
+  function encodeChar(char) {
+    let letters = "etaoinshrdlucmfwypvbgkqjxz";
+    let cipher = "_$-,;:!?.@*/&#%^+<=>|~'\"`\\";
+
+    if (/[a-zA-FINORSU]/.test(char)) {
+      let key = (V.isUpperCase(char) ? "$" : "_") + cipher[letters.indexOf(char.toLowerCase())];
+      if (isValidIdent(key)) return `${globalVar}.${key}`;
+      else return `${globalVar}[${quote(key)}]`;
+    }
+
+    if (/[GHJ-MPQTV-Z]/.test(char))
+      return `${encodeChar(char.toLowerCase())}[${globalVar}[${quote("@")}]]()`;
+
+    if (/\d/.test(char)) {
+      let key = [...(+char).toString(2).padStart(3, 0)].map(x => (+x ? "$" : "_")).join``;
+      return `${globalVar}.${key}`;
+    }
+
+    if (char == " ") return `${globalVar}[${quote("-")}]`;
+
+    return quote(char);
+  }
+
+  function encodeString(string) {
+    return [...string].map(char => encodeChar(char, globalVar)).join`+`;
+  }
+
+  function encodeProps(props) {
+    return (
+      `${globalVar}={...${globalVar},` +
+      _.entries(props)
+        .map(([prop, key]) => [key, encodeString(prop)])
+        .map(([key, expr]) => `${quoteKey(key)}:${expr}`) +
+      "};"
+    );
+  }
+
+  function encodeFunction(func) {
+    let count = 1,
+      digits = "_$";
+
+    let code = uglify
+      .minify(`${func}`, {compress: {reduce_funcs: true}})
+      .code.replace(/^function \w+/, "")
+      .replace("){", ")=>{");
+
+    let variables = [...new Set(code.match(/\b[a-z]\b/g))];
+    variables = _.fromPairs(variables.map(v => [v, encodeBijective(count++, digits) + globalVar]));
+
+    let result = code
+      .replace(RegExp(`\\b(${_.keys(variables).join`|`})\\b`, "g"), match => variables[match])
+      .replace(
+        RegExp(`\\b(${_.keys(functionCiphers).join`|`})\\b`, "g"),
+        match => `${globalVar}[${functionCiphers[match]}]`
+      )
+      .match(/ |[\da-z]+|[^ \da-z]+/gi)
+      .map(match =>
+        match in constructorExprs
+          ? `${cycle(constructorExprs[match])}[${globalVar}.$][${globalVar}[${quote("?")}]]`
+          : match in wordCiphers
+          ? `${globalVar}[${quote(wordCiphers[match])}]`
+          : /[^\s\da-z]+/i.test(match)
+          ? quote(match)
+          : encodeString(match)
+      ).join`+`;
+
+    // DEBUG
+    return result;
+
+    // return `${globalVar}[${quote("=")}](${result})`;
+  }
+
+  // HEADER
+
+  let header = `${globalVar}=~[];`;
+
+  let charMap1 = {};
+
+  for (let [constant, expr] of _.entries(constantExprs))
+    for (let char of constant)
+      if (/[a-zA-Z ]/.test(char) && !(char in charMap1))
+        charMap1[char] = [expr, constant.indexOf(char)];
+
+  let charMap1Expr =
+    `${globalVar}={` +
+    _.range(0, 10).map(($, digit) => [
+      `${encodeCharKey(digit)}:\`\${++${globalVar}}\``,
+      ..._.entries(charMap1)
+        .filter(([, [, value]]) => value == digit)
+        .map(([char, [exprs]]) => `${encodeCharKey(char)}:\`\${${cycle(exprs)}}\`[${globalVar}]`),
+    ]) +
+    "};";
+
+  header += charMap1Expr;
+
+  let charMap2 = {};
+
+  for (let [key, exprs] of _.entries(constructorExprs)) {
+    let constructor = eval(key).toString();
+    for (let char of constructor) {
+      if (/[a-zA-Z ]/.test(char) && !(char in charMap1) && !(char in charMap2)) {
+        let index = constructor.indexOf(char);
+        let expansion =
+          `\`\${${cycle(exprs)}[${globalVar}.$]}\`` + `[${encodeString(String(index))}]`;
+        charMap2[char] = [expansion, index];
+      }
+    }
+  }
+
+  let charMap2Expr =
+    `${globalVar}={...${globalVar},` +
+    _.entries(charMap2).map(([letter, [expansion]]) => `${encodeCharKey(letter)}:${expansion}`) +
+    "};";
+
+  header += encodeProps(wordCipher1);
+
+  header += charMap2Expr;
+
+  header += encodeProps(wordCipher2);
+
+  let globalFunctionsExpr =
+    `${globalVar}={...${globalVar},` +
+    _.entries(globalFunctions).map(
+      ([ident, shortcut]) =>
+        `${quoteKey(shortcut)}:${cycle(constructorExprs.Function)}[${globalVar}.$]` +
+        `(${[`${globalVar}._`, `${globalVar}[${quote("-")}]`, encodeString(ident)].join`+`})()`
+    ) +
+    "};";
+
+  header += globalFunctionsExpr;
+
+  header +=
+    `${globalVar}={...${globalVar},` +
+    [
+      [
+        quoteKey("'"),
+        `${encodeString("to")}+${quote("")}[${globalVar}.$][${globalVar}[${quote("?")}]]`,
+      ],
+      [encodeCharKey("C"), `${globalVar}[${quote("\\")}](${quote("<")})[${encodeString("2")}]`],
+      [encodeCharKey("D"), `${globalVar}[${quote("\\")}](${quote("=")})[${encodeString("2")}]`],
+    ].map(x => x.join`:`) +
+    "};";
+
+  header +=
+    `${globalVar}={...${globalVar},` +
+    [
+      [
+        encodeCharKey("U"),
+        `\`\${{}[${globalVar}[${quote("'")}]]` +
+          `[${encodeString("call")}]()}\`` +
+          `[${encodeString("8")}]`,
+      ],
+    ].map(x => x.join`:`) +
+    "};";
+
+  let lowercase = [..."hkqwz"];
+  let lowercaseExpr =
+    `[${lowercase.map(encodeString)}]=` +
+    `[${lowercase.map(letter => encodeString(String(alnum.indexOf(letter))))}]` +
+    `[${globalVar}[${quote("^")}]]` +
+    `(_=>(+_)[${globalVar}[${quote("'")}]](${encodeString("36")}));`;
+
+  header += lowercaseExpr;
+
+  header += encodeProps(wordCipher3);
+
+  header +=
+    `${globalVar}={...${globalVar},` +
+    [
+      ...[encodeBijective, decodeBijective, compressRange, expandRange].map(func => [
+        `[${functionCiphers[func.name]}]`,
+        encodeFunction(func),
+      ]),
+    ].map(x => x.join`:`) +
+    "};";
+
+  console.log(
+    header +
+      `console.log(Object.fromEntries(Object.entries(${globalVar}).sort(([,x],[,y])=>String(x).localeCompare(String(y)))))`
+  );
+
+  // ENCODING FUNCTIONS
+
+  function encodeBijective(int, chars) {
+    chars = [...new Set(chars)];
+    var b = BigInt;
+    var base = b(chars.length);
+    var index = (int = b(int)) % base || base;
+    var result = chars[index - 1n];
+    if (int <= 0n) return "";
+    else
+      while ((int = (int - 1n) / base) > 0n)
+        result = chars[(index = int % base || base) - 1n] + result;
+    return result;
+  }
+
+  function decodeBijective(str, chars) {
+    chars = [...new Set(chars)];
+    str = [...str];
+    var b = BigInt;
+    var result = 0n;
+    var base = b(chars.length);
+    var strLen = str.length;
+    for (var index = 0; index < strLen; index++)
+      result += b(chars.indexOf(str[index]) + 1) * base ** b(strLen - index - 1);
+    return result;
+  }
+
+  function compressRange(chars, digits, sep = ",", sub = ".") {
+    digits = [...new Set(digits)].filter(digit => digit != sep && digit != sub).join``;
+
+    return [...new Set(chars)]
+      .map(char => char.codePointAt())
+      .sort((x, y) => x - y)
+      .reduce((acc, cur, idx, src) => {
+        var prev = src[idx - 1];
+        var diff = cur - prev;
+        if (idx > 0 && diff == prev - src[idx - 2]) {
+          var last = acc.length - 1;
+          acc[last][1] = cur;
+          if (diff > 1) acc[last][2] = diff;
+        } else acc.push([cur]);
+        return acc;
+      }, [])
+      .map(num => num.map(x => encodeBijective(x, digits)).join(sub))
+      .join(sep);
+  }
+
+  function expandRange(run, digits, sep = ",", sub = ".") {
+    function range(start, end, step = 1, offset = 0) {
+      var direction = start < end ? 1 : -1;
+      return [...Array((Math.abs(end - start) + offset * 2) / step + 1)].map(
+        ($, index) => start - direction * offset + direction * step * index
+      );
+    }
+
+    digits = [...new Set(digits)].filter(digit => digit != sep && digit != sub).join``;
+
+    return run
+      .split(sep)
+      .map(end => {
+        var res = end.split(sub).map(num => +`${decodeBijective(num, digits)}`);
+        return res.length == 1 ? res : range(...res);
+      })
+      .flat()
+      .map(p => String.fromCodePoint(p)).join``;
+  }
+
+  let expression = "";
+
+  // TOKENIZATION
+
+  let regExps = {
+    alnum: /[a-zA-Z]+/giu,
+    digit: /\d+/giu,
+    latin: /[\p{Script=Latin}]+/giu,
+    letter: /[\p{L}\p{M}\p{N}]+/giu,
+    punct: /[!-\/:-@[-`{-~]+/giu,
+    unicode: /[\0-\uffff]+/giu,
+    astral: /[\u{10000}-\u{10ffff}]+/giu,
+    space: / +/giu,
+  };
+
+  let bigRegExp = RegExp(
+    _.entries(regExps).map(([key, {source}]) => `(?<${key}>${source})`).join`|`,
+    "giu"
+  );
+
+  let punct = "!\"#$%&'()*+,-./:;<=>?@[\\]^_`{|}~";
+
+  let charset = [...new Set(text)]
+    .sort((x, y) => (x < y ? -1 : x > y ? 1 : 0))
+    .filter(x => punct.includes(x)).join``;
+
+  console.log(charset);
+
+  let keyGen = (function* () {
+    let existingKeys = new Set(
+      [
+        "'", // toString
+        "-", // space
+        _.values(wordCiphers),
+        _.values(globalFunctions),
+        [..." abcdefghijklmnopqrstuvwxyzABCDEFINORSU0123456789"].map(encodeCharKey),
+      ].flat()
+    );
+
+    console.log(JSON.stringify(existingKeys));
+
+    for (let i = 1; ; i++) {
+      let key = encodeBijective(i, punct);
+      if (!existingKeys.has(key)) yield key;
+    }
+
+    return;
+  })();
+
+  for (let i = 0; i < 100; i++) console.log(keyGen.next().value);
+
+  let testRawString = string => {
+    try {
+      if (/(?<!\\)\$\{/.test(string)) throw new Error();
+      eval(`(\`${string}\`)`);
+      return true;
+    } catch {
+      return false;
+    }
+  };
+
+  let wordMap = (() => {
+    let words = text.match(regExps.alnum) ?? [];
+
+    let wordMap = Object.entries(_.countBy(words))
+      .filter(([word, frequency]) => {})
+      .sort(([c, a], [d, b]) => b - a || c.length - d.length)
+      .map(([word]) => [word, keyGen.next().value]);
+
+    return _.fromPairs(wordMap);
+  })();
+
+  function encodeText(substring) {
+    return [...substring.matchAll(bigRegExp)].map(match => {
+      let [group, substring] = _.entries(match.groups).filter(([, val]) => !!val)[0];
+      switch (group) {
+        case "symbol":
+        case "unicode":
+        case "word":
+      }
+    }).join`+`;
+  }
+
+  expression = "[" + text.split` `.map(transform) + "]";
+
+  expression += ";" + `_${globalVar}=${expression}`;
+
+  // Export
+  expression += ";" + "module.exports.result=_" + globalVar;
+
+  console.log("Script complete!");
+
+  let enUS = new Intl.NumberFormat("en-us");
+
+  return {
+    result: expression,
+    stats: `
+=====
+STATS
+=====
+Input length: ${enUS.format(code.length)}
+Expression length: ${enUS.format(expression.length)}
+Ratio: ${expression.length / code.length}
+Output length: ${enUS.format(expression.length)}`,
+  };
 }
-```
 
-### Encoding
-
-The output ships with several functions, defined with numeric keys with two pairs of values. These functions are stored inside numeric keys in the global object, minified with UglifyJS, and further processed using a custom algorithm which substitutes all the letters, numbers, spaces and function calls with their respective keys.
-
-Calls between the functions are embedded inside the string. The function string is then passed into `eval` turning it into a function.
-
-One function, assigned `$[0]` (or `$[+[]]`) compresses and expands numeric ranges defined as an array of function arguments. A second assigned `$[-1]` (or `$[~[]]`) compresses and expands ranges of Unicode characters with reserved delimiters. A third assigned `$[1]` (or `$[+!'']`) hashes strings into `BigInt`s and back, using a given character set.
-
-Because of the concept of [bijective numeration](https://en.wikipedia.org/wiki/Bijective_numeration), a generator function yields every possible string with those same 32 characters in order and skips the keys already defined.
-
-If a substring within the input occurs more than once or appears just frequently enough based on Jaro distance, then it will be hashed and stored in the global object. All hashed strings are grouped according to their writing system, decoded by looping over the keys, and finally spread out into the global object.
-
-<!-- prettier-ignore -->
-```js
-const expandRange=(e,i,t=",",o=".")=>{return i=[...new Set(i)].filter(e=>e!=t&&e!=o).join``,e.split(t).map(e=>{var t,a,n,r,e=e.split(o).map(e=>+([]+decodeBijective(e,i)));return 1==e.length?e:([t,e,a=1,n=0]=[...e],r=t<e?1:-1,[...Array((Math.abs(e-t)+2*n)/a+1).keys()].map(e=>t-r*n+r*a*e))}).flat().map(e=>String.fromCodePoint(e)).sort((e,t)=>e.localeCompare(t)).join``}
-const compressRange=(e,n,t=",",o=".")=>{return n=[...new Set(n)].filter(e=>e!=t&&e!=o).join``,[...new Set(e)].map(e=>e.codePointAt()).sort((e,n)=>e-n).reduce((e,n,t,o)=>{var r=o[t-1],i=n-r;return 0<t&&i==r-o[t-2]?(e[r=e.length-1][1]=n,1<i&&(e[r][2]=i)):e.push([n]),e},[]).map(e=>e.map(e=>encodeBijective(e,n)).join(o)).join(t)}
-const encodeBijective=(n,e)=>{e=[...new Set(e)];var t=BigInt,r=t(e.length),i=e[((n=t(n))%r||r)-1n];if(n<=0n)return"";for(;0n<(n=(n-1n)/r);)i=e[(n%r||r)-1n]+i;return i}
-const decodeBijective=(e,n)=>{n=[...new Set(n)],e=[...e];for(var t=BigInt,i=0n,r=t(n.length),c=e.length,d=0;d<c;d++)i+=t(n.indexOf(e[d])+1)*r**t(c-d-1);return i}
-```
-
-#### Similar strings
-
-Using the string methods `join`, `slice`, `replace`, `repeat`, and `split`, we can employ algorithms to help us produce strings. The program does not have to hash specific substrings as we either have formed them already ourselves, or they are magically created by manipulating primitive values like `function`, `Array`, `undefined`, `object`, and more.
-
-- The `slice` returns consecutive characters within a substring by specifying a start and optional end index, for instance, `fin` and `fine` from `undefined`.
-- The `repeat` method repeats a substring. We use a regular expression to determine the shortest pattern within the substring and how much it repeats.
-- The `split` and `join` method is used to join an array of "strings" with a string as its delimiter. Then, using regular expressions, we determine the optimal substring to delimit, then we recursively split and hash both the substrings and the delimiter.
-- The `replace` method is used to replace one or all substrings of a substring through insertion, deletion, or substitution to turn it into something similar. We would use a string difference checker.
-
-We form a subset of all the strings from this step. The rest are stored in later statements, but before compilation, the compiler builds a derivation tree from the substrings it has captured from the input. The stems are either non-string values cast into strings or strings we have already defined.
-
-Each branch represents a string in the output text generated from the above operations. If the stem does not contain a sequence in the output text, it is stored in the global object as an hashed string. The compiler does a depth-first travel of this tree and generates statements that map to the stored values. A copy of this tree exists during encoding.
-
-Assignment is an expression and therefore can be nested inside expressions. They return their result, so a statement like `x={x:x.y=1}` simultaneously assigns two properties `x.x` and `x.y` to the value `1`. `x.y` is assigned before `x.x`, because expressions are evaluated outward. However, assignment is a _destructive_ operation, so the compiler does not override any keys to avoid breaking the output.
-
-#### Symbols
-
-We can represent sequences of symbols literally as strings without us performing any encoding or storing in the global object to be decoded or derived. However, we can also perform one additional optimization: minimizing backslashes.
-
-If a substring contains many backslashes, then there are two options. The first is through a `RegExp` literal and calling `toString`, which yields a string of the pattern between two slashes without using the `source` property. Alternatively, we could also use the `String.raw` function.
-
-However, if the compiler evaluates it, with native `eval` as a syntax error, despite using both the `replace` and `slice` methods, it falls back to using the normal substrings.
-
-#### Integers
-
-From here on out, many of the encodings, in principle, use bijective numeration, with `Number` or `BigInt` as an intermediate data type during conversion. All substrings are hashed in _bijective_ depending on the number and order of the digit characters.
-
-Because of _bijective numeration_, any arbitrary sequence of characters from an indexed character set corresponds to a unique natural number.
-
-Numeric-only substrings are decoded into `BigInt` and embedded directly inside the substring, stripping the `n` suffix to distinguish between `Number` and `BigInt`. Zero-padding is done as an additional step for substrings with leading zeroes.
-
-#### Alphanumeric substrings
-
-Alphanumeric substrings follow the same rules as numbers, except this time parsed as a number with a base higher than 10, depending on the position of the last letter in the substring. All are converted from `BigInt` values, if the encoded numeric value is greater than 2^53-1^ or `Number.MAX_SAFE_INTEGER`.
-
-By default, `toString()` yields lowercase. So if the original substring contains uppercase letters, then the positions of those characters in the substring will be converted into uppercase using compressed ranges. If the entire string is uppercase, then the string would be converted directly into uppercase.
-
-#### Words with diacritics
-
-For multilingual texts, use the Latin alphabet, along with a number of non-ASCII letters embedded inside. The initial substring is stripped of these non-ASCII characters and then hashed as a big integer (see above section). The non-ASCII characters are stored and hashed at the end of the string. Each insertion point consists of a substring and an insertion index. No Unicode normalization is performed, even if part of the encoding or decoding process.
-
-#### Other writing systems and languages
-
-For substrings of a non-Latin Unicode script, they are generated from a _case-insensitive_ character pool comprised of letters from that script. The result is hashed using the pool into a `BigInt`, or in the case of extremely long words or CJK text, _arrays_ of big integers.
-
-For bicameral scripts, the substring is converted into lowercase and then a separate procedure converts selected characters based on their hashed indices into uppercase based on the input string.
-
-#### Arbitrary Unicode sequences
-
-For other Unicode characters, including CJK, special, private-use, non-printable and spacing characters, and even astral code points, they are converted from their hexadecimal values and grouped into smaller subsequences based on their leading digits. All leading zeroes are stripped when hashed and added back when decoded.
-
-This yields pairs of symbol sequences: the "keys" being the leading and the "values" being the trailing digits that are not hashed. Both key and value pairs are converted from bijective base 16 into bijective base 30. `,` and `:` are reserved for separating keys and values.
-
-## Customization
-
-Here is a list of customization options available:
-
-- `cacheVar` - the global variable defined to store substrings. It must be a valid, undefined JavaScript identifier. The default is `'$'`.
-- `resultVar` - the global variables to store the output string. It must be a valid, undefined JavaScript identifier. The default is `'_'`.
-- `strictMode` - Includes a `var` or `let` declaration, setting it at the beginning of the program. The default is `null`, which does not include a declaration.
-- `export` - Which key to export the string if `moduleExports` is true. The default is `'result'`.
-- `defaultQuote` - Quoting style to fall back to, if smart quoting is enabled. One of `single`, `double`, or `backtick`. The default is `double`.
-- `'objectQuote'` - Whether to quote keys inside objects and which quotes to use. `'none'` skips quoting identifier keys, so sequences of `_` and `$` will not be quoted. If `calc` is selected, all the keys will be quoted inside square brackets. The default is `'none'`; options are `'none'`, `'single'`, `'double'` or `'calc'`.
-- `smartQuote` - Whether or not to enable smart quoting; choosing quotes with the least number of escapes. If disabled, all strings inside the output, including object keys, will be quoted to `defaultQuote` and `objectQuote`. The default is `true`.
-- `intThreshold` - Maximum length of decoded `BigInt` values. Suppose the length of the decoded `BigInt`is greater than this value, arrays of bijective base-**31**-hashed `BigInt` values will be used instead. Default is `200`.
-- `delimiter` - Which character to use to delimit `BigInt`-hashed substrings or character sets. The default is `','`.
-- `rangeDelimiter` - Which character to use to delimit ranges that `BigInt`-hashed character sets. The default is `'-'`.
-- `wrapInIIFE` - Whether to wrap the obfuscated code in an anonymous function call, using the `Function` constructor. The default is `false`.
-- `logResult` - Whether or not to log the obfuscated code in the console. The default is `false`.
-- `characterSet` - The character set to use to hash substrings in. The order need not matter, but each character must occur once. Default is `` '!"#$%&\'()*+,-./:;<=>?@[\\]^_`{|}~' ``.
-
-## FAQs
-
-#### Why would I want to obfuscate?
-
-There are many reasons people obfuscate their text code: The most basic is to prevent anyone from copying or pasting it or putting hidden messages inside their texts. One might use it for private works, such as manuscripts for novels, personal or sensitive information, or even code like client-side games or command-line interfaces.
-
-#### Is the program foolproof?
-
-The generated code "decrypts" or de-obfuscates itself only when run in a Node.JS environment, so it can only be considered a step in the process if you want maximum privacy.
-
-This generated code, including the header, is programmatically generated from its parameters. Moreover, because there is a one-to-one correspondence between the sequence of substrings in the input and output, the source can be recovered and reverse-engineered, so it may not be obvious.
-
-#### Why is my output code larger than my source?
-
-Because there are only 32 different kinds of characters in the output, the ratio of input to output depends heavily on which characters are in the string and how often they occur together.
-
-Sequences of any of these 32 symbol characters are hashed literally in the string; they get a 1-to-1 encoding except for escape sequences, which add one character, the backslash every time they occur. Spaces have a 1-to-1 correspondence because the compiler splits them up into commas.
-
-Words, numbers, and other alphanumerics are hashed once and stored in the global object. Any repeat sequence is represented and hashed as a property in the global object, then referenced later when they build back the original string.
-
-Code size is not something to worry about as there is a lot of repetition and only 32 characters.
-
-#### Can I run a JavaScript _minifier_ or _prettifier_ on the output code?
-
-Yes. In most cases, like small inputs of a few thousand words. Since there are many characters in the output, and many tokens in the output, it would break your formatter or _minifier_ or whatever is used to display your result if your text is more than a million characters long.
-
-Source: During development, this was tested on minified source code with Prettier with its plugins.
+console.log(encode(text));
