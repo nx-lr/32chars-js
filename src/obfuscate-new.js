@@ -6,11 +6,10 @@ let XRegExp = require("xregexp");
 let isValidIdent = require("is-valid-identifier");
 let uglify = require("uglify-js");
 let genex = require("genex");
-const G = require("glob");
 
 let text = fs.readFileSync("./input.txt", "utf8");
 
-function encode(code, globalVar = "$") {
+function encode(text, globalVar = "$") {
   // CONSTANTS
 
   let letters = "etaoinshrdlucmfwypvbgkqjxz";
@@ -60,7 +59,7 @@ function encode(code, globalVar = "$") {
     map: "^",
     name: "?",
     repeat: "*",
-    replace: ":",
+    replace: '"',
     reverse: "<",
     split: "|",
 
@@ -77,7 +76,7 @@ function encode(code, globalVar = "$") {
 
   let wordCipher3 = {
     keys: "&",
-    length: "==",
+    length: ":",
     new: "+_",
     raw: "`",
 
@@ -96,74 +95,6 @@ function encode(code, globalVar = "$") {
     compressRange: "![]",
     expandRange: "!''",
   };
-
-  // ENCODING FUNCTIONS
-
-  function encodeBijective(int, chars) {
-    chars = [...new Set(chars)];
-    var b = BigInt;
-    var base = b(chars.length);
-    var index = (int = b(int)) % base || base;
-    var result = chars[index - 1n];
-    if (int <= 0n) return "";
-    else
-      while ((int = (int - 1n) / base) > 0n)
-        result = chars[(index = int % base || base) - 1n] + result;
-    return result;
-  }
-
-  function decodeBijective(str, chars) {
-    chars = [...new Set(chars)];
-    str = [...str];
-    var b = BigInt;
-    var result = 0n;
-    var base = b(chars.length);
-    var strLen = str.length;
-    for (var index = 0; index < strLen; index++)
-      result += b(chars.indexOf(str[index]) + 1) * base ** b(strLen - index - 1);
-    return result;
-  }
-
-  function compressRange(chars, digits, sep = ",", sub = ".") {
-    digits = [...new Set(digits)].filter(digit => digit != sep && digit != sub).join``;
-
-    return [...new Set(chars)]
-      .map(char => char.codePointAt())
-      .sort((x, y) => x - y)
-      .reduce((acc, cur, idx, src) => {
-        var prev = src[idx - 1];
-        var diff = cur - prev;
-        if (idx > 0 && diff == prev - src[idx - 2]) {
-          var last = acc.length - 1;
-          acc[last][1] = cur;
-          if (diff > 1) acc[last][2] = diff;
-        } else acc.push([cur]);
-        return acc;
-      }, [])
-      .map(num => num.map(x => encodeBijective(x, digits)).join(sub))
-      .join(sep);
-  }
-
-  function expandRange(run, digits, sep = ",", sub = ".") {
-    function range(start, end, step = 1, offset = 0) {
-      var direction = start < end ? 1 : -1;
-      return [...Array((Math.abs(end - start) + offset * 2) / step + 1)].map(
-        ($, index) => start - direction * offset + direction * step * index
-      );
-    }
-
-    digits = [...new Set(digits)].filter(digit => digit != sep && digit != sub).join``;
-
-    return run
-      .split(sep)
-      .map(end => {
-        var res = end.split(sub).map(num => +`${decodeBijective(num, digits)}`);
-        return res.length == 1 ? res : range(...res);
-      })
-      .flat()
-      .map(p => String.fromCodePoint(p))
-      .sort((x, y) => x.localeCompare(y)).join``;
-  }
 
   // HELPER FUNCTIONS
 
@@ -276,7 +207,7 @@ function encode(code, globalVar = "$") {
         RegExp(`\\b(${_.keys(functionCiphers).join`|`})\\b`, "g"),
         match => `${globalVar}[${functionCiphers[match]}]`
       )
-      .match(/\s|[\da-z]+|[^\s\da-z]+/gi)
+      .match(/ |[\da-z]+|[^ \da-z]+/gi)
       .map(match =>
         match in constructorExprs
           ? `${cycle(constructorExprs[match])}[${globalVar}.$][${globalVar}[${quote("?")}]]`
@@ -288,9 +219,9 @@ function encode(code, globalVar = "$") {
       ).join`+`;
 
     // DEBUG
-    // return result;
+    return result;
 
-    return `${globalVar}[${quote("=")}](${result})`;
+    // return `${globalVar}[${quote("=")}](${result})`;
   }
 
   // HEADER
@@ -301,7 +232,7 @@ function encode(code, globalVar = "$") {
 
   for (let [constant, expr] of _.entries(constantExprs))
     for (let char of constant)
-      if (/[a-zA-Z\s]/.test(char) && !(char in charMap1))
+      if (/[a-zA-Z ]/.test(char) && !(char in charMap1))
         charMap1[char] = [expr, constant.indexOf(char)];
 
   let charMap1Expr =
@@ -321,7 +252,7 @@ function encode(code, globalVar = "$") {
   for (let [key, exprs] of _.entries(constructorExprs)) {
     let constructor = eval(key).toString();
     for (let char of constructor) {
-      if (/[a-zA-Z\s]/.test(char) && !(char in charMap1) && !(char in charMap2)) {
+      if (/[a-zA-Z ]/.test(char) && !(char in charMap1) && !(char in charMap2)) {
         let index = constructor.indexOf(char);
         let expansion =
           `\`\${${cycle(exprs)}[${globalVar}.$]}\`` + `[${encodeString(String(index))}]`;
@@ -397,12 +328,83 @@ function encode(code, globalVar = "$") {
     ].map(x => x.join`:`) +
     "};";
 
-  return (
+  console.log(
     header +
-    `console.log(Object.fromEntries(Object.entries(${globalVar}).sort(([,x],[,y])=>String(x).localeCompare(String(y)))))`
+      `console.log(Object.fromEntries(Object.entries(${globalVar}).sort(([,x],[,y])=>String(x).localeCompare(String(y)))))`
   );
 
-  let regexps = {
+  // ENCODING FUNCTIONS
+
+  function encodeBijective(int, chars) {
+    chars = [...new Set(chars)];
+    var b = BigInt;
+    var base = b(chars.length);
+    var index = (int = b(int)) % base || base;
+    var result = chars[index - 1n];
+    if (int <= 0n) return "";
+    else
+      while ((int = (int - 1n) / base) > 0n)
+        result = chars[(index = int % base || base) - 1n] + result;
+    return result;
+  }
+
+  function decodeBijective(str, chars) {
+    chars = [...new Set(chars)];
+    str = [...str];
+    var b = BigInt;
+    var result = 0n;
+    var base = b(chars.length);
+    var strLen = str.length;
+    for (var index = 0; index < strLen; index++)
+      result += b(chars.indexOf(str[index]) + 1) * base ** b(strLen - index - 1);
+    return result;
+  }
+
+  function compressRange(chars, digits, sep = ",", sub = ".") {
+    digits = [...new Set(digits)].filter(digit => digit != sep && digit != sub).join``;
+
+    return [...new Set(chars)]
+      .map(char => char.codePointAt())
+      .sort((x, y) => x - y)
+      .reduce((acc, cur, idx, src) => {
+        var prev = src[idx - 1];
+        var diff = cur - prev;
+        if (idx > 0 && diff == prev - src[idx - 2]) {
+          var last = acc.length - 1;
+          acc[last][1] = cur;
+          if (diff > 1) acc[last][2] = diff;
+        } else acc.push([cur]);
+        return acc;
+      }, [])
+      .map(num => num.map(x => encodeBijective(x, digits)).join(sub))
+      .join(sep);
+  }
+
+  function expandRange(run, digits, sep = ",", sub = ".") {
+    function range(start, end, step = 1, offset = 0) {
+      var direction = start < end ? 1 : -1;
+      return [...Array((Math.abs(end - start) + offset * 2) / step + 1)].map(
+        ($, index) => start - direction * offset + direction * step * index
+      );
+    }
+
+    digits = [...new Set(digits)].filter(digit => digit != sep && digit != sub).join``;
+
+    return run
+      .split(sep)
+      .map(end => {
+        var res = end.split(sub).map(num => +`${decodeBijective(num, digits)}`);
+        return res.length == 1 ? res : range(...res);
+      })
+      .flat()
+      .map(p => String.fromCodePoint(p)).join``;
+  }
+
+  let expression = "";
+
+  // TOKENIZATION
+
+  let regExps = {
     alnum: /[a-zA-Z]+/giu,
     digit: /\d+/giu,
     latin: /[\p{Script=Latin}]+/giu,
@@ -410,9 +412,99 @@ function encode(code, globalVar = "$") {
     punct: /[!-\/:-@[-`{-~]+/giu,
     unicode: /[\0-\uffff]+/giu,
     astral: /[\u{10000}-\u{10ffff}]+/giu,
+    space: / +/giu,
   };
 
-  `console.log(${globalVar})`;
+  let bigRegExp = RegExp(
+    _.entries(regExps).map(([key, {source}]) => `(?<${key}>${source})`).join`|`,
+    "giu"
+  );
+
+  let punct = "!\"#$%&'()*+,-./:;<=>?@[\\]^_`{|}~";
+
+  let charset = [...new Set(text)]
+    .sort((x, y) => (x < y ? -1 : x > y ? 1 : 0))
+    .filter(x => punct.includes(x)).join``;
+
+  console.log(charset);
+
+  let keyGen = (function* () {
+    let existingKeys = new Set(
+      [
+        "'", // toString
+        "-", // space
+        _.values(wordCiphers),
+        _.values(globalFunctions),
+        [..." abcdefghijklmnopqrstuvwxyzABCDEFINORSU0123456789"].map(encodeCharKey),
+      ].flat()
+    );
+
+    console.log(JSON.stringify(existingKeys));
+
+    for (let i = 1; ; i++) {
+      let key = encodeBijective(i, punct);
+      if (!existingKeys.has(key)) yield key;
+    }
+
+    return;
+  })();
+
+  for (let i = 0; i < 100; i++) console.log(keyGen.next().value);
+
+  let testRawString = string => {
+    try {
+      if (/(?<!\\)\$\{/.test(string)) throw new Error();
+      eval(`(\`${string}\`)`);
+      return true;
+    } catch {
+      return false;
+    }
+  };
+
+  let wordMap = (() => {
+    let words = text.match(regExps.alnum) ?? [];
+
+    let wordMap = Object.entries(_.countBy(words))
+      .filter(([word, frequency]) => {})
+      .sort(([c, a], [d, b]) => b - a || c.length - d.length)
+      .map(([word]) => [word, keyGen.next().value]);
+
+    return _.fromPairs(wordMap);
+  })();
+
+  function encodeText(substring) {
+    return [...substring.matchAll(bigRegExp)].map(match => {
+      let [group, substring] = _.entries(match.groups).filter(([, val]) => !!val)[0];
+      switch (group) {
+        case "symbol":
+        case "unicode":
+        case "word":
+      }
+    }).join`+`;
+  }
+
+  expression = "[" + text.split` `.map(transform) + "]";
+
+  expression += ";" + `_${globalVar}=${expression}`;
+
+  // Export
+  expression += ";" + "module.exports.result=_" + globalVar;
+
+  console.log("Script complete!");
+
+  let enUS = new Intl.NumberFormat("en-us");
+
+  return {
+    result: expression,
+    stats: `
+=====
+STATS
+=====
+Input length: ${enUS.format(code.length)}
+Expression length: ${enUS.format(expression.length)}
+Ratio: ${expression.length / code.length}
+Output length: ${enUS.format(expression.length)}`,
+  };
 }
 
-console.log(encode());
+console.log(encode(text));
