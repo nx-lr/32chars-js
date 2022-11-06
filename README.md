@@ -203,10 +203,10 @@ If a substring within the input occurs more than once or appears just frequently
 
 <!-- prettier-ignore -->
 ```js
-const expandRange=(e,i,t=",",o=".")=>{return i=[...new Set(i)].filter(e=>e!=t&&e!=o).join``,e.split(t).map(e=>{var t,a,n,r,e=e.split(o).map(e=>+([]+decodeBijective(e,i)));return 1==e.length?e:([t,e,a=1,n=0]=[...e],r=t<e?1:-1,[...Array((Math.abs(e-t)+2*n)/a+1).keys()].map(e=>t-r*n+r*a*e))}).flat().map(e=>String.fromCodePoint(e)).sort((e,t)=>e.localeCompare(t)).join``}
-const compressRange=(e,n,t=",",o=".")=>{return n=[...new Set(n)].filter(e=>e!=t&&e!=o).join``,[...new Set(e)].map(e=>e.codePointAt()).sort((e,n)=>e-n).reduce((e,n,t,o)=>{var r=o[t-1],i=n-r;return 0<t&&i==r-o[t-2]?(e[r=e.length-1][1]=n,1<i&&(e[r][2]=i)):e.push([n]),e},[]).map(e=>e.map(e=>encodeBijective(e,n)).join(o)).join(t)}
 const encodeBijective=(n,e)=>{e=[...new Set(e)];var t=BigInt,r=t(e.length),i=e[((n=t(n))%r||r)-1n];if(n<=0n)return"";for(;0n<(n=(n-1n)/r);)i=e[(n%r||r)-1n]+i;return i}
 const decodeBijective=(e,n)=>{n=[...new Set(n)],e=[...e];for(var t=BigInt,i=0n,r=t(n.length),c=e.length,d=0;d<c;d++)i+=t(n.indexOf(e[d])+1)*r**t(c-d-1);return i}
+const compressRange=(e,n,t=",",o=".")=>{return n=[...new Set(n)].filter(e=>e!=t&&e!=o).join``,[...new Set(e)].map(e=>e.codePointAt()).sort((e,n)=>e-n).reduce((e,n,t,o)=>{var r=o[t-1],i=n-r;return 0<t&&i==r-o[t-2]?(e[r=e.length-1][1]=n,1<i&&(e[r][2]=i)):e.push([n]),e},[]).map(e=>e.map(e=>encodeBijective(e,n)).join(o)).join(t)}
+const expandRange=(t,e,n=",",o=".")=>{return e=[...new Set(e)].filter(t=>t!=n&&t!=o).join``,t.split(n).map(t=>{var n,a,r,i,t=t.split(o).map(t=>+(""+decodeBijective(t,e)));return 1==t.length?t:([n,t,a=1,r=0]=[...t],i=n<t?1:-1,[...Array((Math.abs(t-n)+2*r)/a+1)].map((t,e)=>n-i*r+i*a*e))}).flat().map(t=>String.fromCodePoint(t)).join``}
 ```
 
 #### Similar strings
