@@ -428,30 +428,30 @@ function encode(text, globalVar = "$") {
 
   console.log(charset);
 
+  let existingKeys = [
+    "'", // toString
+    "-", // space
+    _.values(wordCiphers),
+    _.values(globalFunctions),
+    [..." abcdefghijklmnopqrstuvwxyzABCDEFINORSU0123456789"].map(x =>
+      encodeCharKey(x)
+        .replace(/^['"`]|['"`]$/g, "")
+        .replace(/\\(.)/g, "$1")
+    ),
+  ].flat();
+
+  console.log(existingKeys);
+
   let keyGen = (function* () {
-    let existingKeys = new Set(
-      [
-        "'", // toString
-        "-", // space
-        _.values(wordCiphers),
-        _.values(globalFunctions),
-        [..." abcdefghijklmnopqrstuvwxyzABCDEFINORSU0123456789"].map(encodeCharKey),
-      ].flat()
-    );
-
-    console.log(JSON.stringify(existingKeys));
-
     for (let i = 1; ; i++) {
       let key = encodeBijective(i, punct);
-      if (!existingKeys.has(key)) yield key;
+      if (!existingKeys.includes(key)) yield key;
     }
-
-    return;
   })();
 
   for (let i = 0; i < 100; i++) console.log(keyGen.next().value);
 
-  let testRawString = string => {
+  function testRawString(string) {
     try {
       if (/(?<!\\)\$\{/.test(string)) throw new Error();
       eval(`(\`${string}\`)`);
@@ -459,7 +459,7 @@ function encode(text, globalVar = "$") {
     } catch {
       return false;
     }
-  };
+  }
 
   let wordMap = (() => {
     let words = text.match(regExps.alnum) ?? [];
@@ -476,14 +476,35 @@ function encode(text, globalVar = "$") {
     return [...substring.matchAll(bigRegExp)].map(match => {
       let [group, substring] = _.entries(match.groups).filter(([, val]) => !!val)[0];
       switch (group) {
-        case "symbol":
+        case "alnum":
+          /[a-zA-Z]+/giu;
+          break;
+        case "digit":
+          /\d+/giu;
+          break;
+        case "latin":
+          /[\p{Script=Latin}]+/giu;
+          break;
+        case "letter":
+          /[\p{L}\p{M}\p{N}]+/giu;
+          break;
+        case "punct":
+          /[!-\/:-@[-`{-~]+/giu;
+          break;
         case "unicode":
-        case "word":
+          /[\0-\uffff]+/giu;
+          break;
+        case "astral":
+          /[\u{10000}-\u{10ffff}]+/giu;
+          break;
+        case "space":
+          / +/giu;
+          break;
       }
     }).join`+`;
   }
 
-  expression = "[" + text.split` `.map(transform) + "]";
+  expression = "[" + text.split` `.map(encodeText) + "]";
 
   expression += ";" + `_${globalVar}=${expression}`;
 
@@ -496,14 +517,7 @@ function encode(text, globalVar = "$") {
 
   return {
     result: expression,
-    stats: `
-=====
-STATS
-=====
-Input length: ${enUS.format(code.length)}
-Expression length: ${enUS.format(expression.length)}
-Ratio: ${expression.length / code.length}
-Output length: ${enUS.format(expression.length)}`,
+    stats: ``,
   };
 }
 
