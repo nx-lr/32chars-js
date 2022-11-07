@@ -201,7 +201,7 @@ Using regular expressions, we convert the function into arrow function form `()=
 
 The substituted function string is passed into the `eval` function, thus evaluating it to an anonymous function which is assigned its alias.
 
-###assert Similar strings
+### Similar strings
 
 Using various string methods, we can employ algorithms to produce similar strings, so to minimize the number of values that need to be encoded. Some substrings manipulating primitive values like `'function'`, `'Array'`, `'undefined'`, `'object'`, so we can derive substrings from those.
 
