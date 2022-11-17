@@ -1,11 +1,11 @@
-const fs = require("fs");
-const V = require("voca");
-const _ = require("lodash");
-const jsesc = require("jsesc");
-const XRegExp = require("xregexp");
-const isValidIdent = require("is-valid-identifier");
-
-const text = fs.readFileSync("./input.txt", "utf8");
+let fs = require('fs')
+let V = require('voca')
+let _ = require('lodash')
+let jsesc = require('jsesc')
+let XRegExp = require('xregexp')
+let isValidIdent = require('is-valid-identifier')
+let uglify = require('uglify-js')
+let text = fs.readFileSync('./input.txt', 'utf8')
 
 /**
  * PunkScript is a substitution encoding scheme that goes through three phases:
@@ -13,17 +13,21 @@ const text = fs.readFileSync("./input.txt", "utf8");
  * - Initialization, where characters and values are assigned to variables;
  * - Substitution, where the variables are used to construct strings;
  */
-console.log("Compiling...");
+console.log('Compiling...')
 
-function encodeText(code, globalVar, {strictMode = false, variable = "var", threshold = 2} = {}) {
-  const BUILTINS =
-    /^(Array|ArrayBuffer|AsyncFunction|AsyncGenerator|AsyncGeneratorFunction|Atomics|BigInt|BigInt64Array|BigUint64Array|Boolean|DataView|Date|decodeURI|decodeURIComponent|encodeURI|encodeURIComponent|escape|eval|exports|Float32Array|Float64Array|Function|Generator|GeneratorFunction|globalThis|Infinity|Int16Array|Int32Array|Int8Array|Intl|isFinite|isNaN|JSON|Map|Math|module|NaN|Number|Object|parseFloat|parseInt|Promise|Proxy|Reflect|RegExp|Set|SharedArrayBuffer|String|Symbol|this|Uint16Array|Uint32Array|Uint8Array|Uint8ClampedArray|undefined|unescape|WeakMap|WeakSet|WebAssembly)$/;
+function encodeText(
+  code,
+  globalVar,
+  {strictMode = false, variable = 'var', threshold = 2} = {}
+) {
+  let BUILTINS =
+    /^(Array|ArrayBuffer|AsyncFunction|AsyncGenerator|AsyncGeneratorFunction|Atomics|BigInt|BigInt64Array|BigUint64Array|Boolean|DataView|Date|decodeURI|decodeURIComponent|encodeURI|encodeURIComponent|escape|eval|exports|Float32Array|Float64Array|Function|Generator|GeneratorFunction|globalThis|Infinity|Int16Array|Int32Array|Int8Array|Intl|isFinite|isNaN|JSON|Map|Math|module|NaN|Number|Object|parseFloat|parseInt|Promise|Proxy|Reflect|RegExp|Set|SharedArrayBuffer|String|Symbol|this|Uint16Array|Uint32Array|Uint8Array|Uint8ClampedArray|undefined|unescape|WeakMap|WeakSet|WebAssembly)$/
 
-  const REGEXPS = {
-    word: XRegExp(String.raw`[\pL\pN]+|[\b\n\f\r\t\v]+`, "g"),
+  let REGEXPS = {
+    word: XRegExp(String.raw`[\pL\pN]+|[\b\n\f\r\t\v]+`, 'g'),
     symbol: /[!-\/:-@[-`{-~]+/g,
     unicode: /[^ -~]+/g,
-  };
+  }
 
   /**
    * This regular expression splits the text into runs.
@@ -31,25 +35,27 @@ function encodeText(code, globalVar, {strictMode = false, variable = "var", thre
    * character in plain text.
    */
 
-  const REGEXP = RegExp(
-    Object.entries(REGEXPS).map(([key, {source}]) => `(?<${key}>${source})`).join`|`,
-    "g"
-  );
+  let REGEXP = RegExp(
+    Object.entries(REGEXPS).map(([key, {source}]) => `(?<${key}>${source})`)
+      .join`|`,
+    'g'
+  )
 
-  console.log("Generating header...");
+  console.log('Generating header...')
 
   // Test whether an identifier can be made into a variable
-  const checkIdentifier = ident =>
-    (ident = ident.trim()) && isValidIdent(ident) && !BUILTINS.test(ident);
-  if (!checkIdentifier(globalVar)) throw new Error(`Invalid global variable: ${quote(globalVar)}`);
+  if (!/[$_]+/.test(globalVar))
+    throw new Error('globalVar should only contain characters _ or $')
 
   // Reject strings above the length of 2^29 to avoid going over the max string limit
-  const MAX_STRING_LENGTH = 536870888,
-    enUS = Intl.NumberFormat("en-us");
+  let MAX_STRING_LENGTH = 536870888,
+    enUS = Intl.NumberFormat('en-us')
   if (code.length > MAX_STRING_LENGTH)
     throw new Error(
-      `Input string can only be up to ${enUS.format(NODE_MAX_LENGTH)} characters long`
-    );
+      `Input string can only be up to ${enUS.format(
+        NODE_MAX_LENGTH
+      )} characters long`
+    )
 
   /**
    * Encase a string in literal quotes; finding the shortest
@@ -61,32 +67,35 @@ function encodeText(code, globalVar, {strictMode = false, variable = "var", thre
    * print(quote`'json`)
    */
 
-  let count = 0;
+  let count = 0
 
-  function quote(string, key = false) {
-    if (key && isValidIdent(string)) return string;
+  let quote = (string, key = false) => {
+    if (key && isValidIdent(string)) return string
 
-    const quoteSequence = ["single", "double", "backtick"];
-    if (key) quoteSequence.splice(2, 1);
-    let quotedStrings = quoteSequence.map(quotes => [quotes, jsesc(string, {quotes, wrap: true})]);
-    quotedStrings = _.fromPairs(quotedStrings);
+    let quoteSequence = ['single', 'double', 'backtick']
+    if (key) quoteSequence.splice(2, 1)
+    let quotedStrings = quoteSequence.map(quotes => [
+      quotes,
+      jsesc(string, {quotes, wrap: true}),
+    ])
+    quotedStrings = _.fromPairs(quotedStrings)
 
-    let lengthMap = _.mapValues(quotedStrings, x => x.length);
+    let lengthMap = _.mapValues(quotedStrings, x => x.length)
 
-    let lengthSorted = _.toPairs(lengthMap).sort(([, a], [, b]) => a - b);
-    let [short, mid] = lengthSorted;
-    let lengthSet = new Set(_.values(lengthMap));
-    let quotes = quoteSequence[count++ % quoteSequence.length];
+    let lengthSorted = _.toPairs(lengthMap).sort(([, a], [, b]) => a - b)
+    let [short, mid] = lengthSorted
+    let lengthSet = new Set(_.values(lengthMap))
+    let quotes = quoteSequence[count++ % quoteSequence.length]
 
     if ((key && lengthSet.size == 2) || (!key && lengthSet.size == 3)) {
-      quotes = short[0];
+      quotes = short[0]
     } else if (!key && lengthSet.size == 2) {
-      quotes = [short[0], mid[0]].includes(quotes) ? quotes : short[0];
+      quotes = [short[0], mid[0]].includes(quotes) ? quotes : short[0]
     } else {
-      quotes = quotes || short[0];
+      quotes = quotes || short[0]
     }
 
-    return jsesc(string, {quotes, wrap: true});
+    return jsesc(string, {quotes, wrap: true})
   }
 
   /**
@@ -104,15 +113,17 @@ function encodeText(code, globalVar, {strictMode = false, variable = "var", thre
    * are slightly longer.
    */
 
-  const LETTERS = "etaoinshrdlucmfwypvbgkqjxz";
-  const CIPHER = "_$-,;:!?.@*/&#%^+<=>|~'\"`\\";
-  const SPACE = "-";
+  let LETTERS = 'etaoinshrdlucmfwypvbgkqjxz'
+  let CIPHER = '_$-,;:!?.@*/&#%^+<=>|~\'"`\\'
+  let SPACE = '-'
 
-  const encodeLetter = char =>
-    (V.isUpperCase(char) ? "$" : "_") + CIPHER[LETTERS.indexOf(char.toLowerCase())];
+  let encodeLetter = char =>
+    (V.isUpperCase(char) ? '$' : '_') +
+    CIPHER[LETTERS.indexOf(char.toLowerCase())]
 
-  const encodeDigit = number =>
-    (+number).toString(2).padStart(3, 0).split``.map(x => (x == 1 ? "$" : "_")).join``;
+  let encodeDigit = number =>
+    (+number).toString(2).padStart(3, 0).split``.map(x => (x == 1 ? '$' : '_'))
+      .join``
 
   /**
    * @example
@@ -120,17 +131,17 @@ function encodeText(code, globalVar, {strictMode = false, variable = "var", thre
    * print(encodeLetter('x'))
    */
 
-  const CONSTANTS = {
-    true: `!${quote("")}`, // ''==false
-    false: "![]", // []==true
-    undefined: "[][[]]", // [][[]] doesn't exist
-    Infinity: `!${quote("")}/![]`, // true/false==1/0
-    NaN: "+{}", // It makes sense
-    "[object Object]": "{}", // [object objectLiteral]
-  };
+  let CONSTANTS = {
+    true: `!${quote('')}`, // ''==false
+    false: '![]', // []==true
+    undefined: '[][[]]', // [][[]] doesn't exist
+    Infinity: `!${quote('')}/![]`, // true/false==1/0
+    NaN: '+{}', // It makes sense
+    '[object Object]': '{}', // [object objectLiteral]
+  }
 
   // prettier-ignore
-  const CONSTANT_VARIANTS = {
+  let CONSTANT_VARIANTS = {
     "-1": [~[], ~{}],
     0: [+[]],
     1: [+!"", -~[]],
@@ -138,7 +149,7 @@ function encodeText(code, globalVar, {strictMode = false, variable = "var", thre
     false: [![], !{}],
     NaN: [+{}, +""],
     "[object Object]": [{}],
-    Infinity: [!""/![], !""/!{}, !""/+[]],
+    Infinity: [!"" / ![], !"" / !{}, !"" / +[]],
     undefined: [""[""], ""[[]], ""[{}], [][""], [][[]], [][{}], {}[""], {}[[]], {}[{}]],
   };
 
@@ -153,24 +164,25 @@ function encodeText(code, globalVar, {strictMode = false, variable = "var", thre
    */
 
   function quoteKey(string) {
-    return quote(string, true);
+    return quote(string, true)
   }
 
   // The separator is a semicolon, not a comma.
   let output =
     (strictMode
-      ? `${variable.trim().toLowerCase() == "var" ? "var" : "let"}` + ` ${globalVar},_${globalVar};`
-      : "") + `${globalVar}=~[];`;
+      ? `${variable.trim().toLowerCase() == 'var' ? 'var' : 'let'}` +
+        ` ${globalVar},_${globalVar};`
+      : '') + `${globalVar}=~[];`
 
   // STEP 1
-  const CHARMAP_1 = {};
+  let CHARMAP_1 = {}
 
-  for (const [constant, expression] of Object.entries(CONSTANTS))
-    for (const char of constant)
+  for (let [constant, expression] of Object.entries(CONSTANTS))
+    for (let char of constant)
       if (/[\w\s]/.test(char) && !(char in CHARMAP_1))
-        CHARMAP_1[char] = [expression, constant.indexOf(char)];
+        CHARMAP_1[char] = [expression, constant.indexOf(char)]
 
-  const RES_CHARMAP_1 =
+  let RES_CHARMAP_1 =
     `${globalVar}={` +
     [...Array(10)].map(($, digit) => [
       `${encodeDigit(digit)}:\`\${++${globalVar}}\``,
@@ -178,12 +190,14 @@ function encodeText(code, globalVar, {strictMode = false, variable = "var", thre
         .filter(([, [, value]]) => value == digit)
         .map(
           ([char, [literal]]) =>
-            `${quoteKey(char == " " ? "-" : encodeLetter(char))}:\`\${${literal}}\`[${globalVar}]`
+            `${quoteKey(
+              char == ' ' ? '-' : encodeLetter(char)
+            )}:\`\${${literal}}\`[${globalVar}]`
         ),
     ]) +
-    "}";
+    '}'
 
-  output += RES_CHARMAP_1;
+  output += RES_CHARMAP_1
 
   /**
    * STEP 2: LITERALS AND CONSTRUCTORS
@@ -205,54 +219,56 @@ function encodeText(code, globalVar, {strictMode = false, variable = "var", thre
    */
 
   // These will be explained later in the next section.
-  const IDENT_MAP_1 = {
-    call: "!",
-    concat: "+",
-    constructor: "$",
-    join: "%",
-    return: "_",
-    slice: "/",
-    source: ",",
-  };
+  let IDENT_MAP_1 = {
+    call: '!',
+    concat: '+',
+    constructor: '$',
+    join: '%',
+    return: '_',
+    slice: '/',
+    source: ',',
+  }
 
   // And these are what we would achieve from there:
-  const CONSTRUCTORS = {
-    Array: "[]",
-    Boolean: "(![])",
-    Function: "(()=>{})",
-    Number: "(~[])",
-    RegExp: "/./",
-    String: quote(""),
-  };
+  let CONSTRUCTORS = {
+    Array: '[]',
+    Boolean: '(![])',
+    Function: '(()=>{})',
+    Number: '(~[])',
+    RegExp: '/./',
+    String: quote(''),
+  }
 
-  const CHARMAP_2 = {...CHARMAP_1};
+  let CHARMAP_2 = {...CHARMAP_1}
 
-  for (const [key, expression] of Object.entries(CONSTRUCTORS)) {
-    let index;
-    const constructor = eval(key).toString();
-    for (const char of constructor)
+  for (let [key, expression] of Object.entries(CONSTRUCTORS)) {
+    let index
+    let constructor = eval(key).toString()
+    for (let char of constructor)
       if (/[\w\s]/.test(char) && !(char in CHARMAP_2))
-        CHARMAP_2[char] = [expression, (index = constructor.indexOf(char))];
+        CHARMAP_2[char] = [expression, (index = constructor.indexOf(char))]
   }
 
-  for (const value of Object.entries(CHARMAP_2)) {
-    const [char, [expression, index]] = value;
-    const expansion = `\`\${${expression}[${globalVar}.$]}\`[${`${index}`.split``.map(
-      digit => `${globalVar}.${encodeDigit(digit)}`
-    ).join`+`}]`;
-    if (!(char in CHARMAP_1)) CHARMAP_2[char] = [expression, index, expansion];
+  for (let value of Object.entries(CHARMAP_2)) {
+    let [char, [expression, index]] = value
+    let expansion = `\`\${${expression}[${globalVar}.$]}\`[${`${index}`
+      .split``.map(digit => `${globalVar}.${encodeDigit(digit)}`).join`+`}]`
+    if (!(char in CHARMAP_1)) CHARMAP_2[char] = [expression, index, expansion]
   }
 
-  const objDiff = (x, y) =>
-    Object.fromEntries(_.difference(Object.keys(x), Object.keys(y)).map(z => [z, x[z]]));
-  const DIFF_CHARMAP_2 = objDiff(CHARMAP_2, CHARMAP_1);
+  let objDiff = (x, y) =>
+    Object.fromEntries(
+      _.difference(Object.keys(x), Object.keys(y)).map(z => [z, x[z]])
+    )
+  let DIFF_CHARMAP_2 = objDiff(CHARMAP_2, CHARMAP_1)
 
-  const RES_CHARMAP_2 =
+  let RES_CHARMAP_2 =
     `${globalVar}={...${globalVar},` +
     Object.entries(DIFF_CHARMAP_2).map(
-      ([letter, [, , expansion]]) => `${quoteKey(encodeLetter(letter))}:${expansion}`
+      ([letter, [, , expansion]]) =>
+        `${quoteKey(encodeLetter(letter))}:${expansion}`
     ) +
-    "}";
+    '}'
 
   /**
    * STEP 2.1: FORMING WORDS
@@ -283,41 +299,50 @@ function encodeText(code, globalVar, {strictMode = false, variable = "var", thre
    *    $['_|']
    */
 
-  const encodeString = str =>
-    String(str).replace(/\W/g, "").split``.map(char => {
+  let encodeString = str =>
+    String(str).replace(/\W/g, '').split``.map(char => {
       if (/[$_]/.test(char)) {
-        return quote(char);
+        return quote(char)
+      } else if (char === ' ') {
+        return `${globalVar}[${quote('-')}]`
       } else if (/\d/.test(char)) {
-        return `${globalVar}.${encodeDigit(char)}`;
+        return `${globalVar}.${encodeDigit(char)}`
+      } else if (/[A-Z]/.test(char) && /[^A-FINORSU]/.test(char)) {
+        let lower = char.toLowerCase()
+        let encoded = encodeLetter(lower)
+        let result = isValidIdent(encoded)
+          ? `${globalVar}.${encoded}`
+          : `${globalVar}[${quote(encoded)}]`
+        return `${result}[${globalVar}[${quote('"')}]]()`
       } else {
-        const encoded = encodeLetter(char);
-        if (isValidIdent(encoded)) return `${globalVar}.${encoded}`;
-        else return globalVar + `[${quote(encoded)}]`;
+        let encoded = encodeLetter(char)
+        if (isValidIdent(encoded)) return `${globalVar}.${encoded}`
+        else return `${globalVar}[${quote(encoded)}]`
       }
-    }).join`+`;
+    }).join`+`
 
-  const encodeProps = props =>
+  let encodeProps = props =>
     `${globalVar}={...${globalVar},` +
     Object.entries(props)
       .map(([prop, key]) => [key, encodeString(prop)])
       .map(([key, expr]) => `${quoteKey(key)}:${expr}`) +
-    "}";
+    '}'
 
-  output += ";" + encodeProps(IDENT_MAP_1);
-  output += ";" + RES_CHARMAP_2;
+  output += ';' + encodeProps(IDENT_MAP_1)
+  output += ';' + RES_CHARMAP_2
 
-  const IDENT_MAP_2 = {
-    entries: ";",
-    fromEntries: "<",
-    indexOf: "#",
-    map: "^",
-    name: "?",
-    repeat: "*",
-    replace: ":",
-    split: "|",
-  };
+  let IDENT_MAP_2 = {
+    entries: ';',
+    fromEntries: '<',
+    indexOf: '#',
+    map: '^',
+    name: '?',
+    repeat: '*',
+    replace: ':',
+    split: '|',
+  }
 
-  output += ";" + encodeProps(IDENT_MAP_2);
+  output += ';' + encodeProps(IDENT_MAP_2)
 
   /**
    * STEP 3: FUNCTIONS
@@ -334,22 +359,22 @@ function encodeText(code, globalVar, {strictMode = false, variable = "var", thre
    * from the code points of our palette of ASCII symbols.
    */
 
-  const GLOBAL_FUNC = {
-    escape: ">",
-    eval: "=",
-    parseInt: "~",
-  };
+  let GLOBAL_FUNC = {
+    escape: '>',
+    eval: '=',
+    parseInt: '~',
+  }
 
-  const RES_FUNCTIONS_1 =
+  let RES_FUNCTIONS_1 =
     `${globalVar}={...${globalVar},` +
     Object.entries(GLOBAL_FUNC).map(
       ([ident, shortcut]) =>
         `${quoteKey(shortcut)}:(()=>{})[${globalVar}.$]` +
-        `(${globalVar}._+${globalVar}[${quote("-")}]+${encodeString(ident)})()`
+        `(${globalVar}._+${globalVar}[${quote('-')}]+${encodeString(ident)})()`
     ) +
-    "}";
+    '}'
 
-  output += ";" + RES_FUNCTIONS_1;
+  output += ';' + RES_FUNCTIONS_1
 
   /**
    * We would need to get the method `toString` by getting the `name`
@@ -373,23 +398,29 @@ function encodeText(code, globalVar, {strictMode = false, variable = "var", thre
    */
 
   output +=
-    ";" +
+    ';' +
     `${globalVar}={...${globalVar},` +
     [
       [
         quoteKey("'"), // toString
-        `${encodeString("to")}+` + `${quote("")}[${globalVar}.$]` + `[${globalVar}[${quote("?")}]]`,
+        `${encodeString('to')}+` +
+          `${quote('')}[${globalVar}.$]` +
+          `[${globalVar}[${quote('?')}]]`,
       ],
       [
-        quoteKey(encodeLetter("C")), // C
-        `${globalVar}[${quote(">")}]` + `(${quote("<")})` + `[${globalVar}.${encodeDigit(2)}]`,
+        quoteKey(encodeLetter('C')), // C
+        `${globalVar}[${quote('>')}]` +
+          `(${quote('<')})` +
+          `[${globalVar}.${encodeDigit(2)}]`,
       ],
       [
-        quoteKey(encodeLetter("D")), // D
-        `${globalVar}[${quote(">")}]` + `(${quote("=")})` + `[${globalVar}.${encodeDigit(2)}]`,
+        quoteKey(encodeLetter('D')), // D
+        `${globalVar}[${quote('>')}]` +
+          `(${quote('=')})` +
+          `[${globalVar}.${encodeDigit(2)}]`,
       ],
     ].map(x => x.join`:`) +
-    "}";
+    '}'
 
   /**
    * `U` is created from calling `toString` prototype on an empty object.
@@ -408,34 +439,34 @@ function encodeText(code, globalVar, {strictMode = false, variable = "var", thre
    * method, but this time they are converted from numbers.
    */
 
-  const CIPHER_FROM = "0123456789abcdefghijklmnopqrstuvwxyz";
+  let CIPHER_FROM = '0123456789abcdefghijklmnopqrstuvwxyz'
 
   output +=
-    ";" +
+    ';' +
     `${globalVar}={...${globalVar},` +
     [
       [
-        quoteKey(encodeLetter("U")), // C
+        quoteKey(encodeLetter('U')), // C
         `\`\${{}[${globalVar}[${quote("'")}]]` +
-          `[${globalVar}[${quote("!")}]]()}\`` +
+          `[${globalVar}[${quote('!')}]]()}\`` +
           `[${globalVar}.${encodeDigit(8)}]`,
       ],
-      ...[..."hkqwz"].map(letter => [
+      ...[...'hkqwz'].map(letter => [
         quoteKey(encodeLetter(letter)),
         `(+(${encodeString(CIPHER_FROM.indexOf(letter))}))` +
           `[${globalVar}[${quote("'")}]](${encodeString(36)})`,
       ]),
     ].map(x => x.join`:`) +
-    "}";
+    '}'
 
-  const IDENT_MAP_3 = {
-    fromCharCode: "@",
-    keys: "&",
-    raw: "`",
+  let IDENT_MAP_3 = {
+    fromCharCode: '@',
+    keys: '&',
+    raw: '`',
     toUpperCase: '"',
-  };
+  }
 
-  output += ";" + encodeProps(IDENT_MAP_3);
+  output += ';' + encodeProps(IDENT_MAP_3)
 
   /**
    * TRANSFORMATION
@@ -457,95 +488,126 @@ function encodeText(code, globalVar, {strictMode = false, variable = "var", thre
    *   ignoring all boundaries.
    */
 
-  const CIPHER_TO = "_.:;!?*+^-=<>~'\"`/|#$%&@{}()[]\\,";
-  const IDENT_MAP = {...IDENT_MAP_1, ...IDENT_MAP_2, ...IDENT_MAP_3};
+  let CIPHER_TO = '_.:;!?*+^-=<>~\'"`/|#$%&@{}()[]\\,'
+  let IDENT_MAP = {...IDENT_MAP_1, ...IDENT_MAP_2, ...IDENT_MAP_3}
 
   /**
    * TRANSFORMATION
    *
-   * In the transformation stage, the text is split into runs of
-   * different sizes, each containing a different set of characters,
-   * which include:
+   * These functions encode the text using bijective numeration, where
+   * every string with a given character set can be represented with a
+   * natural number and vice versa.
    *
-   * - Whitespace.
-   * - All 32 ASCII punctuation and symbol characters, which are
-   *   included literally without change.
-   * - All strings already defined in the output document, which are:
-   *   - strings used for properties and method names
-   *   - constructor names
-   *   - constants (except null)
-   *   and all substrings, 2 characters or more thereof, all
-   *   next to word boundaries.
-   * - Runs of all other characters, including Unicode sequences,
-   *   ignoring all boundaries.
+   * BigInt is used as an intermediate data type for conversion between
+   * the 32 characters and the input text.
    */
-
   function encodeBijective(int, chars) {
-    chars = [...new Set(chars)];
-    var b = BigInt;
-    var base = b(chars.length);
-    var index = (int = b(int)) % base || base;
-    var result = chars[index - 1n];
-    if (int > 0n)
+    chars = [...new Set(chars)]
+    var b = BigInt
+    var base = b(chars.length)
+    var index = (int = b(int)) % base || base
+    var result = chars[index - 1n]
+    if (int <= 0n) return ''
+    else
       while ((int = (int - 1n) / base) > 0n)
-        result = chars[(index = int % base || base) - 1n] + result;
-    else return "";
-    return result;
+        result = chars[(index = int % base || base) - 1n] + result
+    return result
   }
 
   function decodeBijective(str, chars) {
-    chars = [...new Set(chars)];
-    str = [...str];
-    var b = BigInt;
-    var result = 0n;
-    var base = b(chars.length);
-    var strLen = str.length;
+    chars = [...new Set(chars)]
+    str = [...str]
+    var b = BigInt
+    var result = 0n
+    var base = b(chars.length)
+    var strLen = str.length
     for (var index = 0; index < strLen; index++)
-      result += b(chars.indexOf(str[index]) + 1) * base ** b(strLen - index - 1);
-    return result;
+      result += b(chars.indexOf(str[index]) + 1) * base ** b(strLen - index - 1)
+    return result
   }
 
-  function compressRange(chars, digits, sep = ",", sub = ".") {
-    digits = [...new Set(digits)].filter(digit => digit != sep && digit != sub).join``;
+  function compressRange(chars, digits, sep = ',', sub = '.') {
+    digits = [...new Set(digits)].filter(digit => digit != sep && digit != sub)
+      .join``
 
     return [...new Set(chars)]
       .map(char => char.codePointAt())
       .sort((x, y) => x - y)
       .reduce((acc, cur, idx, src) => {
-        var prev = src[idx - 1];
-        var diff = cur - prev;
+        var prev = src[idx - 1]
+        var diff = cur - prev
         if (idx > 0 && diff == prev - src[idx - 2]) {
-          var last = acc.length - 1;
-          acc[last][1] = cur;
-          if (diff > 1) acc[last][2] = diff;
-        } else acc.push([cur]);
-        return acc;
+          var last = acc.length - 1
+          acc[last][1] = cur
+          if (diff > 1) acc[last][2] = diff
+        } else acc.push([cur])
+        return acc
       }, [])
       .map(num => num.map(x => encodeBijective(x, digits)).join(sub))
-      .join(sep);
+      .join(sep)
   }
 
-  function expandRange(run, digits, sep = ",", sub = ".") {
-    function range(start, end, step, offset) {
-      var len = (Math.abs(end - start) + (offset || 0) * 2) / (step || 1) + 1;
-      var direction = start < end ? 1 : -1;
-      var begin = start - direction * (offset || 0);
-      var delta = direction * (step || 1);
-      return [...Array(len).keys()].map(index => begin + delta * index);
+  function expandRange(run, digits, sep = ',', sub = '.') {
+    function range(start, end, step = 1, offset = 0) {
+      var direction = start < end ? 1 : -1
+      return [
+        ...Array((Math.abs(end - start) + offset * 2) / step + 1).keys(),
+      ].map(index => start - direction * offset + direction * step * index)
     }
 
-    digits = [...new Set(digits)].filter(digit => digit != sep && digit != sub).join``;
+    digits = [...new Set(digits)].filter(digit => digit != sep && digit != sub)
+      .join``
 
     return run
       .split(sep)
       .map(end => {
-        var res = end.split(sub).map(num => parseInt(decodeBijective(num, digits)));
-        return res.length == 1 ? res : range(...res);
+        var res = end
+          .split(sub)
+          .map(num => +([] + decodeBijective(num, digits)))
+        return res.length == 1 ? res : range(...res)
       })
       .flat()
       .map(p => String.fromCodePoint(p))
-      .sort((x, y) => x.localeCompare(y)).join``;
+      .sort((x, y) => x.localeCompare(y)).join``
   }
+
+  let encodeFunction = (func, others) => {
+    let count = 1,
+      digits = '_$'
+
+    let code = uglify
+      .minify(`${func}`, {compress: {reduce_funcs: true}})
+      .code.replace(/^function \w+/, '')
+      .replace('){', ')=>{')
+
+    let variables = [...new Set(code.match(/\b[a-z]\b/g))]
+    variables = Object.fromEntries(
+      variables.map(v => [v, encodeBijective(count++, digits) + globalVar])
+    )
+
+    let result = code
+      .replace(
+        RegExp(`\\b(${Object.keys(variables).join`|`})\\b`, 'g'),
+        x => variables[x]
+      )
+      .match(/[a-zA-Z\d ]|[^a-zA-Z\d ]+/g)
+      .map(x =>
+        x == ' '
+          ? `${globalVar}[${quote('-')}]`
+          : /[a-zA-Z\d]/.test(x)
+          ? encodeString(x)
+          : quote(x)
+      ).join`+`
+
+    console.log(code + '\n')
+
+    return `${globalVar}[${quote('=')}](${result})`
+  }
+
+  console.log(encodeFunction(expandRange))
+  console.log(encodeFunction(compressRange))
+  console.log(encodeFunction(encodeBijective))
+  console.log(encodeFunction(decodeBijective))
 
   /**
    * UTF-16 STRINGS
@@ -564,21 +626,31 @@ function encodeText(code, globalVar, {strictMode = false, variable = "var", thre
    * there's no need to explicitly write `.join(',')`.
    */
 
-  const alnumBase32 = s =>
-    parseInt(s, 36).toString(32).split``.map(c => CIPHER_TO[CIPHER_FROM.indexOf(c)]).join``;
+  let alnumBase32 = s =>
+    parseInt(s, 36).toString(32).split``.map(
+      c => CIPHER_TO[CIPHER_FROM.indexOf(c)]
+    ).join``
 
-  const alnumBase32Decode = a =>
-    parseInt(a.split``.map(a => CIPHER_FROM[CIPHER_TO.indexOf(a)]).join``, 32).toString(36);
+  let alnumBase32Decode = a =>
+    parseInt(
+      a.split``.map(a => CIPHER_FROM[CIPHER_TO.indexOf(a)]).join``,
+      32
+    ).toString(36)
 
-  const uniBase31 = s =>
+  let uniBase31 = s =>
     `${[...Array(s.length)].map(
-      (x, i) => [...s.charCodeAt(i).toString(31)].map(c => CIPHER_TO[CIPHER_FROM.indexOf(c)]).join``
-    )}`;
+      (x, i) =>
+        [...s.charCodeAt(i).toString(31)].map(
+          c => CIPHER_TO[CIPHER_FROM.indexOf(c)]
+        ).join``
+    )}`
 
-  const uniBase31Decode = a =>
+  let uniBase31Decode = a =>
     a.split`,`
-      .map(a => parseInt([...a].map(a => CIPHER_FROM[CIPHER_TO.indexOf(a)]).join``, 31))
-      .map(a => String.fromCharCode(a)).join``;
+      .map(a =>
+        parseInt([...a].map(a => CIPHER_FROM[CIPHER_TO.indexOf(a)]).join``, 31)
+      )
+      .map(a => String.fromCharCode(a)).join``
 
   /**
    * UTF-16 STRINGS
@@ -600,36 +672,39 @@ function encodeText(code, globalVar, {strictMode = false, variable = "var", thre
    * a few surgical regex substitutions.
    */
 
-  const UNICODE_MACRO =
-    "a=>a.split`,`.map(a=>parseInt(a.split``.map(a=>CIPHER_FROM[CIPHER_TO.indexOf(a)]).join``,31)).map(a=>String.fromCharCode(a)).join``"
-      .replace("CIPHER_FROM", "[...Array(+(36)).keys()].map(a=>a.toString(36))")
-      .replace("CIPHER_TO", quote(CIPHER_TO))
+  let UNICODE_MACRO =
+    'a=>a.split`,`.map(a=>parseInt(a.split``.map(a=>CIPHER_FROM[CIPHER_TO.indexOf(a)]).join``,31)).map(a=>String.fromCharCode(a)).join``'
+      .replace('CIPHER_FROM', '[...Array(+(36)).keys()].map(a=>a.toString(36))')
+      .replace('CIPHER_TO', quote(CIPHER_TO))
       .replace(/\.toString\b/g, ident => `[${globalVar}[${quote("'")}]]`)
       .replace(/\b\d+\b/g, match => encodeString(match))
-      .replace("parseInt", `${globalVar}[${quote("~")}]`)
-      .replace(/\ba\b/g, "_" + globalVar)
+      .replace('parseInt', `${globalVar}[${quote('~')}]`)
+      .replace(/\ba\b/g, '_' + globalVar)
       .replace(
         /\.\b(keys|split|map|indexOf|join|fromCharCode)\b/g,
         p1 => `[${globalVar}[${quote(IDENT_MAP[p1.slice(1)])}]]`
       )
-      .replace(/\b(Array|String)\b/g, match => `${CONSTRUCTORS[match]}[${globalVar}.$]`);
+      .replace(
+        /\b(Array|String)\b/g,
+        match => `${CONSTRUCTORS[match]}[${globalVar}.$]`
+      )
 
-  const ALNUM_MACRO =
-    "a=>parseInt(a.split``.map(a=>CIPHER_FROM[CIPHER_TO.indexOf(a)]).join``,32).toString(36)"
-      .replace("CIPHER_FROM", "[...Array(+(36)).keys()].map(a=>a.toString(36))")
-      .replace("CIPHER_TO", quote(CIPHER_TO))
-      .replace("Array", match => `[][${globalVar}.$]`)
-      .replace("parseInt", `${globalVar}[${quote("~")}]`)
+  let ALNUM_MACRO =
+    'a=>parseInt(a.split``.map(a=>CIPHER_FROM[CIPHER_TO.indexOf(a)]).join``,32).toString(36)'
+      .replace('CIPHER_FROM', '[...Array(+(36)).keys()].map(a=>a.toString(36))')
+      .replace('CIPHER_TO', quote(CIPHER_TO))
+      .replace('Array', match => `[][${globalVar}.$]`)
+      .replace('parseInt', `${globalVar}[${quote('~')}]`)
       .replace(/\.toString\b/g, ident => `[${globalVar}[${quote("'")}]]`)
       .replace(/\b\d+\b/g, match => encodeString(match))
-      .replace(/\ba\b/g, "_" + globalVar)
+      .replace(/\ba\b/g, '_' + globalVar)
       .replace(
         /\.\b(keys|map|indexOf|join)\b/g,
         p1 => `[${globalVar}[${quote(IDENT_MAP[p1.slice(1)])}]]`
-      );
+      )
 
-  output += ";" + `${globalVar}[+[]]=${UNICODE_MACRO}`;
-  output += ";" + `${globalVar}[~[]]=${ALNUM_MACRO}`;
+  output += ';' + `${globalVar}[+[]]=${UNICODE_MACRO}`
+  output += ';' + `${globalVar}[~[]]=${ALNUM_MACRO}`
 
   /**
    * UTF-16 STRINGS
@@ -648,18 +723,18 @@ function encodeText(code, globalVar, {strictMode = false, variable = "var", thre
    * there's no need to explicitly write `.join(',')`.
    */
 
-  console.log("Header generated");
-  console.log("Mapping keys...");
+  console.log('Header generated')
+  console.log('Mapping keys...')
 
   // CONSTANTS
-  const RE_CONSTANTS = [
-    "true",
-    "false",
-    "Infinity",
-    "NaN",
-    "undefined",
+  let RE_CONSTANTS = [
+    'true',
+    'false',
+    'Infinity',
+    'NaN',
+    'undefined',
     Object.keys(IDENT_MAP),
-  ].flat();
+  ].flat()
 
   /**
    * PART 4: ENCODING
@@ -673,109 +748,101 @@ function encodeText(code, globalVar, {strictMode = false, variable = "var", thre
    * string.
    */
 
-  const keyGen = (function* () {
-    const digitsTo = CIPHER_TO,
-      digitsFrom = "0123456789abcdefghijklmnopqrstuvwxyz";
+  keyGen = (function* () {
+    let digitsTo = CIPHER_TO,
+      digitsFrom = '0123456789abcdefghijklmnopqrstuvwxyz'
 
-    const bijective = (int, sequence) => {
-      const length = sequence.length;
-      if (!int) return "";
-      if (int <= 0) return bijective(-int, sequence);
-      if (int <= length) return sequence[int - 1];
-      let index = int % length || length;
-      let result = [sequence[index - 1]];
-      while ((int = Math.floor((int - 1) / length)) > 0) {
-        index = int % length || length;
-        result.push(sequence[index - 1]);
-      }
-      return result.reverse().join``;
-    };
-
-    const existingKeys = new Set(
+    let existingKeys = new Set(
       [
         "'", // toString
-        "-", // space
+        '-', // space
         Object.values(IDENT_MAP),
         Object.values(GLOBAL_FUNC),
-        [..."abcdefghijklmnopqrstuvwxyz"].map(encodeLetter),
-        [..."ABCDEFINORSU"].map(encodeLetter),
-        [..."0123456789"].map(encodeDigit),
+        [...'abcdefghijklmnopqrstuvwxyz'].map(encodeLetter),
+        [...'ABCDEFINORSU'].map(encodeLetter),
+        [...'0123456789'].map(encodeDigit),
       ].flat()
-    );
+    )
 
-    for (let i = 1; i <= Number.MAX_SAFE_INTEGER; i++) {
-      const key = bijective(i, digitsTo);
-      if (!existingKeys.has(key)) yield key;
+    for (let i = 1; ; i++) {
+      let key = encodeBijective(i, digitsTo)
+      if (!existingKeys.has(key)) yield key
     }
 
-    return;
-  })();
+    return
+  })()
 
   // TESTS
-  const testParseInt = x =>
-    /^[1-9a-z][\da-z]+$/.test(x) && parseInt(x, 36) <= Number.MAX_SAFE_INTEGER;
-  const testParseIntUpper = x =>
-    /^[1-9A-Z][\dA-Z]+$/.test(x) && parseInt(x, 36) <= Number.MAX_SAFE_INTEGER;
+  let testParseInt = x =>
+    /^[1-9a-z][\da-z]+$/.test(x) && parseInt(x, 36) <= Number.MAX_SAFE_INTEGER
+  let testParseIntUpper = x =>
+    /^[1-9A-Z][\dA-Z]+$/.test(x) && parseInt(x, 36) <= Number.MAX_SAFE_INTEGER
 
-  const testRawString = string => {
+  let testRawString = string => {
     try {
-      if (/(?<!\\)\$\{/.test(string)) throw new Error();
-      eval(`(\`${string}\`)`);
-      return true;
+      if (/(?<!\\)\$\{/.test(string)) throw new Error()
+      eval(`(\`${string}\`)`)
+      return true
     } catch {
-      return false;
+      return false
     }
-  };
+  }
 
-  const WORD_MAP = (() => {
-    let words = code.match(REGEXPS.word) ?? [];
+  let WORD_MAP = (() => {
+    let words = code.match(REGEXPS.word) ?? []
 
     let wordMap = Object.entries(_.countBy(words))
       .filter(([word, frequency]) => {
-        const alreadyDefined = [
+        let alreadyDefined = [
           ...Object.keys({...IDENT_MAP, ...CONSTRUCTORS, ...CONSTANTS}),
-          ...(CIPHER_FROM + "ABCDEFINORSU"),
-        ];
-        return !alreadyDefined.includes(word) && frequency > threshold;
+          ...(CIPHER_FROM + 'ABCDEFINORSU'),
+        ]
+        return !alreadyDefined.includes(word) && frequency > threshold
       })
       .sort(([c, a], [d, b]) => b - a || c.length - d.length)
-      .map(([word]) => [word, keyGen.next().value]);
+      .map(([word]) => [word, keyGen.next().value])
 
-    return Object.fromEntries(wordMap);
-  })();
+    return Object.fromEntries(wordMap)
+  })()
 
   output +=
-    ";" +
-    `${globalVar}={...${globalVar},[+!${quote("")}]:{` +
+    ';' +
+    `${globalVar}={...${globalVar},[+!${quote('')}]:{` +
     Object.entries(WORD_MAP)
       .map(([word, key]) => {
-        const prefix = testParseInt(word) ? "-" : testParseIntUpper(word) ? "=" : "_";
-        const expansion = prefix + (prefix == "_" ? uniBase31(word) : alnumBase32(word));
-        return `${quoteKey(key)}:${quote(expansion)}`;
+        let prefix = testParseInt(word)
+          ? '-'
+          : testParseIntUpper(word)
+          ? '='
+          : '_'
+        let expansion =
+          prefix + (prefix == '_' ? uniBase31(word) : alnumBase32(word))
+        return `${quoteKey(key)}:${quote(expansion)}`
       })
       .sort((x, y) => x.length - y.length || x.localeCompare(y)) +
-    "}}";
+    '}}'
 
-  const WORD_MAP_EXPR =
+  let WORD_MAP_EXPR =
     "WORD_MAP=Object.fromEntries(Object.entries(WORD_MAP).map(([k,v])=>[k,v[0]=='-'?globalVar[-1](v.slice(1)):v[0]=='='?globalVar[-1](v.slice(1)).toUpperCase():globalVar[0](v.slice(1))]))"
-      .replace(/\b(v)\b/g, match => "_" + globalVar)
-      .replace(/\b(k)\b/g, match => "$" + globalVar)
-      .replace(/\b(0)\b/g, match => "+[]")
+      .replace(/\b(v)\b/g, match => '_' + globalVar)
+      .replace(/\b(k)\b/g, match => '$' + globalVar)
+      .replace(/\b(0)\b/g, match => '+[]')
       .replace(/\b(-1)\b/g, match => `~[]`)
-      .replace(/\b(1)\b/g, match => `+!${quote("")}`)
-      .replace(/\b(WORD_MAP)\b/g, `${globalVar}[+!${quote("")}]`)
+      .replace(/\b(1)\b/g, match => `+!${quote('')}`)
+      .replace(/\b(WORD_MAP)\b/g, `${globalVar}[+!${quote('')}]`)
       .replace(/\b(globalVar)\b/g, globalVar)
       .replace(/\b(Object)\b/g, match => `{}[${globalVar}.$]`)
       .replace(
         /\.\b(map|slice|entries|fromEntries|toUpperCase)\b/g,
         p1 => `[${globalVar}[${quote(IDENT_MAP[p1.slice(1)])}]]`
-      );
+      )
 
-  output += ";" + WORD_MAP_EXPR;
-  output += ";" + `${globalVar}={...${globalVar},...${globalVar}[+!${quote("")}]}`;
+  output += ';' + WORD_MAP_EXPR
+  output +=
+    ';' + `${globalVar}={...${globalVar},...${globalVar}[+!${quote('')}]}`
 
-  console.log("Keys mapped");
-  console.log("Parsing and subbing...");
+  console.log('Keys mapped')
+  console.log('Parsing and subbing...')
 
   /**
    * PART 5: SUBSTITUTION
@@ -785,69 +852,78 @@ function encodeText(code, globalVar, {strictMode = false, variable = "var", thre
    * with empty elements in an array and returned with joins.
    */
 
-  const transform = substring =>
+  let transform = substring =>
     [...substring.matchAll(REGEXP)].map(match => {
-      const [group, substring] = Object.entries(match.groups).filter(([, val]) => !!val)[0];
+      let [group, substring] = Object.entries(match.groups).filter(
+        ([, val]) => !!val
+      )[0]
       switch (group) {
-        case "symbol": {
-          if (substring.includes("\\") && testRawString(substring))
-            return `${quote("")}[${globalVar}.$][${globalVar}[${quote("`")}]]\`${substring}\``;
-          else return quote(substring);
+        case 'symbol': {
+          if (substring.includes('\\') && testRawString(substring))
+            return `${quote('')}[${globalVar}.$][${globalVar}[${quote(
+              '`'
+            )}]]\`${substring}\``
+          else return quote(substring)
         }
 
-        case "unicode": {
-          const encoded = uniBase31(substring);
-          return `${globalVar}[+[]](${quote(encoded)})`;
+        case 'unicode': {
+          let encoded = uniBase31(substring)
+          return `${globalVar}[+[]](${quote(encoded)})`
         }
 
-        case "word": {
+        case 'word': {
           switch (true) {
             case /\b[\da-zA-FINORSU]\b/.test(substring): {
-              return encodeString(substring);
+              return encodeString(substring)
             }
-            case typeof CONSTANTS[substring] == "string": {
-              return `\`\${${CONSTANTS[substring]}}\``;
+            case typeof CONSTANTS[substring] == 'string': {
+              return `\`\${${CONSTANTS[substring]}}\``
             }
-            case typeof CONSTRUCTORS[substring] == "string": {
-              return `${CONSTRUCTORS[substring]}[${globalVar}.$][${globalVar}[${quote("?")}]]`;
+            case typeof CONSTRUCTORS[substring] == 'string': {
+              return `${
+                CONSTRUCTORS[substring]
+              }[${globalVar}.$][${globalVar}[${quote('?')}]]`
             }
-            case typeof IDENT_MAP[substring] == "string": {
-              if (isValidIdent(IDENT_MAP[substring])) return globalVar + "." + IDENT_MAP[substring];
-              else return globalVar + `[${quote(IDENT_MAP[substring])}]`;
+            case typeof IDENT_MAP[substring] == 'string': {
+              if (isValidIdent(IDENT_MAP[substring]))
+                return globalVar + '.' + IDENT_MAP[substring]
+              else return globalVar + `[${quote(IDENT_MAP[substring])}]`
             }
-            case typeof WORD_MAP[substring] == "string": {
-              return `${globalVar}[${quote(WORD_MAP[substring])}]`;
+            case typeof WORD_MAP[substring] == 'string': {
+              return `${globalVar}[${quote(WORD_MAP[substring])}]`
             }
             case testParseIntUpper(substring): {
-              const encoded = alnumBase32(substring);
-              return `${globalVar}[~[]](${quote(encoded)})[${globalVar}[${quote('"')}]]()`;
+              let encoded = alnumBase32(substring)
+              return `${globalVar}[~[]](${quote(encoded)})[${globalVar}[${quote(
+                '"'
+              )}]]()`
             }
             case testParseInt(substring): {
-              const encoded = alnumBase32(substring);
-              return `${globalVar}[~[]](${quote(encoded)})`;
+              let encoded = alnumBase32(substring)
+              return `${globalVar}[~[]](${quote(encoded)})`
             }
             default: {
-              const encoded = uniBase31(substring);
-              return `${globalVar}[+[]](${quote(encoded)})`;
+              let encoded = uniBase31(substring)
+              return `${globalVar}[+[]](${quote(encoded)})`
             }
           }
         }
       }
-    }).join`+`;
+    }).join`+`
 
-  const expression =
-    "[" +
+  let expression =
+    '[' +
     code.split` `.map(transform) +
-    "]" +
-    `[${globalVar}[${quote("%")}]]` +
-    `(${globalVar}[${quote("-")}])`;
+    ']' +
+    `[${globalVar}[${quote('%')}]]` +
+    `(${globalVar}[${quote('-')}])`
 
-  output += ";" + `_${globalVar}=${expression}`;
+  output += ';' + `_${globalVar}=${expression}`
 
   // Export
-  output += ";" + "module.exports.result=_" + globalVar;
+  output += ';' + 'module.exports.result=_' + globalVar
 
-  console.log("Script complete!");
+  console.log('Script complete!')
 
   return {
     result: output,
@@ -859,13 +935,13 @@ Input length: ${enUS.format(code.length)}
 Expression length: ${enUS.format(expression.length)}
 Ratio: ${expression.length / code.length}
 Output length: ${enUS.format(output.length)}`,
-  };
+  }
 }
 
-const {result, stats} = encodeText(text, "$", {
+let {result, stats} = encodeText(text, '$', {
   strictMode: true,
-});
+})
 
-console.log(stats);
+console.log(stats)
 
-fs.writeFileSync("./output.js", result);
+fs.writeFileSync('./output.js', result)

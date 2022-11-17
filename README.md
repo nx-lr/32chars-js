@@ -12,13 +12,11 @@ This project is a testament to the many existing JavaScript encoders out there, 
 
 ## Background
 
-JavaScript is a programming language with many weird and complicated parts. Aside from its popularity, one can write programs without any letters or numbers, and to an extreme, only [five](https://aem1k.com/five/) or [six](http://www.jsfuck.com/) possible symbols. These compilers output _extremely verbose_ code, where a single character may expand to thousands.
+JavaScript is a programming language with many weird and complicated parts. Some programmers have found out that one can write JavaScript with a minimal set of characters numbers, up to [five](https://aem1k.com/five/) or [six](http://www.jsfuck.com/) possible symbols. These compilers output _extremely verbose_ code, where a single character may expand to thousands.
 
-Program code contains a wide variety of letters, numbers, symbols, and spaces, making code terser, parsable and readable. This project aims to output code that still does not contain any letters or numbers, but with still enough characters to produce a minimal output. There are 32 ASCII symbol characters, most of them being valid JavaScript tokens.
+Program code contains a wide variety of letters, numbers, symbols, and spaces, making code terser, parsable and readable. This project aims to output code that still does not contain any letters or numbers, but with still enough characters to produce the shortest possible output. There are 32 symbol characters within the ASCII range which seems just right considering that most, if not all of these characters carry special meaning in programming, even while acting as encoding characters.
 
-Rather than encoding every character in the input string one by one, we break the string into runs that have a length of at least one character. This way, we effectively minimize the amount of operations performed by the JavaScript engine, while keeping the overall output short.
-
-The compiler encodes the string piece by piece. Parts of the input string which are combinations of those 32 characters remain untouched. It works backward, determining which JavaScript's built-in operations produce the original string.
+Rather than encoding every character in the input string one by one, we break the string into runs that have a length of at least one character. This way, we effectively minimize the amount of operations performed by the JavaScript engine, while keeping the overall output short. So, the compiler breaks and encodes parts of the string into parsable tokens and then determines which JavaScript's built-in operations produce the original string. Parts of the string containing those same 32 ASCII symbol characters remain unchanged and quoted in string literals.
 
 ## Explanation
 
@@ -29,12 +27,12 @@ With a large character set, most of these symbols also are valid JavaScript toke
 - `+` to concatenate strings, add numbers and cast things into numbers
 - Arithmetic `+ - * / % **` and bitwise `& | ^ ~ << >> >>>` operators with a `Number` and `BigInt` on either side
 - `.` to access properties of objects
-- `,` to delimit array, object, and function elements
-- `()` to call functions and group expressions
+- `,` to delimit array elements, function arguments and object properties, as well as assign multiple variables in a single statement
+- `()` to call functions and group expressions with different precedences
 - `[]` to access array and object elements and create array literals
 - `{}` to delimit object literals and code blocks
-- `${}` to interpolate expressions in template strings
-- `/` to delimit regular expression literals
+- `${}` to interpolate expressions in template strings, converting them into strings if untagged
+- `/` to delimit regular expression literals and divide numbers
 
 We have syntax to form strings. Strings are very fundamental to obfuscation, as we can store and hash custom data. However, there are many other ways to create strings, using JavaScript's newest syntax and functionality: `RegExp` and `BigInt` data types, and many new `String`, `Array`, and `Object` methods.
 
@@ -116,7 +114,7 @@ We assign these properties through array destructuring. The right hand side is t
 
 In this case, for base above 10, the letters of the alphabet indicate digits greater than 9. For example, for hexadecimal numbers (base 16) `a` through `f` are used.
 
-With the `Function` constructor, we can execute code contained inside a string as native JavaScript. For example, with an expression such as `Function('return eval')`, we retrieve the builtin functions `eval`, `escape`.
+With the `Function` constructor, we can execute code contained inside a string as native JavaScript. For example, with an expression such as `Function('return eval')`, we retrieve the built-in functions `eval`, `escape`.
 
 The letters `C` (from `<` or `%3C`) and D (from `=` or `%3D`) and `D` come from indexing the last hexadecimal digit from a URL string. All characters that are not an ASCII letter, number, or one of the symbols `-`, `_`, `.`, and `~`, are percent-encoded, into a form `%XX` or `%uXXXX` for higher code points, where X is an _uppercase_ hexadecimal digit.
 
