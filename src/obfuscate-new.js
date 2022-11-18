@@ -238,12 +238,12 @@ function encode(text, globalVar = '$', nGramLength = 256) {
 
     let result = code
       .replace(
-        RegExp(`\\b(${_.keys(variables).join`|`})\\b`, 'g'),
-        match => variables[match]
-      )
-      .replace(
         RegExp(`\\b(${_.keys(functionCiphers).join`|`})\\b`, 'g'),
         match => `${globalVar}[${functionCiphers[match]}]`
+      )
+      .replace(
+        RegExp(`\\b(${_.keys(variables).join`|`})\\b`, 'g'),
+        match => variables[match]
       )
       .match(/ |[\da-z]+|[^ \da-z]+/gi)
       .map(match =>
@@ -273,10 +273,6 @@ function encode(text, globalVar = '$', nGramLength = 256) {
     }).code
 
     let result = code
-      .replace(
-        RegExp(`\\b(${_.keys(functionCiphers).join`|`})\\b`, 'g'),
-        match => `${globalVar}[${functionCiphers[match]}]`
-      )
       .match(/ |[\da-z]+|[^ \da-z]+/gi)
       .map(match =>
         _.keys(constructorExprs).includes(match)
@@ -310,7 +306,7 @@ function encode(text, globalVar = '$', nGramLength = 256) {
 
   // HEADER
 
-  console.info('Generating header;')
+  console.info('Generating header')
 
   let header = `${globalVar}=~[];`
 
@@ -448,12 +444,6 @@ function encode(text, globalVar = '$', nGramLength = 256) {
     ].map(x => x.join`:`) +
     '};'
 
-  console.log(
-    header +
-      `console.log(Object.fromEntries(Object.entries(${globalVar})` +
-      '.sort(([,a],[,b])=>String(a).localeCompare(String(b)))))'
-  )
-
   // CHARACTER FUNCTIONS
 
   console.info('Building character sets')
@@ -473,7 +463,7 @@ function encode(text, globalVar = '$', nGramLength = 256) {
       .sync(`./node*/*unicode*/*/Script/*`)
       .filter(dir => !/\.\w+$/.test(dir))
       .map(dir => {
-        let name = dir.split('/').reverse()[0],
+        let [name] = dir.split('/').reverse(),
           regex = require(`@unicode/unicode-14.0.0/Script/${name}/regex.js`)
         return [name, regex]
       })
@@ -526,7 +516,7 @@ function encode(text, globalVar = '$', nGramLength = 256) {
 
     // Capturing groups for identifiers
     Alnum: /[a-zA-Z0][a-zA-Z\d]+|[a-zA-Z]/giu,
-    Integer: /0|[1-9]\d*/giu,
+    Digit: /0|[1-9]\d*/giu,
 
     // Scripts and categories
     ...groupRegExps,
@@ -599,10 +589,11 @@ function encode(text, globalVar = '$', nGramLength = 256) {
   }
 
   function expandRange(run, digits, sep = ',', sub = '.') {
-    function range(start, end, step = 1, offset = 0) {
+    function range(start, end, step = 1) {
       var direction = start < end ? 1 : -1
-      return [...Array((Math.abs(end - start) + offset * 2) / step + 1)].map(
-        ($, index) => start - direction * offset + direction * step * index
+      var length = Math.abs(end - start) / step + 1
+      return [...Array(length)].map(
+        ($, index) => start + direction * step * index
       )
     }
 
@@ -625,9 +616,9 @@ function encode(text, globalVar = '$', nGramLength = 256) {
 
   let tokens = [...text.matchAll(bigRegExp)]
     .map(match => {
-      let [group, text] = _.entries(match.groups).filter(
+      let [[group, text]] = _.entries(match.groups).filter(
         ([, val]) => val != null
-      )[0]
+      )
       return _.chunk(text, nGramLength).map(text => ({
         group,
         text: text.join``,
@@ -682,60 +673,76 @@ function encode(text, globalVar = '$', nGramLength = 256) {
       )
     )
 
-    // Integers
-    if (tokenGroups.Integer)
-      tokenGroups.Integer = tokenGroups.Integer.filter(
-        ([num]) => num >= 10
-      ).map(values => [
-        ...values,
-        keyGen.next().value,
-        encodeBijective(values[0], punct),
-      ])
+    tokenGroups = _.fromPairs(_.entries(tokenGroups).filter(([, v]) => !!v))
+
+    // Digits
+    if (tokenGroups.Digit)
+      tokenGroups.Digit = tokenGroups.Digit.filter(([num]) => num >= 10).map(
+        ([substr]) => [
+          substr,
+          keyGen.next().value,
+          encodeBijective(substr, punct),
+        ]
+      )
 
     // Alphanumerics
     if (tokenGroups.Alnum)
       tokenGroups.Alnum = tokenGroups.Alnum.filter(
         ([ident]) => !identBlacklist.has(ident)
-      ).map(values => [
-        ...values,
+      ).map(([substr]) => [
+        substr,
         keyGen.next().value,
-        encodeBijective(decodeBijective(values[0], alnumDigits), punct),
+        encodeBijective(decodeBijective(substr, alnumDigits), punct),
       ])
 
     // All other categories
     for (let tokenGroup in tokenGroups)
       if (
         tokenGroups.hasOwnProperty(tokenGroup) &&
-        !['Alnum', 'Integer'].includes(tokenGroup)
+        !['Alnum', 'Digit'].includes(tokenGroup)
       ) {
-        let charset = characters[tokenGroup][0]
+        let [charset] = characters[tokenGroup]
         let tokens = tokenGroups[tokenGroup]
-        tokenGroups[tokenGroup] = tokens.map(values => [
-          ...values,
+        tokenGroups[tokenGroup] = tokens.map(([substr]) => [
+          substr,
           keyGen.next().value,
-          encodeBijective(decodeBijective(values[0], charset), punct),
+          encodeBijective(decodeBijective(substr, charset), punct),
         ])
       }
 
     return tokenGroups
   })()
 
-  metadata = _.mapValues(metadata, v => v.map(([s, , k, v]) => [s, k, v]))
-
-  console.log(metadata)
-
-  let decoders = {
-    Integer: `_=>$[~[]](_,$[+{}])`,
+  let mappers = {
+    Digit: `_=>$[~[]](_,$[+{}])`,
     Alnum: `_=>$[+[]]($[~[]](_,$[+{}]),$[!''/![]])`,
     ..._.fromPairs(
-      _.entries(characters).map(([k, v]) => [
-        k,
-        `_=>$[+[]]($[~[]](_,$[+{}]),$[!''](${quote(v[1])}))`,
+      _.entries(characters).map(([key, [, val]]) => [
+        key,
+        `_=>$[+[]]($[~[]](_,$[+{}]),$[!''](${quote(val)}))`,
       ])
     ),
   }
-  
-  console.log(decoders)
 
-  return {metadata, characters, decoders, tokens}
+  let statements = _.keys(metadata).map(key => {
+    let mapper = mappers[key]
+    let tokens = metadata[key].map(([, x, y]) => [x, y])
+
+    let expr =
+      `[${tokens.map(([x]) => `${globalVar}[${quote(x)}]`)}]=` +
+      `[${tokens.map(([, y]) => quote(y))}]` +
+      `[${globalVar}[${quote('%')}]]` +
+      `(${mapper});`
+
+    return expr
+  }).join``
+
+  console.log(
+    header +
+      statements +
+      `console.log(Object.fromEntries(Object.entries(${globalVar})` +
+      '.sort(([,a],[,b])=>String(a).localeCompare(String(b)))))'
+  )
+
+  return {metadata, characters, mappers, tokens}
 }
