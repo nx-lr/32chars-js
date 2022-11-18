@@ -495,10 +495,10 @@ function encode(text, globalVar = '$', nGramLength = 256) {
   )
 
   let groupRegExps = _.fromPairs(
-    _.entries(characters).map(([name, chars]) => {
-      console.log(chars)
-      return [name, regenerate([...chars]).toRegExp()]
-    })
+    _.entries(characters).map(([name, chars]) => [
+      name,
+      regenerate([...chars]).toRegExp(),
+    ])
   )
 
   characters = _.mapValues(characters, group => {
@@ -539,8 +539,6 @@ function encode(text, globalVar = '$', nGramLength = 256) {
     _.entries(regExps).map(([key, {source}]) => `(?<${key}>${source})`).join`|`,
     'gu'
   )
-
-  console.log(bigRegExp)
 
   // ENCODING FUNCTIONS
 
