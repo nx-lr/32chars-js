@@ -478,7 +478,7 @@ function encode(text, globalVar = '$', nGramLength = 256) {
         else return category
     for (let [script, regex] of _.entries(scripts))
       if (regex.test(char)) return script
-    return 'unknown'
+    return 'Unknown'
   }
 
   // CHARACTER MAPPING
@@ -519,7 +519,9 @@ function encode(text, globalVar = '$', nGramLength = 256) {
 
     // Scripts and categories
     ...groupRegExps,
+  }
 
+  let oldRegExps = {
     // Unicode catch-all points
     Letter: /\p{L}+/gu,
     Mark: /\p{M}+/gu,
@@ -617,7 +619,6 @@ function encode(text, globalVar = '$', nGramLength = 256) {
       let [group, text] = _.entries(match.groups).filter(
         ([, val]) => val != null
       )[0]
-
       return _.chunk(text, nGramLength).map(text => ({
         group,
         text: text.join``,
