@@ -9,7 +9,7 @@ let uglify = require('uglify-js')
 
 let text = fs.readFileSync('./input.txt', 'utf8')
 
-function encode(text, globalVar = '$') {
+function encode(text, globalVar = '$', nGramLength = 200) {
   // CONSTANTS
 
   let letters = 'etaoinshrdlucmfwypvbgkqjxz'
@@ -211,18 +211,22 @@ function encode(text, globalVar = '$') {
   }
 
   function encodeFunction(func) {
-    let count = 1,
-      digits = '_$'
+    let digits = '_$'
 
     let code = uglify
       .minify(String(func), {compress: {reduce_funcs: true}})
       .code.replace(/^function \w+/, '')
       .replace('){', ')=>{')
 
+    let keyGen = (function* () {
+      for (let i = 1; ; i++) {
+        let key = encodeBijective(i, digits)
+        if (key != globalVar) yield key
+      }
+    })()
+
     let variables = [...new Set(code.match(/\b[a-z]\b/g))]
-    variables = _.fromPairs(
-      variables.map(v => [v, encodeBijective(count++, digits) + globalVar])
-    )
+    variables = _.fromPairs(variables.map(v => [v, keyGen.next().value]))
 
     let result = code
       .replace(
@@ -252,8 +256,11 @@ function encode(text, globalVar = '$') {
     return `${globalVar}[${quote('=')}](${result})`
   }
 
+  let reservedVars = _.range(1, 64).map(x => encodeBijective(BigInt(x), '_$'))
+
   function encodeExpression(expr) {
     let code = uglify.minify(String(expr), {
+      mangle: {reserved: reservedVars},
       compress: {reduce_funcs: true},
     }).code
 
@@ -309,7 +316,7 @@ function encode(text, globalVar = '$') {
 
     return [...new Set(chars)]
       .map(char => char.codePointAt())
-      .sort((x, y) => x - y)
+      .sort((a, b) => a - b)
       .reduce((acc, cur, idx, src) => {
         var prev = src[idx - 1]
         var diff = cur - prev
@@ -365,7 +372,7 @@ function encode(text, globalVar = '$') {
 
   for (let [constant, expr] of _.entries(constantExprs))
     for (let char of constant)
-      if (/[a-zA-Z ]/.test(char) && !(char in charMap1))
+      if (/[a-z ]/i.test(char) && !(char in charMap1))
         charMap1[char] = [expr, constant.indexOf(char)]
 
   let charMap1Expr =
@@ -388,11 +395,7 @@ function encode(text, globalVar = '$') {
   for (let [key, exprs] of _.entries(constructorExprs)) {
     let constructor = eval(key).toString()
     for (let char of constructor) {
-      if (
-        /[a-zA-Z ]/.test(char) &&
-        !(char in charMap1) &&
-        !(char in charMap2)
-      ) {
+      if (/[a-z ]/i.test(char) && !(char in charMap1) && !(char in charMap2)) {
         let index = constructor.indexOf(char)
         let expansion =
           `\`\${${cycle(exprs)}[${globalVar}.$]}\`` +
@@ -512,7 +515,7 @@ function encode(text, globalVar = '$') {
   let regExps = {
     punct: /[!-\/:-@[-`{-~]+/gu,
     alnum: /[a-zA-Z][a-zA-Z\d]*|0[a-zA-Z\d]+/gu,
-    number: /0|[1-9]\d*/giu,
+    digit: /0|[1-9]\d*/giu,
     unicode: /[\0-\x1f\x7f-\u{10ffff}]+/gu,
   }
 
@@ -546,12 +549,18 @@ function encode(text, globalVar = '$') {
     a < b ? -1 : a > b ? 1 : 0
   ).join``
 
-  let tokens = [...text.matchAll(bigRegExp)].map(match => {
-    let [group, text] = _.entries(match.groups).filter(
-      ([, val]) => val != null
-    )[0]
-    return {group, text}
-  })
+  let tokens = [...text.matchAll(bigRegExp)]
+    .map(match => {
+      let [group, text] = _.entries(match.groups).filter(
+        ([, val]) => val != null
+      )[0]
+
+      return _.chunk(text, nGramLength).map(text => ({
+        group,
+        text: text.join``,
+      }))
+    })
+    .flat(1)
 
   let identBlacklist = [wordCiphers, constantExprs, constructorExprs]
     .map(_.keys)
@@ -571,8 +580,8 @@ function encode(text, globalVar = '$') {
     )
 
     // Numbers
-    if (tokenGroups.number)
-      tokenGroups.number = tokenGroups.number
+    if (tokenGroups.digit)
+      tokenGroups.digit = tokenGroups.digit
         .filter(([num]) => num >= 10)
         .map(values => [
           ...values,
