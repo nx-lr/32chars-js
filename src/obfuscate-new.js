@@ -7,8 +7,11 @@ let glob = require('glob')
 let isValidIdent = require('is-valid-identifier')
 let jsesc = require('jsesc')
 let uglify = require('uglify-js')
+let regenerate = require('regenerate')
 
 let text = fs.readFileSync('./input.txt', 'utf8')
+
+encode(text)
 
 function encode(text, globalVar = '$', nGramLength = 256) {
   console.info('Fetching Unicode data')
@@ -459,11 +462,11 @@ function encode(text, globalVar = '$', nGramLength = 256) {
 
   let scripts = _.fromPairs(
     glob
-      .sync(`./node*/*unicode*/*/script/*`)
+      .sync(`./node*/*unicode*/*/Script/*`)
       .filter(dir => !/\.\w+$/.test(dir))
       .map(dir => {
         let name = dir.split('/').reverse()[0],
-          regex = require(`@unicode/unicode-14.0.0/script/${name}/regex.js`)
+          regex = require(`@unicode/unicode-14.0.0/Script/${name}/regex.js`)
         return [name, regex]
       })
   )
@@ -482,38 +485,37 @@ function encode(text, globalVar = '$', nGramLength = 256) {
 
   let codePointSort = (a, b) => a.codePointAt() - b.codePointAt()
 
-  let characters = [...new Set(text)].map(char => [
-    getCategoryOrScript(char),
-    char,
-  ])
+  let characters = [...new Set(text)]
+    .filter(char => !/[ -~]/.test(char))
+    .map(char => [getCategoryOrScript(char), char])
   characters = _.groupBy(characters, 0)
   characters = _.mapValues(
     characters,
     x => x.map(([, x]) => x).sort(codePointSort).join``
   )
 
+  let groupRegExps = _.fromPairs(
+    _.entries(characters).map(([name, chars]) => {
+      console.log(chars)
+      return [name, regenerate([...chars]).toRegExp()]
+    })
+  )
+
   characters = _.mapValues(characters, group => {
     let compressed = compressRange(group, punct)
     let expanded = expandRange(compressed, punct)
     console.assert(group == expanded)
-    return compressed
+    return [group, compressed]
   })
 
-  let groupRegExps = _.fromPairs(
-    _.keys(characters).map(name => {
-      try {
-        return [name, RegExp(String.raw`\p{Script=${name}}+`, 'gu')]
-      } catch {
-        return [name, RegExp(String.raw`\p{General_Category=${name}}+`, 'gu')]
-      }
-    })
-  )
-
   let regExps = {
-    Space: / /gu,
+    // Removed by compiler, will get added back in later
+    Space: / +/gu,
     Punct: /[!-\/:-@[-`{-~]+/gu,
+
+    // Capturing groups for identifiers
     Alnum: /[a-zA-Z][a-zA-Z\d]*|0[a-zA-Z\d]+/gu,
-    Digit: /0|[1-9]\d*/giu,
+    Integer: /0|[1-9]\d*/gu,
 
     // Scripts and categories
     ...groupRegExps,
@@ -535,6 +537,8 @@ function encode(text, globalVar = '$', nGramLength = 256) {
     _.entries(regExps).map(([key, {source}]) => `(?<${key}>${source})`).join`|`,
     'gu'
   )
+
+  console.log(bigRegExp)
 
   // ENCODING FUNCTIONS
 
@@ -666,15 +670,15 @@ function encode(text, globalVar = '$', nGramLength = 256) {
       )
     )
 
-    // Numbers
-    if (tokenGroups.Digit)
-      tokenGroups.Digit = tokenGroups.Digit.filter(([num]) => num >= 10).map(
-        values => [
-          ...values,
-          keyGen.next().value,
-          encodeBijective(values[0], punct),
-        ]
-      )
+    // Integers
+    if (tokenGroups.Integer)
+      tokenGroups.Integer = tokenGroups.Integer.filter(
+        ([num]) => num >= 10
+      ).map(values => [
+        ...values,
+        keyGen.next().value,
+        encodeBijective(values[0], punct),
+      ])
 
     // Alphanumerics
     if (tokenGroups.Alnum)
@@ -693,5 +697,3 @@ function encode(text, globalVar = '$', nGramLength = 256) {
 
   return {metadata, characters, tokens}
 }
-
-encode(text)
