@@ -191,28 +191,51 @@ const props = {
 
 ### Encoding functions
 
-The output ships with several functions, defined with the keys `0`, `-1`, `true` and `false`. These functions exist in the compiler. Since functions when converted into strings with the `.toString()` method yields the source code of the function itself, we can manipulate the source code before including them in the output.
+The output contains several functions, defined with the keys `0`, `-1`, `true` and `false` which can be formed completely with symbols.Their corresponding primitive expressions are `+[]`, `~[]`, `!''` and `![]`. These functions are defined in the compiler and also encoded in the output.
 
-**UglifyJS** parses the source code and returns a _minified_ version of the function code, with short variable names and compressed values, expressions and constructs. Since we are minimizing the number of letters and numbers in the compressed code, we have to perform more transformations to the minified source code.
+Functions can be converted into strings, which yield their source code when converted into a string. We can manipulate the source code inside the function however way we want. In this case, we want to transform the function into the shortest possible expression without using any alphanumerics.
 
-Using regular expressions, we convert the function into arrow function form `()=>{}` and all the variables and arguments converted into combinations of `_` and `$` characters. The letters and numbers in the compressed code are then substituted with the appropriate substring if they have been defined, or spelled out entirely. Calls to other functions are substituted with the appropriate property of `$` and embedded inside the string. Symbols remain untouched and are thus quoted.
-
-The substituted function string is passed into the `eval` function, thus evaluating it to an anonymous function which is assigned its alias.
+- We pass the entire function into **UglifyJS**, which returns a minified version of the source code. UglifyJS eliminates comments and dead code, shortens variables, and compresses values, expressions and statements to be as compact as possible.
+- Next, we convert the named function `function named(args)=>{body}` into an anonymous arrow function `(args)=>{body}` with a regular expression.
+- Then, we generate a lookup table of all the variables and arguments defined in the function, and substitute them with combinations of `_` and `$` characters.
+- After that, we substitute all the identifiers, numbers and spaces with the appropriate substring if they have been defined, if not they are spelled out entirely. If an uppercase letter is not defined, we attach a `.toUpperCase()` call on the equivalent ih lowercase letter.
+- Next, we substitute calls to other functions are substituted with the appropriate property of `$` as a primitive expression inside the string.
+- We quote the remaining portions of the string which are symbols, and join everything up with the string concatenation operator `+`.
+- Finally, we pass the expression inside the `eval` function, which returns an anonymous function that is then assigned its corresponding primitive expression.
 
 ### Similar strings
 
 Using various string methods, we can employ algorithms to produce similar strings, so to minimize the number of values that need to be encoded. Some substrings manipulating primitive values like `'function'`, `'Array'`, `'undefined'`, `'object'`, so we can derive substrings from those.
 
-- The `slice` returns consecutive characters within a substring by specifying a start and optional end index, for instance, `'fin'` and `'fine'` from `'undefined'`.
+- The `slice` method returns consecutive characters within a substring by specifying a start and optional end index, for instance, `'fin'` and `'fine'` from `'undefined'`.
 - The `repeat` method repeats a substring. We use a regular expression to determine the shortest pattern within the substring and how much it repeats.
 - The `split` and `'join'` method is used to join an array of "strings" with a string as its delimiter. Then, using regular expressions, we determine the optimal substring to delimit, then we recursively split and hash both the substrings and the delimiter.
 - The `replace` method is used to replace one or all substrings of a substring through insertion, deletion, or substitution to turn it into something similar. We would use a string difference checker.
 
-We divide the substring into n-grams and determine which substrings could be derived from all the non-symbol characters in the file. he compiler builds a list of all these substrings, and stores them in the global object in a separate statement should they appear in the input more than once.
+We divide the substring into n-grams and determine which substrings could be derived from all the non-symbol characters in the file. The compiler builds a list of all these substrings, and stores them in the global object in a separate statement should they appear in the input more than once.
+
+### Escaping strings
+
+We can quote sequences of ASCII symbols literally without having to perform any encoding, except for escape sequences with the backslash `\`, quote `` '"` `` characters and the dollar `$` in the interpolation sequence `${` in template strings which is done automatically with the `jsesc` functions.
+
+However, we can still perform some optimizations to minimize the use of such backslashes, especially in bijective-encoded strings. If a substring contains too many backslashes, then the compiler resorts to two possible options:
+
+One is embedding the substring inside a `RegExp` literal and accessing either the `source` property to retrieve the pattern, or wrapping it inside a template literal to encase it inside its delimiting slashes.
+
+The other is using `String.raw` function on a template literal, which returns the raw character sequence.
+
+If the compiler evaluates either literal with the `eval` and still produces an error, it falls back to using the normal substrings. `RegExp`-delimited literals are prioritized. If a substring ends in a an odd number of backslashes the last backslash is added back in normal quotes: `'\\'`.
 
 ### Bijective numeration
 
-There are four aliased functions encoded inside the output: `encodeBijective`, aliased `0`, `decodeBijective`, aliased `-1`, `compressRange`, aliased `false` and `expandRange` aliased `true`. All these functions rely on [bijective numeration](https://en.wikipedia.org/wiki/Bijective_numeration), where every possible substring from a set of characters (or digits) corresponds to a natural number.
+There are four aliased functions encoded inside the output:
+
+- `encodeBijective`, aliased `0`;
+- `decodeBijective`, aliased `-1`;
+- `compressRange`, aliased `false`; and
+- `expandRange`, aliased `true`.
+
+All these functions rely on the principle of **[bijective numeration](https://en.wikipedia.org/wiki/Bijective_numeration)**, which states that every non-negative integer can be represented in exactly one way using a finite string of digits. The reverse is true: every string of digits made from an indexed, unique character set, corresponds to a natural number.
 
 ```js
 const functionAliases = {
@@ -228,57 +251,77 @@ const functionAliases = {
 - `compressRange` takes a string, a set of encoding characters, and a custom delimiter for values and ranges. It returns all the code points of that string, each encoded with `encodeBijective`.
 - `expandRange` does the opposite of the above, returning back the raw characters with their code points in ascending order.
 
-The following is the source code of these functions:
+The following is the source code of these functions, minified for your sake.
 
 <!-- prettier-ignore -->
 ```js
-const encodeBijective=(n,e)=>{e=[...new Set(e)];var t=BigInt,r=t(e.length),i=e[((n=t(n))%r||r)-1n];if(n<=0n)return"";for(;0n<(n=(n-1n)/r);)i=e[(n%r||r)-1n]+i;return i}
+const encodeBijective=(n,e)=>{if(n<=0n)return"";e=[...new Set(e)];for(var t=BigInt,r=t(e.length),i=e[((n=t(n))%r||r)-1n];0n<(n=(n-1n)/r);)i=e[(n%r||r)-1n]+i;return i}
 const decodeBijective=(e,n)=>{n=[...new Set(n)],e=[...e];for(var t=BigInt,i=0n,r=t(n.length),c=e.length,d=0;d<c;d++)i+=t(n.indexOf(e[d])+1)*r**t(c-d-1);return i}
 const compressRange=(e,n,t=",",o=".")=>{return n=[...new Set(n)].filter(e=>e!=t&&e!=o).join``,[...new Set(e)].map(e=>e.codePointAt()).sort((e,n)=>e-n).reduce((e,n,t,o)=>{var r=o[t-1],i=n-r;return 0<t&&i==r-o[t-2]?(e[r=e.length-1][1]=n,1<i&&(e[r][2]=i)):e.push([n]),e},[]).map(e=>e.map(e=>encodeBijective(e,n)).join(o)).join(t)}
-const expandRange=(t,e,n=",",o=".")=>{return e=[...new Set(e)].filter(t=>t!=n&&t!=o).join``,t.split(n).map(t=>{var n,a,r,i,t=t.split(o).map(t=>+(""+decodeBijective(t,e)));return 1==t.length?t:([n,t,a=1,r=0]=[...t],i=n<t?1:-1,[...Array((Math.abs(t-n)+2*r)/a+1)].map((t,e)=>n-i*r+i*a*e))}).flat().map(t=>String.fromCodePoint(t)).join``}
+const expandRange=(e,t,n=",",o=".")=>{return t=[...new Set(t)].filter(e=>e!=n&&e!=o).join``,e.split(n).map(e=>{var n,a,i,r,e=e.split(o).map(e=>+(""+decodeBijective(e,t)));return 1==e.length?e:([n,e,a=1,i=0]=[...e],r=n<e?1:-1,[...Array((Math.abs(e-n)+2*i)/a+1)].map((e,t)=>n-r*i+r*a*t))}).flat().map(e=>String.fromCodePoint(e)).join``}
 ```
 
-If a substring within the input occurs more than once, then it will be hashed and stored in the global object. All hashed strings are grouped according to their writing system, decoded by looping over the keys, and finally spread out into the global object.
+Regardless if a particular substring occurs more than once in the input, it will still be hashed and stored in the global object. All hashed strings are grouped according to their Unicode _script_ or _general category_, decoded by looping over the keys, and finally spread out into the global object.
 
 While most of these strings are encoded, some of them are decoded directly when assembling the output string while not being stored in the global object. The following is a summary of the steps the compiler takes to encode and decode runs of characters of different types.
 
-#### Symbols
+### Decoding strings
 
-We can represent sequences of symbols literally as strings without us performing any encoding or storing in the global object to be decoded or derived. However, we can also perform one additional optimization: minimizing backslashes.
+The compiler analyzes the text, and stores a record of all distinct Unicode characters inside the text and their code points. It then generates a category for each character, based on its Unicode metadata. This category corresponds to the _General Category_ of the Unicode character, if it is not a Letter, but if it is, its _Script_. Most Unicode characters are considered letters.
 
-If a substring contains many backslashes, then there are two options. The first is through a `RegExp` literal and calling `toString`, which yields a string of the pattern between two slashes without using the `source` property. Alternatively, we could also use the `String.raw` function.
+The compiler assigns a category to each code point checking the character to the regular expression corresponding to the Unicode category or script, until it finds a match.
 
-However, if the compiler evaluates it, with native `eval` as a syntax error, despite using both the `replace` and `slice` methods, it falls back to using the normal substrings.
+- Letter (`L`): lowercase (`Ll`), modifier (`Lm`), titlecase (`Lt`), uppercase (`Lu`), other (`Lo`)
+- Mark (`M`): spacing combining (`Mc`), enclosing (`Me`), non-spacing (`Mn`)
+- Number (`N`): decimal digit (`Nd`), letter (`Nl`), other (`No`)
+- Punctuation (`P`): connector (`Pc`), dash (`Pd`), initial quote (`Pi`), final quote (`Pf`), open (`Ps`), close (`Pe`), other (`Po`)
+- Symbol (`S`): currency (`Sc`), modifier (`Sk`), math (`Sm`), other (`So`)
+- Separator (`Z`): line (`Zl`), paragraph (`Zp`), space (`Zs`)
+- Other (`C`): control (`Cc`), format (`Cf`), not assigned (`Cn`), private use (`Co`), surrogate (`Cs`)
 
-#### Integers
+It then groups these characters according to the assigned categories, sorts them according to their code points in ascending order, and calls the `compressRange` function to generate a bijective base-30 encoded substring, with the comma `,` and period `.` functioning as delimiter characters for values and ranges.
 
-From here on out, many of the encodings, in principle, use bijective numeration, with `Number` or `BigInt` as an intermediate data type during conversion. All substrings are hashed in _bijective_ depending on the number and order of the digit characters.
+The compiler ignores characters within the code points `U+0020` to `U+007F` inclusive, these are the ASCII printable characters. These are handled separately by the compiler and thus are filtered away.
 
-Because of _bijective numeration_, any arbitrary sequence of characters from an indexed character set corresponds to a unique natural number.
+#### Decimal digit substrings
 
-Numeric-only substrings are decoded into `BigInt` and embedded directly inside the substring, stripping the `n` suffix to distinguish between `Number` and `BigInt`. Zero-padding is done as an additional step for substrings with leading zeroes.
+Anything that is not a symbol is encoded as bijective, to and from strings of different character sets with `BigInt` as an intermediate data type.
+
+All encoded values are stored with the digits from the Python `string.punctuation` constant, `` !"#$%&'()*+,-./:;<=>?@[\]^_`{|}~ ``, minus the space, hence from here on out, _base 32_ implies bijective base-32 encoded strings with the 32 punctuation characters as its digits.
+
+Numeric-only substrings are decoded straight from base-32, and then converted into strings, wrapping the resultant `BigInt` inside a template literal thereby stripping its `n` suffix.
+
+All tokens that fall under this category have the categorical name `Integer`.
 
 #### Alphanumeric substrings
 
-Alphanumeric substrings follow the same rules as numbers, except this time parsed as a number with a base higher than 10, depending on the position of the last letter in the substring. All are converted from `BigInt` values, if the encoded numeric value is greater than 2^53-1^ or `Number.MAX_SAFE_INTEGER`.
+Alphanumeric substrings follow the same rules as numbers. Zero-padded numeric strings are considered _alphanumerics_ since all leading zeroes are stripped when converting into `BigInt` values.
 
-By default, `.toString()` yields lowercase. So if the original substring contains uppercase letters, then the positions of those characters in the substring will be converted into uppercase using compressed ranges. If the entire string is uppercase, then the string would be converted directly into uppercase.
+They are converted into `BigInt` values except this time parsed with a constant digit string, which is the concatenation of Python's string constants `string.digits` and `string.ascii_letters`, or the first 62 digits of `base64`, and then hashed with the 32 characters in code point order. This string,
 
-#### Words with diacritics
+<!-- prettier-ignore -->
+```js 
+"0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
+```
 
-For multilingual texts, use the Latin alphabet, along with a number of non-ASCII letters embedded inside. The initial substring is stripped of these non-ASCII characters and then hashed as a big integer (see above section). The non-ASCII characters are stored and hashed at the end of the string. Each insertion point consists of a substring and an insertion index. No Unicode normalization is performed, even if part of the encoding or decoding process.
+is generated with the expression
 
-#### Other writing systems and languages
+<!-- prettier-ignore -->
+```js 
+[[...Array(36)].map((_,a)=>a.toString(36)),[...Array(26)].map((_,a)=>(a+10).toString(36).toUpperCase())].flat().join``
+```
 
-For substrings of a non-Latin Unicode script, they are generated from a _case-insensitive_ character pool comprised of letters from that script. The result is hashed using the pool into a `BigInt`, or in the case of extremely long words or CJK text, _arrays_ of big integers.
+All tokens that fall under this category have the categorical name `Alnum`.
 
-For bicameral scripts, the substring is converted into lowercase and then a separate procedure converts selected characters based on their hashed indices into uppercase based on the input string.
+### Other writing systems
 
-#### Arbitrary Unicode sequences
+#### Latin alphabet
 
-For other Unicode characters, including CJK, special, private-use, non-printable and spacing characters, and even astral code points, they are converted from their hexadecimal values and grouped into smaller subsequences based on their leading digits. All leading zeroes are stripped when hashed and added back when decoded.
+Texts which still use the Latin alphabet along with a number of non-ASCII letters are treated a little differently. 
 
-This yields pairs of symbol sequences: the "keys" being the leading and the "values" being the trailing digits that are not hashed. Both key and value pairs are converted from bijective base 16 into bijective base 30. `,` and `:` are reserved for separating keys and values.
+As soon as the regular expression encounters a non-ASCII letter, it begins a new token and matches all other Latin characters of the word and assigns that matched substring to the category `Latin`. The ASCII letter substring before is assigned `Alnum`. This is because the compiler captures ASCII alphanumeric substrings before capturing Latin-script substrings.
+
+The same logic applies for a non-Latin Unicode script, and even other Unicode characters.
 
 ## Customization
 
@@ -291,7 +334,7 @@ Here is a list of customization options available:
 - `defaultQuote` - Quoting style to fall back to, if smart quoting is enabled. One of `single`, `double`, or `backtick`. The default is `double`.
 - `'objectQuote'` - Whether to quote keys inside objects and which quotes to use. `'none'` skips quoting identifier keys, so sequences of `_` and `$` will not be quoted. If `calc` is selected, all the keys will be quoted inside square brackets. The default is `'none'`; options are `'none'`, `'single'`, `'double'` or `'calc'`.
 - `smartQuote` - Whether or not to enable smart quoting; choosing quotes with the least number of escapes. If disabled, all strings inside the output, including object keys, will be quoted to `defaultQuote` and `objectQuote`. The default is `true`.
-- `intThreshold` - Maximum length of decoded `BigInt` values. Suppose the length of the decoded `BigInt`is greater than this value, arrays of bijective base-**31**-hashed `BigInt` values will be used instead. Default is `200`.
+- `tokenLength` - Maximum length of a tokenized substring, inclusive of punctuation. All substrings picked up by the regex will thus be treated as separate tokens. Default is 64.
 - `delimiter` - Which character to use to delimit `BigInt`-hashed substrings or character sets. The default is `','`.
 - `rangeDelimiter` - Which character to use to delimit ranges that `BigInt`-hashed character sets. The default is `'-'`.
 - `wrapInIIFE` - Whether to wrap the obfuscated code in an anonymous function call, using the `Function` constructor. The default is `false`.

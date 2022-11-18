@@ -451,13 +451,13 @@ function encode(text, globalVar = '$', nGramLength = 256) {
   // CHARACTER FUNCTIONS
 
   let categories = {
-    Letter: /\p{L}+/gu,
-    Mark: /\p{M}+/gu,
-    Number: /\p{N}+/gu,
-    Punctuation: /\p{P}+/gu,
-    Symbol: /\p{S}+/gu,
-    Separator: /\p{Z}+/gu,
-    Other: /\p{C}+/gu,
+    Letter: /\p{L}+/giu,
+    Mark: /\p{M}+/giu,
+    Number: /\p{N}+/giu,
+    Punctuation: /\p{P}+/giu,
+    Symbol: /\p{S}+/giu,
+    Separator: /\p{Z}+/giu,
+    Other: /\p{C}+/giu,
   }
 
   let scripts = _.fromPairs(
@@ -486,7 +486,7 @@ function encode(text, globalVar = '$', nGramLength = 256) {
   let codePointSort = (a, b) => a.codePointAt() - b.codePointAt()
 
   let characters = [...new Set(text)]
-    .filter(char => !/[ -~]/.test(char))
+    .filter(char => !/[ -?[-`{-~]/g.test(char))
     .map(char => [getCategoryOrScript(char), char])
   characters = _.groupBy(characters, 0)
   characters = _.mapValues(
@@ -497,7 +497,10 @@ function encode(text, globalVar = '$', nGramLength = 256) {
   let groupRegExps = _.fromPairs(
     _.entries(characters).map(([name, chars]) => [
       name,
-      regenerate([...chars]).toRegExp(),
+      RegExp(
+        regenerate([...chars]).toString({hasUnicodeFlag: true}) + '+',
+        'giu'
+      ),
     ])
   )
 
@@ -510,12 +513,12 @@ function encode(text, globalVar = '$', nGramLength = 256) {
 
   let regExps = {
     // Removed by compiler, will get added back in later
-    Space: / +/gu,
-    Punct: /[!-\/:-@[-`{-~]+/gu,
+    Space: / +/giu,
+    Punct: /[!-\/:-@[-`{-~]+/giu,
 
     // Capturing groups for identifiers
-    Alnum: /[a-zA-Z][a-zA-Z\d]*|0[a-zA-Z\d]+/gu,
-    Integer: /0|[1-9]\d*/gu,
+    Alnum: /[a-zA-Z0][a-zA-Z\d]+|[a-zA-Z]/giu,
+    Integer: /0|[1-9]\d*/giu,
 
     // Scripts and categories
     ...groupRegExps,
@@ -523,21 +526,21 @@ function encode(text, globalVar = '$', nGramLength = 256) {
 
   let oldRegExps = {
     // Unicode catch-all points
-    Letter: /\p{L}+/gu,
-    Mark: /\p{M}+/gu,
-    Number: /\p{N}+/gu,
-    Punctuation: /\p{P}+/gu,
-    Symbol: /\p{S}+/gu,
-    Other: /\p{C}+/gu,
-    Separator: /\p{Z}+/gu,
+    Letter: /\p{L}+/giu,
+    Mark: /\p{M}+/giu,
+    Number: /\p{N}+/giu,
+    Punctuation: /\p{P}+/giu,
+    Symbol: /\p{S}+/giu,
+    Other: /\p{C}+/giu,
+    Separator: /\p{Z}+/giu,
 
     // All characters should be captured, else fallback to this
-    Fallback: /[\0-\x1f\x7f-\u{10ffff}]+/gu,
+    Fallback: /[\0-\x1f\x7f-\u{10ffff}]+/giu,
   }
 
   let bigRegExp = RegExp(
     _.entries(regExps).map(([key, {source}]) => `(?<${key}>${source})`).join`|`,
-    'gu'
+    'giu'
   )
 
   // ENCODING FUNCTIONS
@@ -688,6 +691,21 @@ function encode(text, globalVar = '$', nGramLength = 256) {
         keyGen.next().value,
         encodeBijective(decodeBijective(values[0], alnumDigits), punct),
       ])
+
+    // All other categories
+    for (let tokenGroup in tokenGroups)
+      if (
+        tokenGroups.hasOwnProperty(tokenGroup) &&
+        !['Alnum', 'Integer'].includes(tokenGroup)
+      ) {
+        let charset = characters[tokenGroup][0]
+        let tokens = tokenGroups[tokenGroup]
+        tokenGroups[tokenGroup] = tokens.map(values => [
+          ...values,
+          keyGen.next().value,
+          encodeBijective(decodeBijective(values[0], charset), punct),
+        ])
+      }
 
     return tokenGroups
   })()
