@@ -111,6 +111,8 @@ function encode(text, globalVar = '$', nGramLength = 256) {
     decodeBijective: '~[]',
     compressRange: '![]',
     expandRange: "!''",
+    punct: '+{}',
+    alnumDigits: "!''/![]",
   }
 
   // HELPER FUNCTIONS
@@ -221,7 +223,7 @@ function encode(text, globalVar = '$', nGramLength = 256) {
 
     let code = uglify
       .minify(String(func), {compress: {reduce_funcs: true}})
-      .code.replace(/^function \w+/, '')
+      .code.replace(/^function \w*/, '')
       .replace('){', ')=>{')
 
     let keyGen = (function* () {
@@ -271,6 +273,10 @@ function encode(text, globalVar = '$', nGramLength = 256) {
     }).code
 
     let result = code
+      .replace(
+        RegExp(`\\b(${_.keys(functionCiphers).join`|`})\\b`, 'g'),
+        match => `${globalVar}[${functionCiphers[match]}]`
+      )
       .match(/ |[\da-z]+|[^ \da-z]+/gi)
       .map(match =>
         _.keys(constructorExprs).includes(match)
@@ -449,6 +455,8 @@ function encode(text, globalVar = '$', nGramLength = 256) {
   )
 
   // CHARACTER FUNCTIONS
+
+  console.info('Building character sets')
 
   let categories = {
     Letter: /\p{L}+/giu,
@@ -658,6 +666,8 @@ function encode(text, globalVar = '$', nGramLength = 256) {
     }
   })()
 
+  console.info('Encoding tokens')
+
   let metadata = (() => {
     let tokenGroups = _.groupBy(tokens, 'group')
 
@@ -710,7 +720,22 @@ function encode(text, globalVar = '$', nGramLength = 256) {
     return tokenGroups
   })()
 
+  metadata = _.mapValues(metadata, v => v.map(([s, , k, v]) => [s, k, v]))
+
   console.log(metadata)
 
-  return {metadata, characters, tokens}
+  let decoders = {
+    Integer: `_=>$[~[]](_,$[+{}])`,
+    Alnum: `_=>$[+[]]($[~[]](_,$[+{}]),$[!''/![]])`,
+    ..._.fromPairs(
+      _.entries(characters).map(([k, v]) => [
+        k,
+        `_=>$[+[]]($[~[]](_,$[+{}]),$[!''](${quote(v[1])}))`,
+      ])
+    ),
+  }
+  
+  console.log(decoders)
+
+  return {metadata, characters, decoders, tokens}
 }
