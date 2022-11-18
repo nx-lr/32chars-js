@@ -555,8 +555,8 @@ function encode(text, globalVar = '$', nGramLength = 256) {
   }
 
   function decodeBijective(str, chars) {
-    chars = [...new Set(chars)]
     str = [...str]
+    chars = [...new Set(chars)]
     var result = 0n
     var base = BigInt(chars.length)
     var strLen = str.length
@@ -576,11 +576,9 @@ function encode(text, globalVar = '$', nGramLength = 256) {
       .sort((a, b) => a - b)
       .reduce((acc, cur, idx, src) => {
         var prev = src[idx - 1]
-        var diff = cur - prev
-        if (idx > 0 && diff == prev - src[idx - 2]) {
+        if (idx > 0 && cur - prev == 1) {
           var last = acc.length - 1
           acc[last][1] = cur
-          if (diff > 1) acc[last][2] = diff
         } else acc.push([cur])
         return acc
       }, [])
@@ -591,7 +589,7 @@ function encode(text, globalVar = '$', nGramLength = 256) {
   function expandRange(run, digits, sep = ',', sub = '.') {
     function range(start, end, step = 1) {
       return [...Array(Math.abs(end - start) / step + 1)].map(
-        ($, index) => start + (start < end ? 1 : -1) * step * index
+        (_, index) => start + (start < end ? 1 : -1) * step * index
       )
     }
 
@@ -601,10 +599,8 @@ function encode(text, globalVar = '$', nGramLength = 256) {
     return run
       .split(sep)
       .map(end => {
-        var res = end.split(sub).map(num => {
-          var bigint = decodeBijective(num, digits)
-          return +`${bigint}`
-        })
+        var res = end.split(sub)
+        res = res.map(enc => +`${decodeBijective(enc, digits)}`)
         return res.length == 1 ? res : range(...res)
       })
       .flat()
@@ -628,14 +624,13 @@ function encode(text, globalVar = '$', nGramLength = 256) {
     .flat(1)
 
   let identBlacklist = [...'abcdefghijklmnopqrstuvwxyzABCDEFINORSU']
-  identBlacklist = [
-    ...identBlacklist,
+  identBlacklist = identBlacklist.concat(
     ...[wordCiphers, constantExprs, constructorExprs]
       .map(_.keys)
-      .filter(ident => /^[a-z]/i.test(ident)),
-  ]
+      .filter(ident => /^[a-z]/i.test(ident))
+  )
 
-  identBlacklist = new Set(identBlacklist.flat())
+  identBlacklist = new Set(identBlacklist)
 
   let existingKeys = new Set(
     [
@@ -715,12 +710,12 @@ function encode(text, globalVar = '$', nGramLength = 256) {
   })()
 
   let mappers = {
-    Digit: `_=>$[~[]](_,$[+{}])`,
+    Digit: `_=>\`\${$[~[]](_,$[+{}])}\``,
     Alnum: `_=>$[+[]]($[~[]](_,$[+{}]),$[!''/![]])`,
     ..._.fromPairs(
       _.entries(characters).map(([key, [, val]]) => [
         key,
-        `_=>$[+[]]($[~[]](_,$[+{}]),$[!''](${quote(val)}))`,
+        `_=>$[+[]]($[~[]](_,$[+{}]),$[!''](${quote(val)},$[+{}]))`,
       ])
     ),
   }
