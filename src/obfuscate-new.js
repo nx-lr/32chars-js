@@ -259,7 +259,7 @@ function encode(text, globalVar = '$', nGramLength = 256) {
       ).join`+`
 
     // DEBUG
-    // return result;
+    // return result
 
     return `${globalVar}[${quote('=')}](${result})`
   }
@@ -558,12 +558,13 @@ function encode(text, globalVar = '$', nGramLength = 256) {
   function decodeBijective(str, chars) {
     chars = [...new Set(chars)]
     str = [...str]
-    var b = BigInt
     var result = 0n
-    var base = b(chars.length)
+    var base = BigInt(chars.length)
     var strLen = str.length
     for (var index = 0; index < strLen; index++)
-      result += b(chars.indexOf(str[index]) + 1) * base ** b(strLen - index - 1)
+      result +=
+        BigInt(chars.indexOf(str[index]) + 1) *
+        base ** BigInt(strLen - index - 1)
     return result
   }
 
@@ -590,10 +591,8 @@ function encode(text, globalVar = '$', nGramLength = 256) {
 
   function expandRange(run, digits, sep = ',', sub = '.') {
     function range(start, end, step = 1) {
-      var direction = start < end ? 1 : -1
-      var length = Math.abs(end - start) / step + 1
-      return [...Array(length)].map(
-        ($, index) => start + direction * step * index
+      return [...Array(Math.abs(end - start) / step + 1)].map(
+        ($, index) => start + (start < end ? 1 : -1) * step * index
       )
     }
 
@@ -603,7 +602,10 @@ function encode(text, globalVar = '$', nGramLength = 256) {
     return run
       .split(sep)
       .map(end => {
-        var res = end.split(sub).map(num => +`${decodeBijective(num, digits)}`)
+        var res = end.split(sub).map(num => {
+          var bigint = decodeBijective(num, digits)
+          return +`${bigint}`
+        })
         return res.length == 1 ? res : range(...res)
       })
       .flat()
