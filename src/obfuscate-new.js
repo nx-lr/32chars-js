@@ -543,7 +543,7 @@ function encode(text, globalVar = '$', nGramLength = 256) {
 
   // ENCODING FUNCTIONS
 
-  function encodeBijective(int, chars) {
+  function encodeBijective(int, chars = punct) {
     if (int <= 0n) return ''
     chars = [...new Set(chars)]
     var base = BigInt(chars.length)
@@ -554,7 +554,7 @@ function encode(text, globalVar = '$', nGramLength = 256) {
     return result
   }
 
-  function decodeBijective(str, chars) {
+  function decodeBijective(str, chars = punct) {
     str = [...str]
     chars = [...new Set(chars)]
     var result = 0n
@@ -567,7 +567,7 @@ function encode(text, globalVar = '$', nGramLength = 256) {
     return result
   }
 
-  function compressRange(chars, digits, sep = ',', sub = '.') {
+  function compressRange(chars, digits = punct, sep = ',', sub = '.') {
     digits = [...new Set(digits)].filter(digit => digit != sep && digit != sub)
       .join``
 
@@ -586,7 +586,7 @@ function encode(text, globalVar = '$', nGramLength = 256) {
       .join(sep)
   }
 
-  function expandRange(run, digits, sep = ',', sub = '.') {
+  function expandRange(run, digits = punct, sep = ',', sub = '.') {
     function range(start, end, step = 1) {
       return [...Array(Math.abs(end - start) / step + 1)].map(
         (_, index) => start + (start < end ? 1 : -1) * step * index
@@ -601,7 +601,7 @@ function encode(text, globalVar = '$', nGramLength = 256) {
       .map(end => {
         var res = end.split(sub)
         res = res.map(enc => +`${decodeBijective(enc, digits)}`)
-        return res.length == 1 ? res : range(...res)
+        return res.length > 1 ? range(...res) : res
       })
       .flat()
       .map(p => String.fromCodePoint(p)).join``
@@ -710,12 +710,12 @@ function encode(text, globalVar = '$', nGramLength = 256) {
   })()
 
   let mappers = {
-    Digit: `_=>\`\${$[~[]](_,$[+{}])}\``,
-    Alnum: `_=>$[+[]]($[~[]](_,$[+{}]),$[!''/![]])`,
+    Digit: `_=>\`\${$[~[]](_)}\``,
+    Alnum: `_=>$[+[]]($[~[]](_),$[!''/![]])`,
     ..._.fromPairs(
       _.entries(characters).map(([key, [, val]]) => [
         key,
-        `_=>$[+[]]($[~[]](_,$[+{}]),$[!''](${quote(val)},$[+{}]))`,
+        `_=>$[+[]]($[~[]](_),$[!''](${quote(val)}))`,
       ])
     ),
   }
