@@ -3,14 +3,17 @@ let XRegExp = require('xregexp')
 let _ = require('lodash')
 let fs = require('fs')
 let genex = require('genex')
+let glob = require('glob')
 let isValidIdent = require('is-valid-identifier')
 let jsesc = require('jsesc')
 let uglify = require('uglify-js')
 
 let text = fs.readFileSync('./input.txt', 'utf8')
 
-function encode(text, globalVar = '$', nGramLength = 200) {
-  // CONSTANTS
+function encode(text, globalVar = '$', nGramLength = 256) {
+  console.info('Fetching Unicode data')
+
+  // INITIALIZATION
 
   let letters = 'etaoinshrdlucmfwypvbgkqjxz'
   let cipher = '_$-,;:!?.@*/&#%^+<=>|~\'"`\\'
@@ -284,74 +287,6 @@ function encode(text, globalVar = '$', nGramLength = 200) {
     return `${globalVar}[${quote('=')}](${result})`
   }
 
-  // ENCODING FUNCTIONS
-
-  function encodeBijective(int, chars) {
-    if (int <= 0n) return ''
-    chars = [...new Set(chars)]
-    var b = BigInt
-    var base = b(chars.length)
-    var index = (int = b(int)) % base || base
-    var result = chars[index - 1n]
-    while ((int = (int - 1n) / base) > 0n)
-      result = chars[(index = int % base || base) - 1n] + result
-    return result
-  }
-
-  function decodeBijective(str, chars) {
-    chars = [...new Set(chars)]
-    str = [...str]
-    var b = BigInt
-    var result = 0n
-    var base = b(chars.length)
-    var strLen = str.length
-    for (var index = 0; index < strLen; index++)
-      result += b(chars.indexOf(str[index]) + 1) * base ** b(strLen - index - 1)
-    return result
-  }
-
-  function compressRange(chars, digits, sep = ',', sub = '.') {
-    digits = [...new Set(digits)].filter(digit => digit != sep && digit != sub)
-      .join``
-
-    return [...new Set(chars)]
-      .map(char => char.codePointAt())
-      .sort((a, b) => a - b)
-      .reduce((acc, cur, idx, src) => {
-        var prev = src[idx - 1]
-        var diff = cur - prev
-        if (idx > 0 && diff == prev - src[idx - 2]) {
-          var last = acc.length - 1
-          acc[last][1] = cur
-          if (diff > 1) acc[last][2] = diff
-        } else acc.push([cur])
-        return acc
-      }, [])
-      .map(num => num.map(x => encodeBijective(x, digits)).join(sub))
-      .join(sep)
-  }
-
-  function expandRange(run, digits, sep = ',', sub = '.') {
-    function range(start, end, step = 1, offset = 0) {
-      var direction = start < end ? 1 : -1
-      return [...Array((Math.abs(end - start) + offset * 2) / step + 1)].map(
-        ($, index) => start - direction * offset + direction * step * index
-      )
-    }
-
-    digits = [...new Set(digits)].filter(digit => digit != sep && digit != sub)
-      .join``
-
-    return run
-      .split(sep)
-      .map(end => {
-        var res = end.split(sub).map(num => +`${decodeBijective(num, digits)}`)
-        return res.length == 1 ? res : range(...res)
-      })
-      .flat()
-      .map(p => String.fromCodePoint(p)).join``
-  }
-
   // TESTING FUNCTIONS
 
   function testRawString(string) {
@@ -365,6 +300,8 @@ function encode(text, globalVar = '$', nGramLength = 200) {
   }
 
   // HEADER
+
+  console.info('Generating header;')
 
   let header = `${globalVar}=~[];`
 
@@ -508,21 +445,191 @@ function encode(text, globalVar = '$', nGramLength = 200) {
       '.sort(([,a],[,b])=>String(a).localeCompare(String(b)))))'
   )
 
-  // TOKENIZATION
+  // CHARACTER FUNCTIONS
 
-  let expression
+  let categories = {
+    Letter: /\p{L}+/gu,
+    Mark: /\p{M}+/gu,
+    Number: /\p{N}+/gu,
+    Punctuation: /\p{P}+/gu,
+    Symbol: /\p{S}+/gu,
+    Separator: /\p{Z}+/gu,
+    Other: /\p{C}+/gu,
+  }
+
+  let scripts = _.fromPairs(
+    glob
+      .sync(`./node*/*unicode*/*/script/*`)
+      .filter(dir => !/\.\w+$/.test(dir))
+      .map(dir => {
+        let name = dir.split('/').reverse()[0],
+          regex = require(`@unicode/unicode-14.0.0/script/${name}/regex.js`)
+        return [name, regex]
+      })
+  )
+
+  function getCategoryOrScript(char) {
+    for (let [category, regex] of _.entries(categories))
+      if (regex.test(char))
+        if (category == 'Letter') break
+        else return category
+    for (let [script, regex] of _.entries(scripts))
+      if (regex.test(char)) return script
+    return 'unknown'
+  }
+
+  // CHARACTER MAPPING
+
+  let codePointSort = (a, b) => a.codePointAt() - b.codePointAt()
+
+  let characters = [...new Set(text)].map(char => [
+    getCategoryOrScript(char),
+    char,
+  ])
+  characters = _.groupBy(characters, 0)
+  characters = _.mapValues(
+    characters,
+    x => x.map(([, x]) => x).sort(codePointSort).join``
+  )
+
+  characters = _.mapValues(characters, group => {
+    let compressed = compressRange(group, punct)
+    let expanded = expandRange(compressed, punct)
+    console.assert(group == expanded)
+    return compressed
+  })
+
+  let groupRegExps = _.fromPairs(
+    _.keys(characters).map(name => {
+      try {
+        return [name, RegExp(String.raw`\p{Script=${name}}+`, 'gu')]
+      } catch {
+        return [name, RegExp(String.raw`\p{General_Category=${name}}+`, 'gu')]
+      }
+    })
+  )
 
   let regExps = {
-    punct: /[!-\/:-@[-`{-~]+/gu,
-    alnum: /[a-zA-Z][a-zA-Z\d]*|0[a-zA-Z\d]+/gu,
-    digit: /0|[1-9]\d*/giu,
-    unicode: /[\0-\x1f\x7f-\u{10ffff}]+/gu,
+    Space: / /gu,
+    Punct: /[!-\/:-@[-`{-~]+/gu,
+    Alnum: /[a-zA-Z][a-zA-Z\d]*|0[a-zA-Z\d]+/gu,
+    Digit: /0|[1-9]\d*/giu,
+
+    // Scripts and categories
+    ...groupRegExps,
+
+    // Unicode catch-all points
+    Letter: /\p{L}+/gu,
+    Mark: /\p{M}+/gu,
+    Number: /\p{N}+/gu,
+    Punctuation: /\p{P}+/gu,
+    Symbol: /\p{S}+/gu,
+    Other: /\p{C}+/gu,
+    Separator: /\p{Z}+/gu,
+
+    // All characters should be captured, else fallback to this
+    Fallback: /[\0-\x1f\x7f-\u{10ffff}]+/gu,
   }
 
   let bigRegExp = RegExp(
     _.entries(regExps).map(([key, {source}]) => `(?<${key}>${source})`).join`|`,
     'gu'
   )
+
+  // ENCODING FUNCTIONS
+
+  function encodeBijective(int, chars) {
+    if (int <= 0n) return ''
+    chars = [...new Set(chars)]
+    var b = BigInt
+    var base = b(chars.length)
+    var index = (int = b(int)) % base || base
+    var result = chars[index - 1n]
+    while ((int = (int - 1n) / base) > 0n)
+      result = chars[(index = int % base || base) - 1n] + result
+    return result
+  }
+
+  function decodeBijective(str, chars) {
+    chars = [...new Set(chars)]
+    str = [...str]
+    var b = BigInt
+    var result = 0n
+    var base = b(chars.length)
+    var strLen = str.length
+    for (var index = 0; index < strLen; index++)
+      result += b(chars.indexOf(str[index]) + 1) * base ** b(strLen - index - 1)
+    return result
+  }
+
+  function compressRange(chars, digits, sep = ',', sub = '.') {
+    digits = [...new Set(digits)].filter(digit => digit != sep && digit != sub)
+      .join``
+
+    return [...new Set(chars)]
+      .map(char => char.codePointAt())
+      .sort((a, b) => a - b)
+      .reduce((acc, cur, idx, src) => {
+        var prev = src[idx - 1]
+        var diff = cur - prev
+        if (idx > 0 && diff == prev - src[idx - 2]) {
+          var last = acc.length - 1
+          acc[last][1] = cur
+          if (diff > 1) acc[last][2] = diff
+        } else acc.push([cur])
+        return acc
+      }, [])
+      .map(num => num.map(x => encodeBijective(x, digits)).join(sub))
+      .join(sep)
+  }
+
+  function expandRange(run, digits, sep = ',', sub = '.') {
+    function range(start, end, step = 1, offset = 0) {
+      var direction = start < end ? 1 : -1
+      return [...Array((Math.abs(end - start) + offset * 2) / step + 1)].map(
+        ($, index) => start - direction * offset + direction * step * index
+      )
+    }
+
+    digits = [...new Set(digits)].filter(digit => digit != sep && digit != sub)
+      .join``
+
+    return run
+      .split(sep)
+      .map(end => {
+        var res = end.split(sub).map(num => +`${decodeBijective(num, digits)}`)
+        return res.length == 1 ? res : range(...res)
+      })
+      .flat()
+      .map(p => String.fromCodePoint(p)).join``
+  }
+
+  // TOKENIZATION
+
+  console.info('Tokenizing text')
+
+  let tokens = [...text.matchAll(bigRegExp)]
+    .map(match => {
+      let [group, text] = _.entries(match.groups).filter(
+        ([, val]) => val != null
+      )[0]
+
+      return _.chunk(text, nGramLength).map(text => ({
+        group,
+        text: text.join``,
+      }))
+    })
+    .flat(1)
+
+  let identBlacklist = [...'abcdefghijklmnopqrstuvwxyzABCDEFINORSU']
+  identBlacklist = [
+    ...identBlacklist,
+    ...[wordCiphers, constantExprs, constructorExprs]
+      .map(_.keys)
+      .filter(ident => /^[a-z]/i.test(ident)),
+  ]
+
+  identBlacklist = new Set(identBlacklist.flat())
 
   let existingKeys = new Set(
     [
@@ -545,34 +652,14 @@ function encode(text, globalVar = '$', nGramLength = 200) {
     }
   })()
 
-  let characters = [...new Set(text)].sort((a, b) =>
-    a < b ? -1 : a > b ? 1 : 0
-  ).join``
-
-  let tokens = [...text.matchAll(bigRegExp)]
-    .map(match => {
-      let [group, text] = _.entries(match.groups).filter(
-        ([, val]) => val != null
-      )[0]
-
-      return _.chunk(text, nGramLength).map(text => ({
-        group,
-        text: text.join``,
-      }))
-    })
-    .flat(1)
-
-  let identBlacklist = [wordCiphers, constantExprs, constructorExprs]
-    .map(_.keys)
-    .filter(ident => /^[a-z]/i.test(ident))
-    .concat(...'abcdefghijklmnopqrstuvwxyzABCDEFINORSU')
-    .flat()
-
-  identBlacklist = new Set(identBlacklist)
-
   let metadata = (() => {
     let tokenGroups = _.groupBy(tokens, 'group')
-    delete tokenGroups.punct
+
+    // ASCII punctuation are inserted literally
+    delete tokenGroups.Punct
+    // Spaces are substituted with empty array elements
+    delete tokenGroups.Space
+
     tokenGroups = _.mapValues(tokenGroups, group =>
       _.toPairs(_.countBy(group.map(({text}) => text))).sort(
         ([, a], [, b]) => b - a
@@ -580,29 +667,31 @@ function encode(text, globalVar = '$', nGramLength = 200) {
     )
 
     // Numbers
-    if (tokenGroups.digit)
-      tokenGroups.digit = tokenGroups.digit
-        .filter(([num]) => num >= 10)
-        .map(values => [
+    if (tokenGroups.Digit)
+      tokenGroups.Digit = tokenGroups.Digit.filter(([num]) => num >= 10).map(
+        values => [
           ...values,
           keyGen.next().value,
           encodeBijective(values[0], punct),
-        ])
+        ]
+      )
 
     // Alphanumerics
-    if (tokenGroups.alnum)
-      tokenGroups.alnum = tokenGroups.alnum
-        .filter(([ident]) => !identBlacklist.has(ident))
-        .map(values => [
-          ...values,
-          keyGen.next().value,
-          encodeBijective(decodeBijective(values[0], alnumDigits), punct),
-        ])
+    if (tokenGroups.Alnum)
+      tokenGroups.Alnum = tokenGroups.Alnum.filter(
+        ([ident]) => !identBlacklist.has(ident)
+      ).map(values => [
+        ...values,
+        keyGen.next().value,
+        encodeBijective(decodeBijective(values[0], alnumDigits), punct),
+      ])
 
     return tokenGroups
   })()
 
+  console.log(metadata)
+
   return {metadata, characters, tokens}
 }
 
-console.log(encode(text).metadata)
+encode(text)
