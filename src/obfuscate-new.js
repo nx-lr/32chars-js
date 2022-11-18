@@ -546,9 +546,8 @@ function encode(text, globalVar = '$', nGramLength = 256) {
   function encodeBijective(int, chars) {
     if (int <= 0n) return ''
     chars = [...new Set(chars)]
-    var b = BigInt
-    var base = b(chars.length)
-    var index = (int = b(int)) % base || base
+    var base = BigInt(chars.length)
+    var index = (int = BigInt(int)) % base || base
     var result = chars[index - 1n]
     while ((int = (int - 1n) / base) > 0n)
       result = chars[(index = int % base || base) - 1n] + result
