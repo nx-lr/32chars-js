@@ -604,11 +604,6 @@ function encodeText(
     return `${globalVar}[${quote('=')}](${result})`
   }
 
-  console.log(encodeFunction(expandRange))
-  console.log(encodeFunction(compressRange))
-  console.log(encodeFunction(encodeBijective))
-  console.log(encodeFunction(decodeBijective))
-
   /**
    * UTF-16 STRINGS
    *
