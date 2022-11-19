@@ -740,5 +740,9 @@ function encode(text, globalVar = '$', nGramLength = 256) {
       '.sort(([,a],[,b])=>String(a).localeCompare(String(b)))))'
   )
 
+  // GENERATING THE STRING
+
+  console.info('Generating string')
+
   return {metadata, characters, mappers, tokens}
 }
