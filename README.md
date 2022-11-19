@@ -191,7 +191,7 @@ const props = {
 
 ### Encoding functions
 
-The output contains several functions, defined with the keys `0`, `-1`, `true` and `false` which can be formed completely with symbols.Their corresponding primitive expressions are `+[]`, `~[]`, `!''` and `![]`. These functions are defined in the compiler and also encoded in the output.
+The output contains several functions, defined with the keys `0`, `-1`, `true` and `false` which can be formed completely with symbols. Their corresponding primitive expressions are `+[]`, `~[]`, `!''` and `![]`. These functions are defined in the compiler and also encoded in the output.
 
 Functions can be converted into strings, which yield their source code when converted into a string. We can manipulate the source code inside the function however way we want. In this case, we want to transform the function into the shortest possible expression without using any alphanumerics.
 
@@ -246,12 +246,39 @@ const functionAliases = {
 }
 ```
 
-- `encodeBijective` takes a BigInt and a set of characters as its arguments, and encodes the BigInt in bijective base-_k_, returning a string.
-- `decodeBijective` does the opposite of the above, returning a BigInt from a string and a set of characters.
-- `compressRange` takes a string, a set of encoding characters, and a custom delimiter for values and ranges. It returns all the code points of that string, each encoded with `encodeBijective`.
-- `expandRange` does the opposite of the above, returning back the raw characters with their code points in ascending order.
+`encodeBijective` encodes a `BigInt` into a bijective string with the passed characters as its digits. It acts as normal base conversion except there is no zero digit.
 
-The following is the source code of these functions, minified for your sake.
+- Repeatedly divides the integer until it reaches zero: `0 < (number = (number - 1) / base)`
+- Returns the modulus of every digit with its base, which is the length of the string; and returns the corresponding digit of the digit array based on its index (indices start from 0) with what was once digit 0 being replaced with the last: (Expression `digits[(digit % base || base) - 1]`)
+- Adds the resulting digit to the beginning of the string, hence assembling it backward. If the number is 0 or negative it just returns it.
+
+`decodeBijective` does the opposite, returning a `BigInt` from the string and its passed digits as a string.
+
+- The string is converted into a set and then spread into an array, which ensures astral code points are counted as single characters;
+- Repeatedly multiplies a digit by 1 greater than its index in the string and raises it to the power of 1 minus the base, in reverse order: `(digits.indexOf(digitString[placeValue]) + 1) * r ** (digitLength - placeValue - 1)`
+- Adds the result to 0 which is the default value, as a BigInt.
+
+The string is converted into an array by spreading the individual characters in a string into a new Set object, which ensures the passed string contains unique characters, and then finally into an array, including astral code points which normally are encoded as two code points if inside a string.
+
+`encodeRange` compresses and bijectively encodes the numbers inside a character range, with the comma and dot assigned as delimiters for numbers and ranges.
+
+- Captures each unique character of the string, sorted by increasing Unicode code points;
+- Converts them into integers with `String#codePointAt` (decoding function is `String.fromCodePoint`);
+- Compresses ranges of consecutive integers into their inclusive start and end point, as soon as one is spotted, it raises an error.
+- Converts every integer and range into bijective base 30; and
+- Joins everything with _colons_ to delimit start/end pairs, _commas_ to delimit individual numbers/number pairs.
+
+Likewise, `decodeRange` does the opposite.
+
+- Splits the encoded substring by delimiter and range
+- Decodes them with `decodeBijective` using the 32 characters
+- Converts each resulting `BigInt` into a `String` and then a `Number`
+- Expands each range with an inclusive range function, else just leaves it alone
+- Flattens the resulting array
+- Maps each integer to its Unicode code point, to retrieve the corresponding Unicode character
+- Joins the resulting characters into a string to use in decoding
+
+The following is the source code of these functions, minified for compactness sake.
 
 <!-- prettier-ignore -->
 ```js
@@ -265,7 +292,7 @@ Regardless if a particular substring occurs more than once in the input, it will
 
 While most of these strings are encoded, some of them are decoded directly when assembling the output string while not being stored in the global object. The following is a summary of the steps the compiler takes to encode and decode runs of characters of different types.
 
-### Decoding strings
+### Encoding and decoding characters
 
 The compiler analyzes the text, and stores a record of all distinct Unicode characters inside the text and their code points. It then generates a category for each character, based on its Unicode metadata. This category corresponds to the _General Category_ of the Unicode character, if it is not a Letter, but if it is, its _Script_. Most Unicode characters are considered letters.
 
@@ -281,23 +308,27 @@ The compiler assigns a category to each code point checking the character to the
 
 It then groups these characters according to the assigned categories, sorts them according to their code points in ascending order, and calls the `compressRange` function to generate a bijective base-30 encoded substring, with the comma `,` and period `.` functioning as delimiter characters for values and ranges.
 
-The compiler ignores characters within the code points `U+0020` to `U+007F` inclusive, these are the ASCII printable characters. These are handled separately by the compiler and thus are filtered away.
+These constant strings are decoded at runtime by the output and assigned integer keys starting from 1 in the global object, so they are created once rather than the encoded character range every time a substring of that script is decoded, this causes the program to run for a long time.
+
+The compiler ignores the space and the 32 symbol characters, which are inserted when the string is assembled in the very last step of the program.
+
+### Encoding substrings
+
+In addition to encoding character ranges, the compiler also has to encode the strings based on those character ranges. Likewise for the character categories, the compiler groups the strings by category, and encodes them with the corresponding character set. The result is assigned a key from a generator function, which yields bijective strings from increasing natural numbers.
+
+The substrings which do not contain any of the 32 symbol characters therefore have to be bijectively encoded with the same 32 characters, except only with varying character sets.
 
 #### Decimal digit substrings
 
-Anything that is not a symbol is encoded as bijective, to and from strings of different character sets with `BigInt` as an intermediate data type.
+Anything that is not a symbol is encoded as bijective, to and from strings of different character sets with `BigInt` as an intermediate data type. All the encoded values are stored with the digits from the Python `string.punctuation` constant, `` !"#$%&'()*+,-./:;<=>?@[\]^_`{|}~ ``, minus the space, hence from here on out, _base 32_ implies bijective base-32 encoded strings with the 32 punctuation characters as its digits.
 
-All encoded values are stored with the digits from the Python `string.punctuation` constant, `` !"#$%&'()*+,-./:;<=>?@[\]^_`{|}~ ``, minus the space, hence from here on out, _base 32_ implies bijective base-32 encoded strings with the 32 punctuation characters as its digits.
-
-Numeric-only substrings are decoded straight from base-32, and then converted into strings, wrapping the resultant `BigInt` inside a template literal thereby stripping its `n` suffix.
-
-All tokens that fall under this category have the categorical name `Integer`.
+Numeric-only substrings are decoded straight from base-32, and then converted into strings, wrapping the resultant `BigInt` inside a template literal thereby stripping its `n` suffix. All tokens that fall under this category have the categorical name `Digit`.
 
 #### Alphanumeric substrings
 
-Alphanumeric substrings follow the same rules as numbers. Zero-padded numeric strings are considered _alphanumerics_ since all leading zeroes are stripped when converting into `BigInt` values.
+Alphanumeric substrings follow the same rules as numbers. Zero-padded numeric strings are considered _alphanumeric_ since all leading zeroes are stripped. All tokens that fall under this category have the categorical name `Alnum`.
 
-They are converted into `BigInt` values except this time parsed with a constant digit string, which is the concatenation of Python's string constants `string.digits` and `string.ascii_letters`, or the first 62 digits of `base64`, and then hashed with the 32 characters in code point order. This string,
+They are converted from `BigInt` values except this time from a constant digit string, which is the concatenation of Python's string constants `string.digits` and `string.ascii_letters`, or the first 62 digits of `base64`, and then hashed with the 32 characters in code point order, since it can be generated from the methods `Number#toString` and `String#toUpperCase`. This string,
 
 <!-- prettier-ignore -->
 ```js 
@@ -311,13 +342,17 @@ is generated with the expression
 [[...Array(36)].map((_,a)=>a.toString(36)),[...Array(26)].map((_,a)=>(a+10).toString(36).toUpperCase())].flat().join``
 ```
 
-All tokens that fall under this category have the categorical name `Alnum`.
+The compiler generates a BigInt from the encoded substring with the above constant string, and then encodes the resulting `BigInt` into a string with the corresponding encoding with the 32 characters.
 
-### Other writing systems
+#### Unicode characters
 
-#### Latin alphabet
+The compiler uses the same bijective numeration principle to encode the other Unicode characters by generating a BigInt from all the characters of the substring's category, and then encoding the resulting `BigInt` into a string with the 32 symbol characters.
 
-Texts which still use the Latin alphabet along with a number of non-ASCII letters are treated a little differently. 
+The reverse of this function, `decodeRange`, is applied in the output when it decodes the substrings at runtime. The resulting decoded character string is used to decode all the substrings assigned to its category or script, irregardless of key, thus revealing the original extracted string. Each captured substring is then assigned a bijective-encoded string in increasing order, skipping those already defined in order not to conflict with them.
+
+The encoded strings and their keys are then placed inside an array destructuring operation, the keys on the left hand side and the encoded substrings on the right hand side. The right hand side with a mapper function that repeatedly decodes every substring as each key-substring pair is assigned to the global object. Each statement corresponds to one of the scripts or categories assigned by the compiler, with priority given to integer and alphanumeric strings.
+
+### Tokenization
 
 As soon as the regular expression encounters a non-ASCII letter, it begins a new token and matches all other Latin characters of the word and assigns that matched substring to the category `Latin`. The ASCII letter substring before is assigned `Alnum`. This is because the compiler captures ASCII alphanumeric substrings before capturing Latin-script substrings.
 
