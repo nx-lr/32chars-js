@@ -132,6 +132,12 @@ function encode(text, globalVar = '$', tokenLength = 256) {
     return quote(string, true)
   }
 
+  function genReference(key) {
+    return isValidIdent(key)
+      ? `${globalVar}.${key}`
+      : `${globalVar}[${quote(key)}]`
+  }
+
   function quote(string, key = false) {
     if (key && isValidIdent(string)) return string
 
@@ -735,7 +741,7 @@ function encode(text, globalVar = '$', tokenLength = 256) {
     let tokens = metadata[key].map(([, x, y]) => [x, y])
 
     let expr =
-      `[${tokens.map(([x]) => `${globalVar}[${quote(x)}]`)}]=` +
+      `[${tokens.map(([x]) => genReference(x))}]=` +
       `[${tokens.map(([, y]) => quote(y))}]` +
       `[${globalVar}[${quote('%')}]]` +
       `(${mapper});`
