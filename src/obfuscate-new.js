@@ -1,15 +1,16 @@
-let V = require('voca')
-let XRegExp = require('xregexp')
-let _ = require('lodash')
-let fs = require('fs')
-let genex = require('genex')
-let glob = require('glob')
-let isValidIdent = require('is-valid-identifier')
-let jsesc = require('jsesc')
-let uglify = require('uglify-js')
-let regenerate = require('regenerate')
+const V = require('voca')
+const XRegExp = require('xregexp')
+const _ = require('lodash')
+const fs = require('fs')
+const genex = require('genex')
+const glob = require('glob')
+const isValidIdent = require('is-valid-identifier')
+const jsesc = require('jsesc')
+const uglify = require('uglify-js')
+const regenerate = require('regenerate')
 
-let text = fs.readFileSync('./input.txt', 'utf8')
+const text = fs.readFileSync('./input.txt', 'utf8')
+const version = '14.0.0'
 
 encode(text)
 
@@ -109,8 +110,8 @@ function encode(text, globalVar = '$', nGramLength = 256) {
   let functionCiphers = {
     encodeBijective: '+[]',
     decodeBijective: '~[]',
-    compressRange: '![]',
-    expandRange: "!''",
+    encodeRange: '![]',
+    decodeRange: "!''",
     punct: '+{}',
     alnumDigits: "!''/![]",
   }
@@ -438,7 +439,7 @@ function encode(text, globalVar = '$', nGramLength = 256) {
   header +=
     `${globalVar}={...${globalVar},` +
     [
-      ...[encodeBijective, decodeBijective, compressRange, expandRange].map(
+      ...[encodeBijective, decodeBijective, encodeRange, decodeRange].map(
         func => [`[${functionCiphers[func.name]}]`, encodeFunction(func)]
       ),
     ].map(x => x.join`:`) +
@@ -464,7 +465,7 @@ function encode(text, globalVar = '$', nGramLength = 256) {
       .filter(dir => !/\.\w+$/.test(dir))
       .map(dir => {
         let [name] = dir.split('/').reverse(),
-          regex = require(`@unicode/unicode-14.0.0/Script/${name}/regex.js`)
+          regex = require(`@unicode/unicode-${version}/Script/${name}/regex.js`)
         return [name, regex]
       })
   )
@@ -502,12 +503,42 @@ function encode(text, globalVar = '$', nGramLength = 256) {
     ])
   )
 
+  let existingKeys = new Set(
+    [
+      "'", // toString
+      '-', // space
+      _.values(wordCiphers),
+      _.values(globalFunctions),
+      [...' abcdefghijklmnopqrstuvwxyzABCDEFINORSU0123456789'].map(x =>
+        encodeCharKey(x)
+          .replace(/^['"`]|['"`]$/g, '')
+          .replace(/\\(.)/g, '$1')
+      ),
+    ].flat()
+  )
+
+  let keyGen = (function* () {
+    for (let i = 1; ; i++) {
+      let key = encodeBijective(i, punct)
+      if (!existingKeys.has(key)) yield key
+    }
+  })()
+
   characters = _.mapValues(characters, group => {
-    let compressed = compressRange(group, punct)
-    let expanded = expandRange(compressed, punct)
+    let compressed = encodeRange(group, punct)
+    let expanded = decodeRange(compressed, punct)
+    let key = keyGen.next().value
     console.assert(group == expanded)
-    return [group, compressed]
+    return [group, key, compressed]
   })
+
+  let characterSets = _.values(characters).map(([, key, val]) => [
+    quoteKey(key),
+    quote(val),
+  ])
+
+  header +=
+    `${globalVar}={...${globalVar},` + characterSets.map(x => x.join`:`) + '};'
 
   let regExps = {
     // Removed by compiler, will get added back in later
@@ -567,7 +598,7 @@ function encode(text, globalVar = '$', nGramLength = 256) {
     return result
   }
 
-  function compressRange(chars, digits = punct, sep = ',', sub = '.') {
+  function encodeRange(chars, digits = punct, sep = '/', sub = '\\') {
     digits = [...new Set(digits)].filter(digit => digit != sep && digit != sub)
       .join``
 
@@ -586,7 +617,7 @@ function encode(text, globalVar = '$', nGramLength = 256) {
       .join(sep)
   }
 
-  function expandRange(run, digits = punct, sep = ',', sub = '.') {
+  function decodeRange(run, digits = punct, sep = '/', sub = '\\') {
     function range(start, end, step = 1) {
       return [...Array(Math.abs(end - start) / step + 1)].map(
         (_, index) => start + (start < end ? 1 : -1) * step * index
@@ -631,27 +662,6 @@ function encode(text, globalVar = '$', nGramLength = 256) {
   )
 
   identBlacklist = new Set(identBlacklist)
-
-  let existingKeys = new Set(
-    [
-      "'", // toString
-      '-', // space
-      _.values(wordCiphers),
-      _.values(globalFunctions),
-      [...' abcdefghijklmnopqrstuvwxyzABCDEFINORSU0123456789'].map(x =>
-        encodeCharKey(x)
-          .replace(/^['"`]|['"`]$/g, '')
-          .replace(/\\(.)/g, '$1')
-      ),
-    ].flat()
-  )
-
-  let keyGen = (function* () {
-    for (let i = 1; ; i++) {
-      let key = encodeBijective(i, punct)
-      if (!existingKeys.has(key)) yield key
-    }
-  })()
 
   console.info('Encoding tokens')
 
@@ -715,7 +725,7 @@ function encode(text, globalVar = '$', nGramLength = 256) {
     ..._.fromPairs(
       _.entries(characters).map(([key, [, val]]) => [
         key,
-        `_=>$[+[]]($[~[]](_),$[!''](${quote(val)}))`,
+        `_=>$[+[]]($[~[]](_),$[!''](${globalVar}[${quote(val)}]))`,
       ])
     ),
   }
