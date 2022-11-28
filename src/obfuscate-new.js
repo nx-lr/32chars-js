@@ -29,7 +29,7 @@ function encode(
   let alnumLower = '0123456789abcdefghijklmnopqrstuvwxyz'
 
   let punct = '_$-,;:!?.@*/&#%^+<=>|~()[]{}\'"`\\'
-  let alnumDigits =
+  let alnum =
     '0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ'
 
   let constantExprs = {
@@ -118,7 +118,7 @@ function encode(
     encodeRange: '![]',
     decodeRange: "!''",
     punct: '+{}',
-    alnumDigits: "!''/![]",
+    alnum: "!''/![]",
   }
 
   // HELPER FUNCTIONS
@@ -705,7 +705,7 @@ function encode(
       ).map(([substr]) => [
         substr,
         keyGen.next().value,
-        encodeBijective(decodeBijective(substr, alnumDigits), punct),
+        encodeBijective(decodeBijective(substr, alnum), punct),
       ])
 
     // All other categories
