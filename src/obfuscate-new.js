@@ -23,7 +23,7 @@ function encode(text, globalVar = '$', tokenLength = 256) {
   let cipher = '_$-,;:!?.@*/&#%^+<=>|~\'"`\\'
   let alnumLower = '0123456789abcdefghijklmnopqrstuvwxyz'
 
-  let punct = '!"#$%&\'()*+,-./:;<=>?@[\\]^_`{|}~'
+  let punct = '_$-,;:!?.@*/&#%^+<=>|~()[]{}\'"`\\'
   let alnumDigits =
     '0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ'
 
