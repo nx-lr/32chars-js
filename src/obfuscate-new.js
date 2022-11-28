@@ -14,7 +14,7 @@ const version = '14.0.0'
 
 encode(text)
 
-function encode(text, globalVar = '$', nGramLength = 256) {
+function encode(text, globalVar = '$', tokenLength = 256) {
   console.info('Fetching Unicode data')
 
   // INITIALIZATION
@@ -598,7 +598,7 @@ function encode(text, globalVar = '$', nGramLength = 256) {
     return result
   }
 
-  function encodeRange(chars, digits = punct, sep = '/', sub = '\\') {
+  function encodeRange(chars, digits = punct, sep = ',', sub = '\\') {
     digits = [...new Set(digits)].filter(digit => digit != sep && digit != sub)
       .join``
 
@@ -617,7 +617,7 @@ function encode(text, globalVar = '$', nGramLength = 256) {
       .join(sep)
   }
 
-  function decodeRange(run, digits = punct, sep = '/', sub = '\\') {
+  function decodeRange(run, digits = punct, sep = ',', sub = '\\') {
     function range(start, end, step = 1) {
       return [...Array(Math.abs(end - start) / step + 1)].map(
         (_, index) => start + (start < end ? 1 : -1) * step * index
@@ -647,7 +647,7 @@ function encode(text, globalVar = '$', nGramLength = 256) {
       let [[group, text]] = _.entries(match.groups).filter(
         ([, val]) => val != null
       )
-      return _.chunk(text, nGramLength).map(text => ({
+      return _.chunk(text, tokenLength).map(text => ({
         group,
         text: text.join``,
       }))
