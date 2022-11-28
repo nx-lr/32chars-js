@@ -14,7 +14,12 @@ const version = '14.0.0'
 
 encode(text)
 
-function encode(text, globalVar = '$', tokenLength = 256) {
+function encode(
+  text,
+  options = {globalVar: '$', resultVar: '_', tokenLength: 256}
+) {
+  let {globalVar, resultVar, tokenLength} = options
+
   console.info('Fetching Unicode data')
 
   // INITIALIZATION
@@ -190,29 +195,28 @@ function encode(text, globalVar = '$', tokenLength = 256) {
   function encodeChar(char) {
     if (/[a-zA-FINORSU]/.test(char)) {
       let key =
-        (V.isUpperCase(char) ? '$' : '_') +
+        (char != char.toLowerCase() ? '$' : '_') +
         cipher[letters.indexOf(char.toLowerCase())]
-      if (isValidIdent(key)) return `${globalVar}.${key}`
-      else return `${globalVar}[${quote(key)}]`
+      return genReference(key)
     }
 
     if (/[GHJ-MPQTV-Z]/.test(char))
-      return `${encodeChar(char.toLowerCase())}[${globalVar}[${quote('@')}]]()`
+      return `${encodeChar(char.toLowerCase())}[${genReference('@')}]()`
 
     if (/\d/.test(char)) {
       let key = [...(+char).toString(2).padStart(3, 0)].map(x =>
         +x ? '$' : '_'
       ).join``
-      return `${globalVar}.${key}`
+      return genReference(key)
     }
 
-    if (char == ' ') return `${globalVar}[${quote('-')}]`
+    if (char == ' ') return genReference('-')
 
     return quote(char)
   }
 
   function encodeString(string) {
-    return [...string].map(char => encodeChar(char, globalVar)).join`+`
+    return [...string].map(char => encodeChar(char)).join`+`
   }
 
   function encodeProps(props) {
@@ -255,9 +259,9 @@ function encode(text, globalVar = '$', tokenLength = 256) {
       .match(/ |[\da-z]+|[^ \da-z]+/gi)
       .map(match =>
         _.keys(constructorExprs).includes(match)
-          ? `${cycle(
-              constructorExprs[match]
-            )}[${globalVar}.$][${globalVar}[${quote('?')}]]`
+          ? `${cycle(constructorExprs[match])}[${genReference(
+              '$'
+            )}][${genReference('?')}]`
           : _.keys(wordCiphers).includes(match)
           ? `${globalVar}[${quote(wordCiphers[match])}]`
           : /[^\s\da-z]+/i.test(match)
@@ -268,7 +272,7 @@ function encode(text, globalVar = '$', tokenLength = 256) {
     // DEBUG
     // return result
 
-    return `${globalVar}[${quote('=')}](${result})`
+    return `${genReference('=')}(${result})`
   }
 
   let reservedVars = _.range(1, 64).map(x => encodeBijective(BigInt(x), '_$'))
@@ -283,9 +287,9 @@ function encode(text, globalVar = '$', tokenLength = 256) {
       .match(/ |[\da-z]+|[^ \da-z]+/gi)
       .map(match =>
         _.keys(constructorExprs).includes(match)
-          ? `${cycle(
-              constructorExprs[match]
-            )}[${globalVar}.$][${globalVar}[${quote('?')}]]`
+          ? `${cycle(constructorExprs[match])}[${genReference(
+              '$'
+            )}][${genReference('?')}]`
           : _.keys(wordCiphers).includes(match)
           ? `${globalVar}[${quote(wordCiphers[match])}]`
           : /[^\s\da-z]+/i.test(match)
@@ -296,7 +300,7 @@ function encode(text, globalVar = '$', tokenLength = 256) {
     // DEBUG
     // return result;
 
-    return `${globalVar}[${quote('=')}](${result})`
+    return `${genReference('=')}(${result})`
   }
 
   // TESTING FUNCTIONS
@@ -347,7 +351,7 @@ function encode(text, globalVar = '$', tokenLength = 256) {
       if (/[a-z ]/i.test(char) && !(char in charMap1) && !(char in charMap2)) {
         let index = constructor.indexOf(char)
         let expansion =
-          `\`\${${cycle(exprs)}[${globalVar}.$]}\`` +
+          `\`\${${cycle(exprs)}[${genReference('$')}]}\`` +
           `[${encodeString(String(index))}]`
         charMap2[char] = [expansion, index]
       }
@@ -373,12 +377,9 @@ function encode(text, globalVar = '$', tokenLength = 256) {
       ([ident, shortcut]) =>
         `${quoteKey(shortcut)}:${cycle(
           constructorExprs.Function
-        )}[${globalVar}.$]` +
-        `(${[
-          `${globalVar}._`,
-          `${globalVar}[${quote('-')}]`,
-          encodeString(ident),
-        ].join`+`})()`
+        )}[${genReference('$')}]` +
+        `(${[`${globalVar}._`, `${genReference('-')}`, encodeString(ident)]
+          .join`+`})()`
     ) +
     '};'
 
@@ -389,17 +390,17 @@ function encode(text, globalVar = '$', tokenLength = 256) {
     [
       [
         quoteKey("'"),
-        `${encodeString('to')}+${quote(
-          ''
-        )}[${globalVar}.$][${globalVar}[${quote('?')}]]`,
+        `${encodeString('to')}+${quote('')}[${genReference(
+          '$'
+        )}][${genReference('?')}]`,
       ],
       [
         encodeCharKey('C'),
-        `${globalVar}[${quote('&')}](${quote('<')})[${encodeString('2')}]`,
+        `${genReference('&')}(${quote('<')})[${encodeString('2')}]`,
       ],
       [
         encodeCharKey('D'),
-        `${globalVar}[${quote('&')}](${quote('=')})[${encodeString('2')}]`,
+        `${genReference('&')}(${quote('=')})[${encodeString('2')}]`,
       ],
     ].map(x => x.join`:`) +
     '};'
@@ -422,7 +423,7 @@ function encode(text, globalVar = '$', tokenLength = 256) {
     `[${lowercase.map(letter =>
       encodeString(String(alnumLower.indexOf(letter)))
     )}]` +
-    `[${globalVar}[${quote('%')}]]` +
+    `[${genReference('%')}]` +
     `(_=>(+_)[${globalVar}[${quote("'")}]](${encodeString('36')}));`
 
   header += lowercaseExpr
@@ -660,8 +661,8 @@ function encode(text, globalVar = '$', tokenLength = 256) {
     })
     .flat(1)
 
-  let identBlacklist = [...'abcdefghijklmnopqrstuvwxyzABCDEFINORSU']
-  identBlacklist = identBlacklist.concat(
+  let encodedCharacters = [...'abcdefghijklmnopqrstuvwxyzABCDEFINORSU']
+  let identBlacklist = encodedCharacters.concat(
     ...[wordCiphers, constantExprs, constructorExprs]
       .map(_.keys)
       .filter(ident => /^[a-z]/i.test(ident))
@@ -743,22 +744,19 @@ function encode(text, globalVar = '$', tokenLength = 256) {
     let expr =
       `[${tokens.map(([x]) => genReference(x))}]=` +
       `[${tokens.map(([, y]) => quote(y))}]` +
-      `[${globalVar}[${quote('%')}]]` +
+      `[${genReference('%')}]` +
       `(${mapper});`
 
     return expr
   }).join``
 
-  console.log(
-    header +
-      statements +
-      `console.log(Object.fromEntries(Object.entries(${globalVar})` +
-      '.sort(([,a],[,b])=>String(a).localeCompare(String(b)))))'
-  )
+  let debugStatement =
+    `console.log(Object.fromEntries(Object.entries(${globalVar})` +
+    '.sort(([,a],[,b])=>String(a).localeCompare(String(b)))))'
 
   // GENERATING THE STRING
 
-  console.info('Generating string')
+  console.log(header + statements + debugStatement)
 
   return {metadata, characters, mappers, tokens}
 }
