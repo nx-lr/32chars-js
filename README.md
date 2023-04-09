@@ -377,7 +377,7 @@ Here is a list of customization options available:
 - `defaultQuote` - Quoting style to fall back to, if smart quoting is enabled. One of `single`, `double`, or `back tick`. The default is `double`.
 - `'objectQuote'` - Whether to quote keys inside objects and which quotes to use. `'none'` skips quoting identifier keys, so sequences of `_` and `$` will not be quoted. If `calc` is selected, all the keys will be quoted inside square brackets. The default is `'none'`; options are `'none'`, `'single'`, `'double'` or `'calc'`.
 - `smartQuote` - Whether or not to enable "smart" quoting; choosing quotes with the least number of escapes. If disabled, all strings inside the output, including object keys, will be quoted to `defaultQuote` and `objectQuote`. The default is `true`.
-- `tokenLength` - Maximum length of a tokenized substring, inclusive of punctuation. All tokens will thus be split into the desired lngth. The default is `64`.
+- `tokenLength` - Maximum length of a tokenized substring, inclusive of punctuation. All tokens will thus be split into the desired length. The default is `64`.
 - `delimiter` - Which character to use to delimit `BigInt`-hashed substrings or character sets. The default is `','`.
 - `rangeDelimiter` - Which character to use to delimit ranges that `BigInt`-hashed character sets. The default is `'-'`.
 - `wrapInIIFE` - Whether to wrap the obfuscated code in an anonymous function call, using the `Function` constructor. The default is `false`.
