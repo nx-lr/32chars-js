@@ -2,7 +2,7 @@
 
 ## Disclaimer
 
-This program is meant to be used for experimental purposes: for hashing and encoding text and code to protect private work. **This program shall not be used for malicious purposes, I do not hold any responsibility for any damage caused.**
+**This program is only meant for education and experimentation and shall not be used for any malicious purposes other than to obfuscate *private* work.**
 
 ## Introduction
 
@@ -12,29 +12,32 @@ This project is a testament to the many existing JavaScript encoders out there, 
 
 ## Background
 
-JavaScript is a programming language with many weird and complicated parts. Some programmers have found out that one can write JavaScript with a minimal set of characters numbers, up to [five](https://aem1k.com/five/) or [six](http://www.jsfuck.com/) possible symbols. These compilers output _extremely verbose_ code, where a single character may expand to thousands.
+JavaScript as a programming language has many weird and complicated parts. Some programmers have found out that one can write JavaScript without any alphanumeric characters, but a minimal set of characters, up to [five](https://aem1k.com/five/) or [six](http://www.jsfuck.com/) possible symbols. These compilers output _extremely verbose_ code, where a single character may expand to thousands.
 
-Program code contains a wide variety of letters, numbers, symbols, and spaces, making code terser, parsable and readable. This project aims to output code that still does not contain any letters or numbers, but with still enough characters to produce the shortest possible output. There are 32 symbol characters within the ASCII range which seems just right considering that most, if not all of these characters carry special meaning in programming, even while acting as encoding characters.
+Program code contains a wide variety of individual characters: numbers, letters, symbols and spaces, making code more parsable and readable. This project aims to output obfuscated JavaScript code using all the 32 symbol characters while maintaining the shortest possible output.
 
-Rather than encoding every character in the input string one by one, we break the string into runs that have a length of at least one character. This way, we effectively minimize the amount of operations performed by the JavaScript engine, while keeping the overall output short. So, the compiler breaks and encodes parts of the string into parsable tokens and then determines which JavaScript's built-in operations produce the original string. Parts of the string containing those same 32 ASCII symbol characters remain unchanged and quoted in string literals.
+So rather than encoding every single character in the input string, we break the string into runs that have a length of at least one character. This way we can effectively minimize the amount of operations performed by the JavaScript engine, while keeping the overall output short. 
 
-## Explanation
+So, the compiler breaks and encodes parts of the string into parsable tokens and then determines which JavaScript's built-in operations produce the original string. Parts of the string containing those same 32 ASCII symbol characters remain unchanged and quoted in string literals.
+
+## Walkthrough 
 
 With a large character set, most of these symbols also are valid JavaScript tokens. The most significant of them are:
 
-- `'`, `"` and `` ` `` delimit strings. The backtick `` ` `` delimits template strings, which allow for interpolation and tagged function calls
-- Combinations of `_` and `$` to form variables and identifiers
-- `+` to concatenate strings, add numbers and cast things into numbers
+- The quote characters `'`, `"` and `` ` `` delimit strings. The back tick `` ` `` delimits template strings, which allow for interpolation and tagged function calls
+- Combinations of `_` and `$` form variables and identifiers
+- The plus sign `+` concatenates strings, adds numbers and (tries to) cast other values into numbers
 - Arithmetic `+ - * / % **` and bitwise `& | ^ ~ << >> >>>` operators with a `Number` and `BigInt` on either side
-- `.` to access properties of objects
-- `,` to delimit array elements, function arguments and object properties, as well as assign multiple variables in a single statement
-- `()` to call functions and group expressions with different precedences
-- `[]` to access array and object elements and create array literals
-- `{}` to delimit object literals and code blocks
-- `${}` to interpolate expressions in template strings, converting them into strings if untagged
-- `/` to delimit regular expression literals and divide numbers
+- The dot `.` to access properties of objects that are valid JavaScript identifiers
+- The comma `,` to delimit array elements, function arguments and object properties, as well as assign multiple variables in a single statement
+- The round brackets `()` to call functions and group expressions with different precedences
+- The square brackets `[]` to access array and object elements and create array literals
+- The curly brackets `{}` to delimit object literals and code blocks
+- The construct `${}` to interpolate expressions in template strings, converting them into strings if untagged
+- The slash `/` to delimit regular expression literals and divide numbers
+- The backslash `\` to escape characters in strings, even themselves
 
-We have syntax to form strings. Strings are very fundamental to obfuscation, as we can store and hash custom data. However, there are many other ways to create strings, using JavaScript's newest syntax and functionality: `RegExp` and `BigInt` data types, and many new `String`, `Array`, and `Object` methods.
+We have syntax to form strings. Strings are very fundamental to obfuscation, as we can store and hash custom data. However, there are many other ways to create strings, using JavaScript's newest syntax and functionality: `RegExp` and `BigInt` data types, and many `String`, `Array`, and `Object` methods.
 
 The compiler uses a two-step substitution encoding. First, characters and functions are assigned to variables and properties with programmatically generated keys, These are then decoded through these operations, and used either to construct new substrings or build back the original string.
 
@@ -44,19 +47,19 @@ The compiler parses the text into categorical tokens depending on the type of ch
 
 JavaScript stores strings as **UTF-16**, so all BMP characters, code points `U+0000` to `U+FFFF` are encoded as _two_ bytes while the rest are encoded as _four_.
 
-The text is split by a delimiter such as a space, or the most common substring which the compiler detects. The split elements go into an array and delimited with commas. There could be empty array slots, so nothing goes in between the commas. Unfortunately, JavaScript ignores trailing commas, so we have to explicitly add trailing comma if the final element of an output array is empty.
+The text is split by a delimiter such as a space, or the most common substring which the compiler detects. The split elements go into an array and delimited with commas. There could be empty array slots, so nothing goes in between the commas. Unfortunately, JavaScript ignores trailing commas, so we have to explicitly add a trailing comma if the final element of an output array is empty.
 
 ### Quoting string literals
 
-We create string literals in JavaScript in three ways: single-quoted `''`, double-quoted `""` and _template_ (backtick) strings ` `` `. Both single and double-quoted strings are functionally the same. Template strings allow for interpolating values with the `${}` syntax. In the output, we quote sequences of ASCII symbols directly as they are in any of these three quotes.
+We create string literals in JavaScript in three ways: single-quoted `''`, double-quoted `""` and _template_ (back tick) strings ` `` `. Both single and double-quoted strings are functionally the same. Template strings allow for interpolating values with the `${}` syntax. In the output, we quote sequences of ASCII symbols directly as they are in any of these three quotes.
 
 Usually, the runs do not contain any of the quote characters `` ' " ` ``, or the backslash `\`, so any type of quote would do without escapes. If any of these above-mentioned characters are present, then the backslash, and the corresponding quote character is escaped, by prefixing it with a backslash (like `'\\'`), preventing the string from abruptly ending.
 
-In template literals delimited with backticks `` ` ``, the sequence `${`, which begins interpolation, is also escaped to avoid opening interpolation.
+In template literals delimited with back ticks `` ` ``, the sequence `${`, which begins interpolation, is also escaped to avoid opening interpolation.
 
 Each substring in the output goes through a quoting function, and calls `jsesc` on each. The number of escapes in all the three strings are counted, and the string literal with the least number of escapes is selected. In most cases where there are no escapes, the compiler just falls back cycling between the three delimiters.
 
-The rules for quoting object keys are different: backtick-delimited strings cannot be used, as they throw a syntax error; string keys which are valid identifiers, i.e. combinations of `_` and `$`, do not need to be quoted.
+The rules for quoting object keys are different: back tick-delimited strings cannot be used, as they throw a syntax error; string keys which are valid identifiers, i.e. combinations of `_` and `$`, do not need to be quoted.
 
 ### Statement 1
 
@@ -66,7 +69,7 @@ The symbols `_` and `$` are valid JavaScript identifier characters, so we can us
 
 ### Statement 2
 
-In the following statement, we assign `$` to an object literal in curly braces `{}`. We define properties inside the braces in the form `key: value`, and separate _key-value pairs_ or _properties_ with commas.
+In the following statement, we assign `$` to an object literal in curly braces `{}`. This `$` variable is the global object, and is what we use to define values and substrings for us to build back the input string. We define properties inside the braces in the form `key: value`, and separate _key-value pairs_ or _properties_ with commas.
 
 JavaScript has three different ways to represent keys: _identifiers_ (which can be keywords) _without quotes_ like `key:value`, _strings_ within _single or double quotes_ like `'key':value`, and _dynamic expressions_ within _square brackets_ `['key']:value`. In addition, we can access object properties with dots, like `x.key`, or square brackets, like `x['key']`.
 
@@ -74,11 +77,11 @@ Strings and arrays can be indexed, each character within the string or element o
 
 The first property of `$` is `___`, with a value of `` `${++$}` ``. This takes the value of `$`, currently `-1`, and increments it to `0`, then casts that into a string by interpolating it inside a template literal, implicitly calling the method `.toString()`. While the object is still being built, `$` is still a number and not an object yet, since evaluation happens outward.
 
-The second property is `$__$`, with a value of `` `${!''}`[$] ``. An empty string is prepended with the logical NOT operator `!`, which coerces it into `false` as it is considered _falsy_ in JavaScript. `!` also negates the boolean, becoming `true`. The expression is wrapped a template literal interpolation, turning it into a string `"true"`. The `[$]` construct at the end returns the character at index `0` (string indices start at `0`), which returns `t`.
+The second property is `$__$`, with a value of `` `${!''}`[$] ``. An empty string is prepended with the logical NOT operator `!`, which coerces it into `false` as it is considered _falsy_ in JavaScript. `!` also negates the boolean, becoming `true`. The expression is wrapped a template literal interpolation, turning it into a string `"true"`. The `[$]` construct at the end returns the character at index `0` (indices start at zero), which returns `t`.
 
-We repeat the above steps: incrementing the `$` variable, constructing a string, and grabbing a character out of the string by specifying its index. Next, we manipulate literals to evaluate to form the constants, `true`, `false`, `Infinity`, `NaN`, `undefined`, and an empty object `{}` which becomes the _string tag_ `'[object Object]'`.
+We repeat the above steps: incrementing `$` variable, constructing a string, and grabbing a character out of the string by specifying its index. Next, we manipulate literals to evaluate to form the constants, `true`, `false`, `Infinity`, `NaN`, `undefined`, and an empty object `{}` which becomes the _string tag_ `'[object Object]'`.
 
-The constants yield the following letters (case-sensitive): `a b c d e f i j I l n N o O r s t u y`, the space and the digits `0` to `9`. We now have the hexadecimal alphabet and several other uppercase and lowercase letters.
+The constants yield the following letters (case-sensitive): `a b c d e f i j l n o r s t u y I N O`, the space and the digits `0` to `9`. We now have the hexadecimal alphabet and several other uppercase and lowercase letters.
 
 We cipher the numbers in binary, substituting `_` for digit `0` and `$` for digit `1`. Then we pad the result to a length of 3 by adding `_` (as `__`, `_$`, `$_` and `$$` have keys defined). So `___` is `0` and `__$` is `1`.
 
@@ -102,7 +105,7 @@ Now we have 22 lowercase `a b c d e f g i j l m n o p r s t u v x y` and 9 upper
 
 In the next statement, we form the method names `indexOf`, `map`, `name`, `repeat`, `replace`, `reverse`, `split`, the constructor functions `BigInt` and `Set`, and the keyword `var`.
 
-We use the spread operator, `...`, to "spread out" its properties on a new object. In this case we are cloning the object and then spreading it out along with new properties. This saves up on having to assign every single property on the object, one by one. This saves having to repeat the global variable every time.
+We use the spread operator, `...`, to "spread out" its properties on a new object. In this case we are cloning the object and then spreading it out along with new properties. This saves up on having to assign every single property on the object, one by one. This saves having to repeat the `$` variable every time.
 
 ### Statement 5 and beyond
 
@@ -116,7 +119,7 @@ In this case, for base above 10, the letters of the alphabet indicate digits gre
 
 With the `Function` constructor, we can execute code contained inside a string as native JavaScript. For example, with an expression such as `Function('return eval')`, we retrieve the built-in functions `eval`, `escape`.
 
-The letters `C` (from `<` or `%3C`) and D (from `=` or `%3D`) and `D` come from indexing the last hexadecimal digit from a URL string. All characters that are not an ASCII letter, number, or one of the symbols `-`, `_`, `.`, and `~`, are percent-encoded, into a form `%XX` or `%uXXXX` for higher code points, where X is an _uppercase_ hexadecimal digit.
+The letters `C` (from `<` or `%3C`) and `D` (from `=` or `%3D`) come from indexing the last hexadecimal digit from a URL string. All characters that are not an ASCII letter, number, or one of the symbols `-`, `_`, `.`, and `~`, are percent-encoded, into a form `%XX` or `%uXXXX` for higher code points, where X is an _uppercase_ hexadecimal digit.
 
 The expression `{}.toString.call().toString()`, or `` `${{}.toString.call()}` `` evaluates to the string `'[object Undefined]'` which yields us the character `U`.
 
@@ -197,7 +200,7 @@ Functions can be converted into strings, which yield their source code when conv
 
 - We pass the entire function into **UglifyJS**, which returns a minified version of the source code. UglifyJS eliminates comments and dead code, shortens variables, and compresses values, expressions and statements to be as compact as possible.
 - Next, we convert the named function `function named(args)=>{body}` into an anonymous arrow function `(args)=>{body}` with a regular expression.
-- Then, we generate a lookup table of all the variables and arguments defined in the function, and substitute them with combinations of `_` and `$` characters.
+- Then, we generate a lookup table of all the variables and arguments defined in the function, and substitute them with combinations of `_` and `$` characters, except the global variable.
 - After that, we substitute all the identifiers, numbers and spaces with the appropriate substring if they have been defined, if not they are spelled out entirely. If an uppercase letter is not defined, we attach a `.toUpperCase()` call on the equivalent ih lowercase letter.
 - Next, we substitute calls to other functions are substituted with the appropriate property of `$` as a primitive expression inside the string.
 - We quote the remaining portions of the string which are symbols, and join everything up with the string concatenation operator `+`.
@@ -212,7 +215,7 @@ Using various string methods, we can employ algorithms to produce similar string
 - The `split` and `'join'` method is used to join an array of "strings" with a string as its delimiter. Then, using regular expressions, we determine the optimal substring to delimit, then we recursively split and hash both the substrings and the delimiter.
 - The `replace` method is used to replace one or all substrings of a substring through insertion, deletion, or substitution to turn it into something similar. We would use a string difference checker.
 
-We divide the substring into n-grams and determine which substrings could be derived from all the non-symbol characters in the file. The compiler builds a list of all these substrings, and stores them in the global object in a separate statement should they appear in the input more than once.
+We divide the substring into n-grams and determine which substrings could be derived from all the non-symbol characters in the file. The compiler builds a list of all these substrings, and stores them in `$` in a separate statement should they appear in the input more than once.
 
 ### Escaping strings
 
@@ -222,7 +225,7 @@ However, we can still perform some optimizations to minimize the use of such bac
 
 One is embedding the substring inside a `RegExp` literal and accessing either the `source` property to retrieve the pattern, or wrapping it inside a template literal to encase it inside its delimiting slashes.
 
-The other is using `String.raw` function on a template literal, which returns the raw character sequence.
+The other is using the `String.raw` function on a template literal, which returns the raw character sequence.
 
 If the compiler evaluates either literal with the `eval` and still produces an error, it falls back to using the normal substrings. `RegExp`-delimited literals are prioritized. If a substring ends in a an odd number of backslashes the last backslash is added back in normal quotes: `'\\'`.
 
@@ -235,7 +238,7 @@ There are four aliased functions encoded inside the output:
 - `compressRange`, aliased `false`; and
 - `expandRange`, aliased `true`.
 
-All these functions rely on the principle of **[bijective numeration](https://en.wikipedia.org/wiki/Bijective_numeration)**, which states that every non-negative integer can be represented in exactly one way using a finite string of digits. The reverse is true: every string of digits made from an indexed, unique character set, corresponds to a natural number.
+All these functions rely on the principle of **[bijective numeration](https://en.wikipedia.org/wiki/Bijective_numeration)**; every non-negative integer can be represented in exactly one way with a finite string of digits. The reverse is true: every string of digits made from an indexed, unique character set, corresponds to a natural number.
 
 ```js
 const functionAliases = {
@@ -249,14 +252,14 @@ const functionAliases = {
 `encodeBijective` encodes a `BigInt` into a bijective string with the passed characters as its digits. It acts as normal base conversion except there is no zero digit.
 
 - Repeatedly divides the integer until it reaches zero: `0 < (number = (number - 1) / base)`
-- Returns the modulus of every digit with its base, which is the length of the string; and returns the corresponding digit of the digit array based on its index (indices start from 0) with what was once digit 0 being replaced with the last: (Expression `digits[(digit % base || base) - 1]`)
-- Adds the resulting digit to the beginning of the string, hence assembling it backward. If the number is 0 or negative it just returns it.
+- Returns the modulus of every digit with its base, which is the length of the string; and returns the corresponding "digit" of the "digit" array based on its index (indices start from 0) with what was once digit 0 being replaced with the last: (Expression `digits[(digit % base || base) - 1]`)
+- Concatenates the resulting "digit" to the beginning of the string, hence assembling it backward. If the number is 0 or negative it just returns it.
 
 `decodeBijective` does the opposite, returning a `BigInt` from the string and its passed digits as a string.
 
 - The string is converted into a set and then spread into an array, which ensures astral code points are counted as single characters;
-- Repeatedly multiplies a digit by 1 greater than its index in the string and raises it to the power of 1 minus the base, in reverse order: `(digits.indexOf(digitString[placeValue]) + 1) * r ** (digitLength - placeValue - 1)`
-- Adds the result to 0 which is the default value, as a BigInt.
+- Repeatedly multiplies a digit by 1 greater than its index in the string and raises it to the power of 1 minus the base, in reverse order: `(digits.indexOf(digitString[placeValue]) + 1) * base ** (digitString.length - placeValue - 1)`
+- Adds the result to 0 which is the default value, as a `BigInt`.
 
 The string is converted into an array by spreading the individual characters in a string into a new Set object, which ensures the passed string contains unique characters, and then finally into an array, including astral code points which normally are encoded as two code points if inside a string.
 
@@ -288,9 +291,9 @@ const compressRange=(e,n,t=",",o=".")=>{return n=[...new Set(n)].filter(e=>e!=t&
 const expandRange=(e,t,n=",",o=".")=>{return t=[...new Set(t)].filter(e=>e!=n&&e!=o).join``,e.split(n).map(e=>{var n,a,i,r,e=e.split(o).map(e=>+(""+decodeBijective(e,t)));return 1==e.length?e:([n,e,a=1,i=0]=[...e],r=n<e?1:-1,[...Array((Math.abs(e-n)+2*i)/a+1)].map((e,t)=>n-r*i+r*a*t))}).flat().map(e=>String.fromCodePoint(e)).join``}
 ```
 
-Regardless if a particular substring occurs more than once in the input, it will still be hashed and stored in the global object. All hashed strings are grouped according to their Unicode _script_ or _general category_, decoded by looping over the keys, and finally spread out into the global object.
+Regardless if a particular substring occurs more than once in the input, it will still be hashed and stored in `$`. All hashed strings are grouped according to their Unicode _script_ or _general category_, decoded by looping over the keys, and finally spread out into `$`.
 
-While most of these strings are encoded, some of them are decoded directly when assembling the output string while not being stored in the global object. The following is a summary of the steps the compiler takes to encode and decode runs of characters of different types.
+While most of these strings are encoded, some of them are decoded directly when assembling the output string while not being stored in `$`. The following is a summary of the steps the compiler takes to encode and decode runs of characters of different types.
 
 ### Encoding and decoding characters
 
@@ -304,23 +307,23 @@ The compiler assigns a category to each code point checking the character to the
 - Punctuation (`P`): connector (`Pc`), dash (`Pd`), initial quote (`Pi`), final quote (`Pf`), open (`Ps`), close (`Pe`), other (`Po`)
 - Symbol (`S`): currency (`Sc`), modifier (`Sk`), math (`Sm`), other (`So`)
 - Separator (`Z`): line (`Zl`), paragraph (`Zp`), space (`Zs`)
-- Other (`C`): control (`Cc`), format (`Cf`), not assigned (`Cn`), private use (`Co`), surrogate (`Cs`)
+- Other (`C`): control (`Cc`), format (`Cf`), unassigned (`Cn`), private use (`Co`), surrogate (`Cs`)
 
 It then groups these characters according to the assigned categories, sorts them according to their code points in ascending order, and calls the `compressRange` function to generate a bijective base-30 encoded substring, with the comma `,` and period `.` functioning as delimiter characters for values and ranges.
 
-These constant strings are decoded at runtime by the output and assigned integer keys starting from 1 in the global object, so they are created once rather than the encoded character range every time a substring of that script is decoded, this causes the program to run for a long time.
+These constant strings are decoded at runtime by the output and assigned integer keys starting from 1 in `$`, so they are decoded once rather than the encoded character range every time a substring of that script is decoded, this causes the program to run for a long time.
 
 The compiler ignores the space and the 32 symbol characters, which are inserted when the string is assembled in the very last step of the program.
 
 ### Encoding substrings
 
-In addition to encoding character ranges, the compiler also has to encode the strings based on those character ranges. Likewise for the character categories, the compiler groups the strings by category, and encodes them with the corresponding character set. The result is assigned a key from a generator function, which yields bijective strings from increasing natural numbers.
+In addition to encoding character ranges, the compiler also has to encode the strings based on those character ranges. Likewise for the character categories, the compiler groups the strings by category, and encodes them with the corresponding character set. The result is assigned a key from a generator function, which yields bijective strings from increasing natural numbers, skipping those already defined.
 
 The substrings which do not contain any of the 32 symbol characters therefore have to be bijectively encoded with the same 32 characters, except only with varying character sets.
 
 #### Decimal digit substrings
 
-Anything that is not a symbol is encoded as bijective, to and from strings of different character sets with `BigInt` as an intermediate data type. All the encoded values are stored with the digits from the Python `string.punctuation` constant, `` !"#$%&'()*+,-./:;<=>?@[\]^_`{|}~ ``, minus the space, hence from here on out, _base 32_ implies bijective base-32 encoded strings with the 32 punctuation characters as its digits.
+Anything that is not a symbol is encoded as bijective, to and from strings of different character sets with `BigInt` as an intermediate data type. All the encoded values are stored with the 32 characters in an arbitrary order (`` '_$-,;:!?.@*/&#%^+<=>|~()[]{}\'"`\\' ``). Hence from here on out, _base 32_ implies bijective base-32 encoded strings with the 32 punctuation characters as its digits.
 
 Numeric-only substrings are decoded straight from base-32, and then converted into strings, wrapping the resultant `BigInt` inside a template literal thereby stripping its `n` suffix. All tokens that fall under this category have the categorical name `Digit`.
 
@@ -331,26 +334,26 @@ Alphanumeric substrings follow the same rules as numbers. Zero-padded numeric st
 They are converted from `BigInt` values except this time from a constant digit string, which is the concatenation of Python's string constants `string.digits` and `string.ascii_letters`, or the first 62 digits of `base64`, and then hashed with the 32 characters in code point order, since it can be generated from the methods `Number#toString` and `String#toUpperCase`. This string,
 
 <!-- prettier-ignore -->
-```js 
+```js
 "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
 ```
 
 is generated with the expression
 
 <!-- prettier-ignore -->
-```js 
+```js
 [[...Array(36)].map((_,a)=>a.toString(36)),[...Array(26)].map((_,a)=>(a+10).toString(36).toUpperCase())].flat().join``
 ```
 
-The compiler generates a BigInt from the encoded substring with the above constant string, and then encodes the resulting `BigInt` into a string with the corresponding encoding with the 32 characters.
+The compiler generates a `BigInt` from the encoded substring with the above constant string, and then encodes the resulting `BigInt` into a string with the corresponding encoding with the 32 characters.
 
 #### Unicode characters
 
-The compiler uses the same bijective numeration principle to encode the other Unicode characters by generating a BigInt from all the characters of the substring's category, and then encoding the resulting `BigInt` into a string with the 32 symbol characters.
+The compiler uses the same bijective numeration principle to encode the other Unicode characters as above, but each with their own character string which is generated by the compiler, with the function `encodeRange` which is not passed into runtime. The substrings are assigned the corresponding keys first; the reverse of this function, `decodeRange`, decodes each Unicode substring before it can be used in the compiler.
 
-The reverse of this function, `decodeRange`, is applied in the output when it decodes the substrings at runtime. The resulting decoded character string is used to decode all the substrings assigned to its category or script, irregardless of key, thus revealing the original extracted string. Each captured substring is then assigned a bijective-encoded string in increasing order, skipping those already defined in order not to conflict with them.
+The tokens are grouped according to their script, sorted according to frequency, "decoded" by their character string into a `BigInt` and encoded into base-32. Each key is then assigned a bijective-encoded string in increasing order.
 
-The encoded strings and their keys are then placed inside an array destructuring operation, the keys on the left hand side and the encoded substrings on the right hand side. The right hand side with a mapper function that repeatedly decodes every substring as each key-substring pair is assigned to the global object. Each statement corresponds to one of the scripts or categories assigned by the compiler, with priority given to integer and alphanumeric strings.
+The encoded strings and their keys are then placed inside an array destructuring operation, the keys on the left hand side and the encoded substrings on the right hand side. The right hand side with a mapper function that repeatedly decodes every substring as each key-substring pair is assigned to `$`. Each statement corresponds to one of the scripts or categories assigned by the compiler, with priority given to integer and alphanumeric strings.
 
 ### Tokenization
 
@@ -362,14 +365,19 @@ The same logic applies for a non-Latin Unicode script, and even other Unicode ch
 
 Here is a list of customization options available:
 
-- `cacheVar` - the global variable defined to store substrings. It must be a valid, undefined JavaScript identifier. The default is `'$'`.
-- `resultVar` - the global variables to store the output string. It must be a valid, undefined JavaScript identifier. The default is `'_'`.
+- `cacheVar` - the global variable defined to store substrings. It must be a valid, undefined JavaScript variable. The default is `'$'`.
+- `resultVar` - the global variables to store the output string. It must be a valid, undefined JavaScript variable. The default is `'_'`.
 - `strictMode` - Includes a `var` or `let` declaration, setting it at the beginning of the program. The default is `null`, which does not include a declaration.
-- `export` - Which key to export the string if `moduleExports` is true. The default is `'result'`.
-- `defaultQuote` - Quoting style to fall back to, if smart quoting is enabled. One of `single`, `double`, or `backtick`. The default is `double`.
+- `exportObject` - Whether to export the global object. The default is `false`.
+- `exportResult` - Whether to export the result string. The default is `true`.
+- `logObject` - Whether to log the global object. The default is `false`.
+- `logResult` - Whether to log the result string. The default is `false`.
+- `export` - Which key to export the string if `exportObject` is true. The default is `'object'`.
+- `export` - Which key to export the string if `exportResult` is true. The default is `'result'`.
+- `defaultQuote` - Quoting style to fall back to, if smart quoting is enabled. One of `single`, `double`, or `back tick`. The default is `double`.
 - `'objectQuote'` - Whether to quote keys inside objects and which quotes to use. `'none'` skips quoting identifier keys, so sequences of `_` and `$` will not be quoted. If `calc` is selected, all the keys will be quoted inside square brackets. The default is `'none'`; options are `'none'`, `'single'`, `'double'` or `'calc'`.
-- `smartQuote` - Whether or not to enable smart quoting; choosing quotes with the least number of escapes. If disabled, all strings inside the output, including object keys, will be quoted to `defaultQuote` and `objectQuote`. The default is `true`.
-- `tokenLength` - Maximum length of a tokenized substring, inclusive of punctuation. All substrings picked up by the regex will thus be treated as separate tokens. Default is 64.
+- `smartQuote` - Whether or not to enable "smart" quoting; choosing quotes with the least number of escapes. If disabled, all strings inside the output, including object keys, will be quoted to `defaultQuote` and `objectQuote`. The default is `true`.
+- `tokenLength` - Maximum length of a tokenized substring, inclusive of punctuation. All tokens will thus be split into the desired lngth. The default is `64`.
 - `delimiter` - Which character to use to delimit `BigInt`-hashed substrings or character sets. The default is `','`.
 - `rangeDelimiter` - Which character to use to delimit ranges that `BigInt`-hashed character sets. The default is `'-'`.
 - `wrapInIIFE` - Whether to wrap the obfuscated code in an anonymous function call, using the `Function` constructor. The default is `false`.
@@ -394,7 +402,7 @@ Because there are only 32 different kinds of characters in the output, the ratio
 
 Sequences of any of these 32 symbol characters are hashed literally in the string; they get a 1-to-1 encoding except for escape sequences, which add one character, the backslash every time they occur. Spaces have a 1-to-1 correspondence because the compiler splits them up into commas.
 
-Words, numbers, and other alphanumerics are hashed once and stored in the global object. Any repeat sequence is represented and hashed as a property in the global object, then referenced later when they build back the original string.
+Words, numbers, and other alphanumerics are hashed once and stored in `$`. Any repeat sequence is represented and hashed as a property in `$`, then referenced later when they build back the original string.
 
 Code size is not something to worry about as there is a lot of repetition and only 32 characters.
 
