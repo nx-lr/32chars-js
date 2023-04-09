@@ -607,7 +607,6 @@ function encode(
   function encodeRange(chars, digits = punct, sep = ',', sub = '\\') {
     digits = [...new Set(digits)].filter(digit => digit != sep && digit != sub)
       .join``
-
     return [...new Set(chars)]
       .map(char => char.codePointAt())
       .sort((a, b) => a - b)
@@ -629,10 +628,8 @@ function encode(
         (_, index) => start + (start < end ? 1 : -1) * step * index
       )
     }
-
     digits = [...new Set(digits)].filter(digit => digit != sep && digit != sub)
       .join``
-
     return run
       .split(sep)
       .map(end => {
