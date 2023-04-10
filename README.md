@@ -12,32 +12,37 @@ This project is a testament to the many existing JavaScript encoders out there, 
 
 ## Background
 
-JavaScript as a programming language has many weird and complicated parts. Some programmers have found out that one can write JavaScript without any alphanumeric characters, but a minimal set of characters, up to [five](https://aem1k.com/five/) or [six](http://www.jsfuck.com/) possible symbols. These compilers output _extremely verbose_ code, where a single character may expand to thousands.
+JavaScript has many weird and complicated parts. And it just so happens that they can write in JavaScript without any alphanumeric characters, but a minimal set of characters, up to [five](https://aem1k.com/five/) or [six](http://www.jsfuck.com/) possible symbols.
 
-Program code contains a wide variety of individual characters: numbers, letters, symbols and spaces, making code more parsable and readable. This project aims to output obfuscated JavaScript code using all the 32 symbol characters while maintaining the shortest possible output.
+The major problem with these compilers' outputs are extremely verbose, where a single character may expand to thousands of characters in this extremely minimal alphabet.
 
-So rather than encoding every single character in the input string, we break the string into runs that have a length of at least one character. This way we can effectively minimize the amount of operations performed by the JavaScript engine, while keeping the overall output short. 
+32chars.js takes the exact opposite approach, using all of the punctuation and symbol characters in ASCII. Most, if not all of these characters, have special meaning in every major programming language. 
 
-So, the compiler breaks and encodes parts of the string into parsable tokens and then determines which JavaScript's built-in operations produce the original string. Parts of the string containing those same 32 ASCII symbol characters remain unchanged and quoted in string literals.
+So rather than encoding every single character in the input string, we break the string into runs of more than one character in length, where all the characters in that substring share common properties.
+
+With a large character set, we can minimize repetition, and the number of operations performed by the JavaScript engine.
 
 ## Walkthrough 
 
 With a large character set, most of these symbols also are valid JavaScript tokens. The most significant of them are:
 
-- The quote characters `'`, `"` and `` ` `` delimit strings. The back tick `` ` `` delimits template strings, which allow for interpolation and tagged function calls
-- Combinations of `_` and `$` form variables and identifiers
-- The plus sign `+` concatenates strings, adds numbers and (tries to) cast other values into numbers
-- Arithmetic `+ - * / % **` and bitwise `& | ^ ~ << >> >>>` operators with a `Number` and `BigInt` on either side
-- The dot `.` to access properties of objects that are valid JavaScript identifiers
-- The comma `,` to delimit array elements, function arguments and object properties, as well as assign multiple variables in a single statement
-- The round brackets `()` to call functions and group expressions with different precedences
-- The square brackets `[]` to access array and object elements and create array literals
-- The curly brackets `{}` to delimit object literals and code blocks
-- The construct `${}` to interpolate expressions in template strings, converting them into strings if untagged
-- The slash `/` to delimit regular expression literals and divide numbers
-- The backslash `\` to escape characters in strings, even themselves
+- The quote characters `'`, `"` and `` ` `` delimit strings. The back tick `` ` `` delimits template strings, which allow for interpolation and tagged function calls. 
+- Combinations of `_` and `$` form variables and identifiers. 
+- The plus sign `+` concatenates strings, adds numbers and (tries to) cast other values into numbers. 
+- Arithmetic `+ - * / % **` and bitwise `& | ^ ~ << >> >>>` operators with a `Number` and `BigInt` on either side. 
+- The dot `.` accesses object properties that are valid JavaScript identifiers. 
+- The comma `,` delimits array elements, function arguments and object properties, and can assign multiple variables in a single statement via de-structuring.
+- The semicolon `;` does what it does: separate statements.
+- The round brackets `()` calls functions and groups expressions with different precedences. 
+- The square brackets `[]` accesses array and object elements; on their own, they create array literals. 
+- The curly brackets `{}` delimit object literals when beside code blocks. 
+- The construct `${}` interpolates expressions in template strings, converting them into strings if untagged. 
+- The slash `/` to delimit regular expression literals and divide numbers. 
+- The backslash `\` to escape characters in strings, even themselves. 
 
-We have syntax to form strings. Strings are very fundamental to obfuscation, as we can store and hash custom data. However, there are many other ways to create strings, using JavaScript's newest syntax and functionality: `RegExp` and `BigInt` data types, and many `String`, `Array`, and `Object` methods.
+We have syntax to form strings literally. Strings are very fundamental to obfuscation, as we can store character sequences as custom data.
+
+However, there are many other ways to create strings, using JavaScript's newest syntax and functions: `RegExp` and `BigInt` data types, and many `String`, `Array`, and `Object` methods.
 
 The compiler uses a two-step substitution encoding. First, characters and functions are assigned to variables and properties with programmatically generated keys, These are then decoded through these operations, and used either to construct new substrings or build back the original string.
 
@@ -132,8 +137,8 @@ When used on a template literal, the `String.raw` method ignores all escape sequ
 This depends entirely on the current locale and JavaScript engine so this feature is considered _experimental_. The additional letters `G M T J W Z` can be retrieved with the `Date` constructor:
 
 - The letters `G M T` is formed from the expression `new Date().toString()`. This yields a string of the form `Thu Jan 01 1970 07:30:00 GMT+0XXX (Local Standard Time)`.
-- `Z` comes from `new Date().toISOString()` which evaluates to a string of the form `1970-01-01T00:00:00.000Z`. `Z` in this case represents zero UTC offset.
-- Passing these arguments to the `Date` constructor, in a specific order, retrieves `J` and `W`: `Jan` - `0`, `Wed` - `0,0,3`.
+- `Z` comes from `new Date().toISOString()` which evaluates to a string of the form `1970-01-01T00:00:00.000Z`. `Z` in this  represents zero UTC offset.
+- Passing these arguments to the `Date` constructor, in the specific order, retrieves `J` and `W`: `Jan` - `Date(0)`, `Wed` - `Date(0,0,3)`.
 
 ```js
 const props = {
