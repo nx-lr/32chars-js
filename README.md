@@ -2,13 +2,13 @@
 
 ## Disclaimer
 
-**This program is only meant for education and experimentation and shall not be used for any malicious purposes other than to obfuscate _private_ work.**
+**This program is meant for education purposes only and should not be used maliciously.**
 
 ## Introduction
 
 **32chars.js** is a JavaScript encoder/obfuscator that that compiles a piece of text into the shortest possible valid JavaScript code with only 32 ASCII symbol characters. The 32 characters are: `` !"#$%&'()*+,-./:;<=>?@[\]^_`{|}~ ``.
 
-A major problem with JavaScript esoteric subsets like _JSF\*ck_ [Martin Kleppe] is that they are **extremely verbose**. Certain single characters require far more than a thousand characters when expanded. The following is the JSF\*ck expression for lowercase `y`, pretty-printed for your convenience:
+A major problem with JavaScript esoteric subsets like _JSF\*ck_ [Martin Kleppe] is that they are **extremely verbose**. Certain single characters require far more than a thousand characters when expanded. The following is the JSF\*ck expression for lowercase `y`.
 
 <!-- prettier-ignore -->
 ```js
@@ -53,11 +53,11 @@ The output code should:
 
 ## Walkthrough
 
-With a large character set, most of these symbols also are valid JavaScript tokens.
+With a large character set, most of these symbols also are valid JavaScript tokens. Any character or sequence of characters not part of this list is inside strings.
 
 | Token | Place | Function |
 | --- | --- | --- |
-| `_ $` | Anywhere | Forms identifiers |
+| `_ $` | Anywhere | Forms part of identifiers |
 | `/` | After brackets or statements | Forms regular expression literals |
 | `/` | Between expressions | Divides two numbers |
 | `+` | Between numbers | Adds numbers together |
@@ -84,113 +84,40 @@ With a large character set, most of these symbols also are valid JavaScript toke
 | `{ }` | Elsewhere | Forms object literal |
 | `{ }` | After `=>` | Delimits function body |
 
-Of course we can form strings. Strings are very fundamental to obfuscation, as we can store character sequences as custom data.
-
-There are three ways that we can represent strings literally: `'` and `"` form _regular strings_, and `` ` `` which forms a _template string_ which allows interpolation or calling functions and methods on them.
-
-However, there are of course many other ways to create strings, using JavaScript's latest syntax and built-in functions: `RegExp` and `BigInt` data types, and many `String`, `Array`, and `Object` methods.
+### Tokenization
 
 The compiler uses a two-step substitution encoding. First, characters and functions are assigned to variables and properties with programmatically generated keys, These are then decoded through these operations, and used either to construct new substrings or build back the original string.
 
-There are of course edge cases. Some expressions innately produce strings: constants (e.g. `true`, `false`, `0`), string tags (e.g. `[object Object]`), date strings (e.g. `2011-10-05T14:48:00.000Z`) and source code (e.g. `function Array() { [native code] }`).
-
-The compiler tokenizes the input string recursively into categorical tokens: spaces, zeroes, ASCII punctuation, alphanumerics, non-Latin scripts, and other Unicode code points.
+The compiler _tokenizes_ the input string recursively into categorical tokens: spaces, zeroes, ASCII punctuation, letters an numbers, non-Latin scripts, and other Unicode code points.
 
 JavaScript stores strings as **UTF-16**, so all BMP characters, code points `U+0000` to `U+FFFF` are encoded as _two_ bytes, except surrogate pairs, while code points from `U+10000` to `U+10FFFF`, are called _"astral"_ code points and encoded with the surrogate pairs.
 
-The text is split by a delimiter such as a space, or the most common substring which the compiler detects. The split elements go into an array and delimited with commas. There could be empty array slots, so nothing goes in between the commas. Unfortunately, JavaScript ignores trailing commas, so we have to explicitly add a trailing comma if the final element of an output array is empty.
+The text is split by the space ` `, since regardless of script, ` ` is the most common character. split elements go into an array and delimited with commas. There could be empty array slots, so nothing goes in between the commas. Unfortunately, JavaScript ignores trailing commas, so we have to explicitly add a trailing comma if the final element of an output array is empty.
 
-### Quoting string literals
+### Strings
 
-We create string literals in JavaScript in three ways: single-quoted `''`, double-quoted `""` and _template_ (backtick) strings ` `` `. Both single and double-quoted strings are functionally the same. Template strings allow for interpolating values with the `${}` syntax. In the output, we quote sequences of ASCII symbols directly as they are in any of these three quotes.
+Given how much characters we have, we have syntax to form strings literally. Strings are very fundamental to obfuscation, as we can store our own custom data. There are so many ways to create strings in JavaScript: data types `RegExp` and `BigInt`, and many `String`, `Array`, and `Object` methods.
 
-Usually, the runs do not contain any of the quote characters `` ' " ` ``, or the backslash `\`, so any type of quote would do without escapes. If any of these above-mentioned characters are present, then the backslash, and the corresponding quote character is escaped, by prefixing it with a backslash (like `'\\'`), preventing the string from abruptly ending.
+We could also represent them literally. Intuitively, we quote sequences of ASCII symbols literally as they appear in the input string. Single `'` and double `"` quotes form regular strings, these are essentially the same. The backtick `` ` `` forms a _template string_; this allows interpolating values with the `${}` syntax.
 
-In template literals delimited with backticks `` ` ``, the sequence `${`, which begins interpolation, is also escaped to avoid opening interpolation.
+Template strings can also be tagged by prefixing it with an expression that evaluates to a function. The first argument to this function is an array of strings, and the second the array of expressions in the order that they appear in between the string. So, one can do ` x.join`` ` in place of `x.join('')` since JavaScript coercion assumes a string as its argument... somehow.
 
-Each substring in the output goes through a quoting function, and calls `jsesc` on each. The number of escapes in all the three strings are counted, and the string literal with the least number of escapes is selected. In most cases where there are no escapes, the compiler just falls back cycling between the three delimiters.
+Most of the time, runs do not contain any of the quote characters `` ' " ` ``, or the backslash `\`, so any type of quote would do without escapes. In template literals delimited with backticks `` ` ``, the sequence `${`, which normally begins interpolation, is also escaped.
 
-The rules for quoting object keys are different: backtick-delimited strings cannot be used, as they throw a syntax error; string keys which are valid identifiers, i.e. combinations of `_` and `$`, do not need to be quoted.
+Each substring in the output goes through a modified `stringify` function. The strings are quoted in the three types, compared by length, and the shortest is returned. If two or more of these string types have the same length, the function cycles between those types.
 
-### Statement 1
+The rules for quoting object keys are a little different. Template strings cannot be used, as they throw a `SyntaxError`, so the test is performed only on `'` and `"`-delimited strings. Strings which contain only `_` and `$`, do not need to be quoted.
 
-The symbols `_` and `$` are valid JavaScript identifier characters, so we can use combinations of those two to form variables. One of them `$`, stores and references values and substrings, and the other, `_`, represents the actual string being reconstructed.
+Some strings can be formed from constants (e.g. `true`, `false`, `0`), string tags (e.g. `[object Object]`), date strings (e.g. `2023-05-01T14:30:00.000Z`) and source code (e.g. `function Array() { [native code] }`). These are considered edge cases.
 
-`$` starts with the value of `-1`, by doing a bitwise NOT on an empty array: `~[]`. An empty array, or implicitly, a _string_, is `0`, so the expression `~0` evaluates to `-1`.
+## Breaking down the output
 
-### Statement 2
-
-In the following statement, we assign `$` to an object literal in curly braces `{}`. This `$` variable is the global object, and is what we use to define values and substrings for us to build back the input string. We define properties inside the braces in the form `key: value`, and separate _key-value pairs_ or _properties_ with commas.
-
-JavaScript has three different ways to represent keys: _identifiers_ (which can be keywords) _without quotes_ like `key:value`, _strings_ within _single or double quotes_ like `'key':value`, and _dynamic expressions_ within _square brackets_ `['key']:value`. In addition, we can access object properties with dots, like `x.key`, or square brackets, like `x['key']`.
-
-Strings and arrays can be indexed, each character within the string or element of an array has an index starting from `0`. The first element or character has an index of `0`, the second `1`, and so on until the end of the string or array, with 1 less than its length. Because each index is a _property_ of the string or array, `'string'[5]` yields the character `'g'`.
-
-The first property of `$` is `___`, with a value of `` `${++$}` ``. This takes the value of `$`, currently `-1`, and increments it to `0`, then casts that into a string by interpolating it inside a template literal, implicitly calling the method `.toString()`. While the object is still being built, `$` is still a number and not an object yet, since evaluation happens outward.
-
-The second property is `$__$`, with a value of `` `${!''}`[$] ``. An empty string is prepended with the logical NOT operator `!`, which coerces it into `false` as it is considered _falsy_ in JavaScript. `!` also negates the boolean, becoming `true`. The expression is wrapped a template literal interpolation, turning it into a string `"true"`. The `[$]` construct at the end returns the character at index `0` (indices start at zero), which returns `t`.
-
-We repeat the above steps: incrementing `$` variable, constructing a string, and grabbing a character out of the string by specifying its index. Next, we manipulate literals to evaluate to form the constants, `true`, `false`, `Infinity`, `NaN`, `undefined`, and an empty object `{}` which becomes the _string tag_ `'[object Object]'`.
-
-The constants yield the following letters (case-sensitive): `a b c d e f i j l n o r s t u y I N O`, the space and the digits `0` to `9`. We now have the hexadecimal alphabet and several other uppercase and lowercase letters.
-
-We cipher the numbers in binary, substituting `_` for digit `0` and `$` for digit `1`. Then we pad the result to a length of 3 by adding `_` (as `__`, `_$`, `$_` and `$$` have keys defined). So `___` is `0` and `__$` is `1`.
-
-We cipher the letters as a pair of characters. The first `_` or `$` defines its case, and the second a symbol, each unique to a letter in the English alphabet, minus the bracket pairs `()[]{}`. The most common letters in English, `e` and `t` get the characters which form identifiers, `_` and `$`. The least common, `j`, `q`, `x` get the quote characters, and `z` gets the backslash.
-
-The space is assigned the key `-`.
-
-### Statement 3 and 4
-
-From the third line, we use the letters we have retrieved to form the names of properties in our expressions by concatenating them letter by letter with the `+` operator. We form the words `concat`, `return`, `slice`, `sort`, `join`, `filter`, `source`, and the keywords `for` and `if`.
-
-`[]` can also be used to call methods on values. For instance, `[]['flat']()` is semantically equivalent to `[].flat()`.
-
-We can now access the constructors with the `constructor` property of "empty" literals or expressions: `Array` (`[]`), `String` (`''`), `Number` (`+[]`), `Boolean` (`![]`), `RegExp` (`/./`), and `Function` (`()=>{}`) (leaving out `Object`), and like before, casting that constructor function into a string.
-
-There are many ways to produce these literals, and only the ones with the minimum length are selected. These expressions are encoded inside a regular expression and then expanded at runtime with the `genex` library. Every time a literal or sub-expression of this type is expected, the compiler cycles through them.
-
-When evaluated in a JavaScript interpreter, the constructor yields a string like `function Array { [native code] }`. We now have the letters `A B E F g m p R S v x`. The only letter not present in any of the constructor names is `v`, which is from the word `native`.
-
-Now we have 22 lowercase `a b c d e f g i j l m n o p r s t u v x y` and 9 uppercase letters `A B E F I N O R S`. Furthermore, like before, we store every word and letter we have formed with a unique key for reference later in our code.
-
-In the next statement, we form the method names `indexOf`, `map`, `name`, `repeat`, `replace`, `reverse`, `split`, the constructor functions `BigInt` and `Set`, and the keyword `var`.
-
-We use the spread operator, `...`, to "spread out" its properties on a new object. In this case we are cloning the object and then spreading it out along with new properties. This saves up on having to assign every single property on the object, one by one. This saves having to repeat the `$` variable every time.
-
-### Statement 5 and beyond
-
-We retrieve the following letters: `h k q w z C D U` (and additionally `G J M T W Z`), make the strings `toString`, `keys`, `length`, `raw` and `toUpperCase`, and the keyword `new`. Initiating a `Set` must have the `new` keyword, otherwise JavaScript throws an exception.
-
-`toString` is formed by concatenating the letters `t` and `o`, and then retrieving the string `'String'` from the `String` constructor, by accessing its `name` property. With `toString`, we can retrieve the rest of the lowercase alphabet, `h k q w z`.
-
-We assign these properties through array destructuring. The right hand side is the values we need to convert, and an anonymous `map` function which transforms all the values inside the array. In this case, we are converting strings from base 10 to 36, to yield a single digit that corresponds to the letter in question.
-
-In this case, for base above 10, the letters of the alphabet indicate digits greater than 9. For example, for hexadecimal numbers (base 16) `a` through `f` are used.
-
-With the `Function` constructor, we can execute code contained inside a string as native JavaScript. For example, with an expression such as `Function('return eval')`, we retrieve the built-in functions `eval`, `escape`.
-
-The letters `C` (from `<` or `%3C`) and `D` (from `=` or `%3D`) come from indexing the last hexadecimal digit from a URL string. All characters that are not an ASCII letter, number, or one of the symbols `-`, `_`, `.`, and `~`, are percent-encoded, into a form `%XX` or `%uXXXX` for higher code points, where X is an _uppercase_ hexadecimal digit.
-
-The expression `{}.toString.call().toString()`, or `` `${{}.toString.call()}` `` evaluates to the string `'[object Undefined]'` which yields us the character `U`.
-
-Both `eval` and `fromCodePoint` allows us to form Unicode strings. `fromCodePoint` generates a string from its code points. In contrast, `eval` generates a string from its escape sequence.
-
-When used on a template literal, the `String.raw` method ignores all escape sequences, so backslashes are now interpreted as they are without getting "deleted" by the parser.
-
----
-
-This depends entirely on the current locale and JavaScript engine so this feature is considered _experimental_. The additional letters `G M T J W Z` can be retrieved with the `Date` constructor:
-
--   The letters `G M T` is formed from the expression `new Date().toString()`. This yields a string of the form `Thu Jan 01 1970 07:30:00 GMT+0XXX (Local Standard Time)`.
--   `Z` comes from `new Date().toISOString()` which evaluates to a string of the form `1970-01-01T00:00:00.000Z`. `Z` in this represents zero UTC offset.
--   Passing these arguments to the `Date` constructor, in the specific order, retrieves `J` and `W`: `Jan` - `Date(0)`, `Wed` - `Date(0,0,3)`.
+We break down ihs
 
 ```js
 const props = {
     // statement 2: constants
-    // 0 1 2 3 4 5 6 7 8 9
-    // a b c d e f i j I l n N o O r s t u y [space]
+    // [space] 0 1 2 3 4 5 6 7 8 9 a b c d e f i j I l n N o O r s t u y
     space: "-",
 
     // statement 3
@@ -205,7 +132,7 @@ const props = {
     if: "!_",
 
     // statement 4: constructors
-    // A B E F g m p R S v x
+    // A B E F R S g m p v x
 
     // statement 5
     indexOf: "#",
@@ -221,17 +148,17 @@ const props = {
 
     var: "=_",
 
-    // statement 6: constructors
+    // statement 6: global functions
+    escape: "\\",
+    eval: "=",
+
+    // statement 7: constructors
     // 'to' + String.constructor.name
     // C, D (from 'escape')
     toString: "'",
 
-    // statement 7: global functions
-    escape: "\\",
-    eval: "=",
-
     // statement 8: toString, escape and call
-    // h k q w z U
+    // U h k q w z
 
     // statement 9
     keys: "&",
@@ -243,20 +170,146 @@ const props = {
 };
 ```
 
+### Statement 1
+
+The symbols `_` and `$` are valid JavaScript identifier characters, so we can use combinations of those two to form variable names.
+
+We will only use two global variables for this project: `$` stores and references functions and substrings, while `_` is assigned to the reconstructed string and exported, by default.
+
+`$` is instantiated with the value of `-1`, by doing a bitwise NOT on an empty array: `~[]`. An empty array, or implicitly, a _string_, is `0`, so the expression `~0` evaluates to `-1`.
+
+### Statement 2
+
+We reassign `$` is to an object literal `{}` with curly braces. We assign properties to the object in the form of key-value pairs in the form `key:value` with a colon, and separate these pairs with commas. All keys are strings.
+
+JavaScript has three different ways to represent keys: identifiers (which can be keywords) `key:value`, string literals wrapped in single or double quotes `'key':value`, and expressions within square brackets `['key']:value`, calculated at runtime.
+
+To access object properties, we use **dots**, like `x.key`, as long as `key` is an identifier, or **square brackets**, like `x['key']`, with the expression inside the brackets.
+
+**Strings and arrays can be indexed.** Each character within the string or element of an array has an index starting from `0`. The first element or character has an index of `0`, the second `1`, and so on until the end of the string which is 1 less than its total length. Because each index is a **property** of the string or array, `'string'[5]`, the character at index `5`, is the character `g`.
+
+#### Ciphering letters
+
+We cipher the numbers in binary, substituting `_` for digit `0` and `$` for digit `1`. Then we pad the result to a length of 3 by adding `_` (as `__`, `_$`, `$_` and `$$` have keys defined). So `___` is `0` and `__$` is `1`.
+
+We cipher the letters as a pair of characters. The first `_` or `$` defines its case, and the second a symbol, each unique to a letter in the English alphabet, minus the bracket pairs `()[]{}`. The most common letters in English, `e` and `t` get the characters which form identifiers, `_` and `$`. The least common, `j`, `q`, `x` get the quote characters, and `z` gets the backslash.
+
+The space is assigned the key `-`.
+
+```js
+let letters = "etaoinshrdlucmfwypvbgkqjxz";
+let cipher = "_$-,;:!?.@*/&#%^+<=>|~'\"`\\";
+```
+
+#### Deriving letters
+
+We manipulate literals to evaluate to form the constants, `true`, `false`, `Infinity`, `NaN`, `undefined`, and an empty object `{}` which becomes the _string tag_ `'[object Object]'`. They yield us the following letters, case-sensitively: the space, the digits `0` to `9`, and the letters `a b c d e f i j l n o r s t u y I N O`.
+
+There are many ways to produce these literals, and only the ones with the minimum length are selected. These expressions are encoded inside a regular expression and then expanded at runtime with the [**`genex`**](https://github.com/alixaxel/genex.js/) library. Every time a literal or sub-expression of this type is expected, the compiler cycles through them.
+
+```js
+let constantExprs = {
+    "-1": /[+~]\[]/,
+    0: /\+(\[]|""|''|``)/,
+    1: /\+!(""|''|``)|-~\[]/,
+    true: /!(""|''|``)/,
+    false: /!({}|\[])/,
+    NaN: /\+{}/,
+    Infinity: /!(""|''|``)\/(!({}|\[])|\+(\[]|""|''|``))/,
+    undefined: /(""|''|``|\[])\[(""|''|``|\[]|{})\]/,
+    "[object Object]": /{}/,
+};
+```
+
+We increment `$` to get the next number, stringifying and assigning it to its ciphered key.
+
+Then we get all the letters from all the constants with `$` as its index, and assign them to `$` with its ciphered key. Since evaluation happens outward, while the object is still being built, `$` is still a number and not an object, and we do not need to use `_`, our other variable.
+
+The first character we have to derive is `'0'`, with the expression `` `${++$}` ``. `$` is currently `-1`, is incremented to `0`, and is interpolated inside an empty template literal, casting it into a string.
+
+The second is `t`, with a value of `` `${!''}`[$] ``. An empty string is prepended with the logical NOT operator `!`, which coerces it into `false` and negates the resulting Boolean, becoming `true`. The expression is wrapped a template literal interpolation, turning it into a string `"true"`. The `[$]` construct at the end returns the character at index `0` (indices start at zero), which returns `t`.
+
+The letter `f`, is extracted from `$` in the same way as before, with the expression except that an empty array, which is `true`, is negated instead, resulting in `false`.
+
+Then, the letter `I` is extracted from `Infinity` by dividing `true` by `false`: `` `${!''/![]}`[$] ``.
+
+### Statements 3 and 4
+
+We use the letters we have retrieved to form the names of properties in our expressions by concatenating them letter by letter with the `+` operator. We form the words `constructor`, `concat`, `return`, `slice`, `sort`, `join`, `filter`, `source`, and the keywords `for` and `if`.
+
+`[]` can also be used to call methods on values. For instance, `[]['flat']()` is semantically equivalent to `[].flat()`.
+
+We can now access the constructors with the `constructor` property of "empty" literals or expressions: `Array`, `Boolean`, `Function`, `Number`, `String`, and `RegExp`, and similar to the previouos statement, we cast that constructor function into a string. `Object` is not considered part of this since all its letters are already defined in `$`.
+
+```js
+let constructorExprs = {
+    Array: /\[]/,
+    Boolean: /\(!(""|''|``|{}|\[])\)/,
+    Function: /\([_$]=>(""|''|``|{}|\[])\)/,
+    Number: /\([+~](""|''|``|{}|\[])\)/,
+    String: /""|''|``/,
+    RegExp: /\/[!-',-.:->@\]-`{-~]\//,
+    Object: /{}/,
+};
+```
+
+When converted into strings, like `String(Array)`, this yields us with a string that looks like this: `function Array { [native code] }`. We now have the letters `A B E F R S g m p v x`. The only letter not present in any of the constructor names is `v`, which is from the word `native`, at index `24` of `String(Array)`; in which `Array` has the least characters of these constructors.
+
+Now, we have 9 uppercase `A B E F I N O R S` and 21 lowercase letters `a b c d e f g i j l m n o p r s t u v x y` . And like before, we store every word and letter we have formed with our ciphered keys for future reference.
+
+In the next statement, we form the method names `indexOf`, `map`, `name`, `repeat`, `replace`, `reverse`, `split`, the constructor functions `BigInt` and `Set`, and the keyword `var`.
+
+We use the spread operator, `...`, to "spread out" its properties on a new object. In this case we are cloning the object and then spreading it out along with new properties. This saves up on having to assign every single property on the object, one by one. This saves having to repeat the `$` variable every time.
+
+### Statement 5 and beyond
+
+We retrieve the following letters: `C D U h k q w z` to make the strings `toString`, `keys`, `length`, `raw` and `toUpperCase`, and the keyword `new`. Initiating a `Set` without prefixing a `new` keyword will throw a `TypeError`.
+
+#### `toString` and lowercase
+
+`toString` is formed by concatenating the letters `t` and `o`, and then retrieving the string `'String'` from the `String` constructor, by accessing its `name` property. With `toString`, we can retrieve the rest of the lowercase alphabet by converting numbers from base 10 to 36.
+
+We assign these properties through array destructuring. The right hand side is the values we need to convert, and an anonymous `map` function which transforms all the values inside the array. In this case, we are converting strings from base 10 to 36, to yield a single digit that corresponds to the letter in question.
+
+In this case, for base above 10, the letters of the alphabet indicate digits greater than 9. For example, for hexadecimal numbers (base 16) `a` through `f` are used.
+
+#### `escape`, `eval` and uppercase
+
+With the `Function` constructor, we can execute code contained inside a string as native JavaScript. For example, with an expression such as `Function('return eval')`, we retrieve the built-in functions `eval`, `escape`.
+
+The letters `C` (from `<` or `%3C`) and `D` (from `=` or `%3D`) come from indexing the last hexadecimal digit from a URL string. All characters that are not an ASCII letter, number, or one of the symbols `- _ . ~` are `%`-encoded into the form `%XX` or `%uXXXX` for higher code points, where `X` is an **uppercase** hexadecimal digit.
+
+The expression `{}.toString.call().toString()`, or `` `${{}.toString.call()}` `` evaluates to the string `'[object Undefined]'` which we can derive the character `U` from.
+
+Both `eval` and `fromCodePoint` allow us to form Unicode strings. `fromCodePoint` generates a string from its code points by specifying an array of arguments, while the evil `eval` generates a string from escape sequences.
+
+When used on a template literal, the `String.raw` method ignores all escape sequences, so backslashes are now interpreted as they are without getting "deleted" by the parser.
+
+---
+
+> **_Experimental_**
+>
+> The additional letters `G M T J W Z` can be retrieved with the `Date` object.
+>
+> -   The letters `G M T` are formed from the expression `new Date().toString()`. This yields a string `Thu Jan 01 1970 07:30:00 GMT+0XXX (Local Standard Time)`. _GMT_ means **Greenwich Mean Time**.
+> -   `Z` comes from `new Date().toISOString()` which evaluates to a string of the form `1970-01-01T00:00:00.000Z`. `Z` in this represents **zero UTC offset**.
+> -   Passing these arguments to the `Date` constructor, in a specific order, retrieves uppercase `J` and `W`: `Jan` - `Date(0)`, `Wed` - `Date(0,0,3)`.
+
 ### Encoding functions
 
 The output contains several functions, defined with the keys `0`, `-1`, `true` and `false` which can be formed completely with symbols. Their corresponding primitive expressions are `+[]`, `~[]`, `!''` and `![]`. These functions are defined in the compiler and also encoded in the output.
 
 Functions can be converted into strings, which yield their source code when converted into a string. We can manipulate the source code inside the function however way we want. In this case, we want to transform the function into the shortest possible expression without using any alphanumerics.
 
--   We pass the entire function into **UglifyJS**, which returns a minified version of the source code. UglifyJS eliminates comments and dead code, shortens variables, and compresses values, expressions and statements to be as compact as possible.
+-   We pass the entire function into [**`uglify-js`**]([https://github.](https://github.com/mishoo/UglifyJS), which returns a minified version of the source code. `uglify-js` eliminates comments and dead code, shortens variables, and compresses values, expressions and statements to their most compact form.
 -   Next, we convert the named function `function named(args)=>{body}` into an anonymous arrow function `(args)=>{body}` with a regular expression.
 -   Then, we generate a lookup table of all the variables and arguments defined in the function, and substitute them with combinations of `_` and `$` characters, except the global variable.
--   After that, we substitute all the identifiers, numbers and spaces with the appropriate substring if they have been defined, if not they are spelled out entirely. If an uppercase letter is not defined, we attach a `.toUpperCase()` call on the equivalent ih lowercase letter.
+-   After that, we substitute all the identifiers, numbers and spaces with the appropriate substring if they have been defined, if not they are spelled out entirely. If an uppercase letter is not defined, we attach a `.toUpperCase()` call on the equivalent lowercase letter.
 -   Next, we substitute calls to other functions are substituted with the appropriate property of `$` as a primitive expression inside the string.
 -   We quote the remaining portions of the string which are symbols, and join everything up with the string concatenation operator `+`.
 -   Finally, we pass the expression inside the `eval` function, which returns an anonymous function that is then assigned its corresponding primitive expression.
 
+<!-- 
 ### Similar strings
 
 Using various string methods, we can employ algorithms to produce similar strings, so to minimize the number of values that need to be encoded. Some substrings manipulating primitive values like `'function'`, `'Array'`, `'undefined'`, `'object'`, so we can derive substrings from those.
@@ -267,10 +320,11 @@ Using various string methods, we can employ algorithms to produce similar string
 -   The `replace` method is used to replace one or all substrings of a substring through insertion, deletion, or substitution to turn it into something similar. We would use a string difference checker.
 
 We divide the substring into n-grams and determine which substrings could be derived from all the non-symbol characters in the file. The compiler builds a list of all these substrings, and stores them in `$` in a separate statement should they appear in the input more than once.
+-->
 
 ### Escaping strings
 
-We can quote sequences of ASCII symbols literally without having to perform any encoding, except for escape sequences with the backslash `\`, quote `` '"` `` characters and the dollar `$` in the interpolation sequence `${` in template strings which is done automatically with the `jsesc` functions.
+We can quote sequences of ASCII symbols literally without having to perform any encoding, except for escape sequences with the backslash `\`, quote `` '"` `` characters and the dollar `$` in the interpolation sequence `${` in template strings which is done automatically with the [**`jsesc`**](https://github.com/mathiasbynens/jsesc/blob/master/src/jsesc.js) functions.
 
 However, we can still perform some optimizations to minimize the use of such backslashes, especially in bijective-encoded strings. If a substring contains too many backslashes, then the compiler resorts to two possible options:
 
@@ -312,7 +366,7 @@ const functionAliases = {
 -   Repeatedly multiplies a digit by 1 greater than its index in the string and raises it to the power of 1 minus the base, in reverse order: `(digits.indexOf(digitString[placeValue]) + 1) * base ** (digitString.length - placeValue - 1)`
 -   Adds the result to 0 which is the default value, as a `BigInt`.
 
-The string is converted into an array by spreading the individual characters in a string into a new Set object, which ensures the passed string contains unique characters, and then finally into an array, including astral code points which normally are encoded as two code points if inside a string.
+The string is converted into an array by spreading the individual characters in a string into a new `Set` object, which ensures the passed string contains unique characters, and then finally into an array, including astral code points which normally are encoded as two code points if inside a string.
 
 `encodeRange` compresses and bijectively encodes the numbers inside a character range, with the comma and dot assigned as delimiters for numbers and ranges.
 
