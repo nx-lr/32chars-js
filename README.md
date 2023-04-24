@@ -2,7 +2,7 @@
 
 ## Disclaimer
 
-**This program is meant for education and experimental purposes only. THIS PROGRAM SHALL NOT BE USED FOR ANY MALICIOUS PURPOSE WHATSOEVER.**
+**This program is meant for education and experimental purposes only. THIS PROGRAM SHALL NOT BE USED FOR ANY MALICIOUS PURPOSE WHATSOEVER. I WILL NOT HOLD ANY RESPONSIBILITY FOR ANY DAMAGE.**
 
 ## Introduction
 
@@ -59,14 +59,10 @@ With a large character set, most of these symbols also are valid JavaScript toke
 | --- | --- | --- |
 | `_ $` | Anywhere | Forms part of identifiers |
 | `/` | After brackets or statements | Forms regular expression literals |
-| `/` | Between expressions | Divides two numbers |
-| `+` | Between numbers | Adds numbers together |
-| `+` | Between expressions | Coerces into strings, and concatenates |
-| `+` | Before expressions | Coerces into number |
-| `-` | Before expressions | Coerces into number and negates |
-| `~` | Before expressions | Coerces into number and returns bitwise complement |
-| `!` | Before expressions | Coerces into Boolean and negates |
-| `:` | Inside objects | Separates key from value |
+| `+ - * / ** %` | Anywhere | Arithmetic operators |
+| `&& \|\|` | Anywhere | Boolean operators |
+| `== !=` | Anywhere | Equality operators |
+| `< <= > >=` | Anywhere | Comparison operators |
 | `,` | Outside brackets | Separates statements |
 | `,` | Inside brackets | Separates expressions, arguments, and properties |
 | `;` | Outside brackets | Separates statements |
@@ -74,15 +70,17 @@ With a large character set, most of these symbols also are valid JavaScript toke
 | `' "` | Anywhere | Forms regular string |
 | `` ` `` | After expressions | Forms a tagged template string |
 | `` ` `` | Elsewhere | Forms a plain template string |
+| `...` | Inside `() [] {}` | Spreads contents over an argument list, array or object |
+| `=>` | Anywhere valid | Forms part of anonymous function literal |
 | `${ }` | Inside template strings | Interpolates expressions |
 | `\` | Inside strings | Escapes characters |
-| `( )` | Elsewhere | Encloses expressions with different precedence |
 | `( )` | After expressions | Calls function or method |
 | `( )` | Before `=>` | Delimits function arguments |
-| `[ ]` | Elsewhere | Forms array literal |
+| `( )` | Elsewhere | Encloses expressions with different precedence |
 | `[ ]` | After expressions | Accesses object properties, array elements and string characters |
-| `{ }` | Elsewhere | Forms object literal |
+| `[ ]` | Elsewhere | Forms array literal |
 | `{ }` | After `=>` | Delimits function body |
+| `{ }` | Elsewhere | Forms object literal |
 
 ### Tokenization
 
@@ -253,11 +251,9 @@ We use the spread operator, `...`, to "spread out" its properties on a new objec
 
 Since now we have the method names `entries` and `fromEntries`, and we can get the `Object` constructor, we can form a very useful function to avoid us having to repeat `$` over and over again every time. This function transforms all the values in an object by calling a function on it passed as the second argument.
 
+<!-- prettier-ignore -->
 ```js
-const mapValues = (obj, func) =>
-    Object.fromEntries(
-        Object.entries(obj).map(([key, val]) => [key, func(val)])
-    );
+const mapValues=(obj,func)=>Object.fromEntries(Object.entries(obj).map(([key,val])=>[key,func(val)]));
 ```
 
 This function is assigned the key of `NaN` or `+{}`.
@@ -318,7 +314,7 @@ Given how much characters we have, we have syntax to form strings literally. Str
 
 We could also represent them literally. Intuitively, we quote sequences of ASCII symbols literally as they appear in the input string. Single `'` and double `"` quotes form regular strings, these are essentially the same. The backtick `` ` `` forms a _template string_; this allows interpolating expressions with the `${}` syntax.
 
-Template strings can also be _tagged_ by prefixing it with something called a _tag function_. The first argument to this function is an array of strings, and the second the array of expressions in the order they appear in between each substring. But again, because  of JavaScript type coercion, one can do ` x.join`` ` in place of `x.join('')`, _somehow_.
+Template strings can also be _tagged_ by prefixing it with something called a _tag function_. The first argument to this function is an array of strings, and the second the array of expressions in the order they appear in between each substring. But again, because of JavaScript type coercion, one can do ` x.join`` ` in place of `x.join('')`, _somehow_.
 
 Most of the time, runs do not contain any of the quote characters `` ' " ` ``, or the backslash `\`, so any type of quote would do without escapes. In template literals delimited with backticks `` ` ``, the sequence `${`, which normally begins interpolation, is also escaped.
 
@@ -377,10 +373,10 @@ The string is converted into an array by spreading the individual characters in 
 `encodeRange` compresses and bijectively encodes the numbers inside a character range, with the comma and dot assigned as delimiters for numbers and ranges.
 
 -   Captures each unique character of the string, sorted by increasing Unicode code points;
--   Converts them into integers with `String#codePointAt` (decoding function is `String.fromCodePoint`);
+-   Converts them into integers with `String.codePointAt` (decoding function is `String.fromCodePoint`);
 -   Compresses ranges of consecutive integers into their inclusive start and end point, as soon as one is spotted, it raises an error.
--   Converts every integer and range into bijective base 30; and
--   Joins everything with _colons_ to delimit start/end pairs, _commas_ to delimit individual numbers/number pairs.
+-   Converts every integer and range into a bijective base; and
+-   Joins everything with _backslashes_ to delimit start/end pairs, _commas_ to delimit individual numbers/number pairs.
 
 Likewise, `decodeRange` does the opposite.
 
@@ -398,8 +394,8 @@ The following is the source code of these functions, minified for compactness sa
 ```js
 const encodeBijective=(n,e)=>{if(n<=0n)return"";e=[...new Set(e)];for(var t=BigInt,r=t(e.length),i=e[((n=t(n))%r||r)-1n];0n<(n=(n-1n)/r);)i=e[(n%r||r)-1n]+i;return i}
 const decodeBijective=(e,n)=>{n=[...new Set(n)],e=[...e];for(var t=BigInt,i=0n,r=t(n.length),c=e.length,d=0;d<c;d++)i+=t(n.indexOf(e[d])+1)*r**t(c-d-1);return i}
-const compressRange=(e,n,t=",",o=".")=>{return n=[...new Set(n)].filter(e=>e!=t&&e!=o).join``,[...new Set(e)].map(e=>e.codePointAt()).sort((e,n)=>e-n).reduce((e,n,t,o)=>{var r=o[t-1],i=n-r;return 0<t&&i==r-o[t-2]?(e[r=e.length-1][1]=n,1<i&&(e[r][2]=i)):e.push([n]),e},[]).map(e=>e.map(e=>encodeBijective(e,n)).join(o)).join(t)}
-const expandRange=(e,t,n=",",o=".")=>{return t=[...new Set(t)].filter(e=>e!=n&&e!=o).join``,e.split(n).map(e=>{var n,a,i,r,e=e.split(o).map(e=>+(""+decodeBijective(e,t)));return 1==e.length?e:([n,e,a=1,i=0]=[...e],r=n<e?1:-1,[...Array((Math.abs(e-n)+2*i)/a+1)].map((e,t)=>n-r*i+r*a*t))}).flat().map(e=>String.fromCodePoint(e)).join``}
+const compressRange=(e,n,t=",",o="\\")=>{return n=[...new Set(n)].filter(e=>e!=t&&e!=o).join``,[...new Set(e)].map(e=>e.codePointAt()).sort((e,n)=>e-n).reduce((e,n,t,o)=>{var r=o[t-1],i=n-r;return 0<t&&i==r-o[t-2]?(e[r=e.length-1][1]=n,1<i&&(e[r][2]=i)):e.push([n]),e},[]).map(e=>e.map(e=>encodeBijective(e,n)).join(o)).join(t)}
+const expandRange=(e,t,n=",",o="\\")=>{return t=[...new Set(t)].filter(e=>e!=n&&e!=o).join``,e.split(n).map(e=>{var n,a,i,r,e=e.split(o).map(e=>+(""+decodeBijective(e,t)));return 1==e.length?e:([n,e,a=1,i=0]=[...e],r=n<e?1:-1,[...Array((Math.abs(e-n)+2*i)/a+1)].map((e,t)=>n-r*i+r*a*t))}).flat().map(e=>String.fromCodePoint(e)).join``}
 ```
 
 Regardless if a particular substring occurs more than once in the input, it will still be hashed and stored in `$`. All hashed strings are grouped according to their Unicode _script_ or _general category_, decoded by looping over the keys, and finally spread out into `$`.
@@ -408,7 +404,7 @@ While most of these strings are encoded, some of them are decoded directly when 
 
 ### Encoding and decoding characters
 
-The compiler analyzes the text, and stores a record of all distinct Unicode characters inside the text and their code points. It then generates a category for each character, based on its Unicode metadata. This category corresponds to the _General Category_ of the Unicode character, if it is not a Letter, but if it is, its _Script_. Most Unicode characters are considered letters.
+The compiler analyzes the text, and stores a record of all distinct Unicode characters inside the text and their code points. It then generates a category for each character, based on its Unicode metadata. This category corresponds to the _General Category_ of the Unicode character, if it is not a `Letter`, but if it is, its _`Script`_. Most Unicode characters are considered letters.
 
 The compiler assigns a category to each code point, checking the character against a regular expression corresponding to its Unicode category or script, until it finds a match.
 
@@ -420,21 +416,21 @@ The compiler assigns a category to each code point, checking the character again
 -   Separator (`Z`): line (`Zl`), paragraph (`Zp`), space (`Zs`)
 -   Other (`C`): control (`Cc`), format (`Cf`), unassigned (`Cn`), private use (`Co`), surrogate (`Cs`)
 
-It then groups these characters according to the assigned categories, sorts them according to their code points in ascending order, and calls the `compressRange` function to generate a bijective base-30 encoded substring, with the comma `,` and period `.` functioning as delimiter characters for values and ranges.
+It then groups these characters according to the assigned categories, sorts them according to their code points in ascending order, and calls the `compressRange` function to generate a bijective base-30 encoded substring, with the comma `,` and backslash `\` functioning as delimiter characters for values and ranges
 
 These constant strings are decoded at runtime by the output and assigned integer keys starting from 1 in `$`, so they are decoded once rather than the encoded character range every time a substring of that script is decoded, this causes the program to run for a long time.
 
-The compiler ignores the space and the 32 symbol characters, which are inserted when the string is assembled in the very last step of the program.
+The compiler ignores the space and any sequence of 32 symbol characters, which are inserted when the string is assembled in the very last step of the program.
 
 ### Encoding substrings
 
 In addition to encoding character ranges, the compiler also has to encode the strings based on those character ranges. Likewise for the character categories, the compiler groups the strings by category, and encodes them with the corresponding character set. The result is assigned a key from a generator function, which yields bijective strings from increasing natural numbers, skipping those already defined.
 
-The substrings which do not contain any of the 32 symbol characters therefore have to be bijectively encoded with the same 32 characters, except only with varying character sets.
+The substrings which do not contain any of the 32 symbol characters therefore have to be bijectively encoded with base 31, minus the backslash, except only with varying character sets. Hence from here on out, _base-31_ implies bijective base-31 encoded strings with these 31 characters as its digits.
 
 #### Decimal digit substrings
 
-Anything that is not a symbol is encoded as bijective, to and from strings of different character sets with `BigInt` as an intermediate data type. All the encoded values are stored with the 31 characters in an arbitrary order (`` _$-,;:!?.@*/&#%^+<=>|~()[]{}'"` ``). Hence from here on out, _base-31_ implies bijective base-31 encoded strings with these 31 characters as its digits.
+Anything that is not a symbol is encoded as bijective, to and from strings of different character sets with `BigInt` as an intermediate data type. All the encoded values are stored with the 31 characters in an arbitrary order (`` _$-,;:!?.@*/&#%^+<=>|~()[]{}'"` ``).
 
 Numeric-only substrings are decoded straight from base-32, and then converted into strings, wrapping the resultant `BigInt` inside a template literal thereby stripping its `n` suffix. All tokens that fall under this category have the categorical name `Digit`.
 
@@ -442,7 +438,7 @@ Numeric-only substrings are decoded straight from base-32, and then converted in
 
 Alphanumeric substrings follow the same rules as numbers. Zero-padded numeric strings are considered _alphanumeric_ since all leading zeroes are stripped. All tokens that fall under this category have the categorical name `Alnum`.
 
-They are converted from `BigInt` values except this time from a constant digit string, which is the concatenation of Python's string constants `string.digits` and `string.ascii_letters`, or the first 62 digits of `base64`, and then hashed with the 32 characters in code point order, since it can be generated from the methods `Number#toString` and `String#toUpperCase`. This string,
+They are converted from `BigInt` values except this time from a constant digit string, which is the concatenation of Python's string constants `string.digits` and `string.ascii_letters`, or the first 62 digits of `base64`, and then hashed with the 31 characters in code point order, since it can be generated from the methods `Number#toString` and `String#toUpperCase`. This string,
 
 <!-- prettier-ignore -->
 ```js
@@ -456,13 +452,13 @@ is generated with the expression
 [[...Array(36)].map((_,a)=>a.toString(36)),[...Array(26)].map((_,a)=>(a+10).toString(36).toUpperCase())].flat().join``
 ```
 
-The compiler generates a `BigInt` from the encoded substring with the above constant string, and then encodes the resulting `BigInt` into a string with the corresponding encoding with the 32 characters.
+The compiler generates a `BigInt` from the encoded substring with the above constant string, and then encodes the resulting `BigInt` into a string with the corresponding encoding with the 31 characters.
 
 #### Unicode characters
 
 The compiler uses the same bijective numeration principle to encode the other Unicode characters as above, but each with their own character string which is generated by the compiler, with the function `encodeRange` not passed into runtime. The substrings are assigned the corresponding keys first; `decodeRange` decodes each Unicode substring before it can be used in the compiler.
 
-The tokens are grouped according to their script, sorted according to frequency, "decoded" by their character string into a `BigInt` and encoded into base-32. Each key is then assigned a bijective-encoded string in increasing order.
+The tokens are grouped according to their script, sorted according to frequency, "decoded" by their character string into a `BigInt` and encoded into base-31. Each key is then assigned a bijective-encoded string in increasing order.
 
 The encoded strings and their keys are then placed inside an array destructuring operation, the keys on the left hand side and the encoded substrings on the right hand side. The right hand side with a mapper function that repeatedly decodes every substring as each key-substring pair is assigned to `$`. Each statement corresponds to one of the scripts or categories assigned by the compiler, with priority given to integer and alphanumeric strings.
 
@@ -472,7 +468,7 @@ As soon as the regular expression encounters a non-ASCII letter, it begins a new
 
 The same logic applies for a non-Latin Unicode script, and even other Unicode characters.
 
-## Customization
+## Customizatio
 
 Here is a list of customization options available:
 
