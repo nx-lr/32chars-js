@@ -24,11 +24,11 @@ JavaScript is a great programming language. And just as it is great, it's also f
 
 Programmers have come up with many ways of exploiting this weird language by developing encoders or [obfuscators](https://obfuscator.io) to hide their scripts in plain sight. And some of them without the use of letters or numbers.
 
-In 2009, Yosuke Hasegawa, developed [jjencode](https://utf-8.jp/public/jjencode.html), which could encode arbitrary JavaScript into an obfuscated form utilizing only 18 symbols `[]()!+,\"$.:;_{}~=`.
+In 2009, Yosuke Hasegawa, developed [**`jjencode`**](https://utf-8.jp/public/jjencode.html), which could encode arbitrary JavaScript into an obfuscated form utilizing only 18 symbols `[]()!+,\"$.:;_{}~=`.
 
 Early the following year, an informal competition was held on the _Obfuscation_ forum on _Slackers_, a web application security site, to come up with a way to get the minimum number of characters required down to less than eight: `[]()!+,/`. Contributors managed to eliminate the need for the `,` and `/` characters, thereby reducing it to six: `[]()!+`.
 
-And for many years, the "Wall of Six", had not been broken yet. [Xchars.js](https://syllab.fr/projets/experiments/xcharsjs/index.html) by [Sylvain Pollet-Villard](https://syllab.fr/) was the first project that provided two different solutions for using five characters only: The `[+=_]` subset required a script with a special ID.
+And for many years, the _Wall of Six_, had not been broken yet. [**Xchars.js**](https://syllab.fr/projets/experiments/xcharsjs/index.html) by [Sylvain Pollet-Villard](https://syllab.fr/) was the first project that provided two different solutions for using five characters only: The first subset `[+=_]` required a script with a special ID.
 
 The second subset `[+|>]`, initiated by [Masato Kinugawa](https://twitter.com/kinugawamasato/status/915549498725695489) makes use of the TC39 pipeline operator proposal which is currently only available as a Babel plugin.
 
@@ -203,9 +203,9 @@ let cipher = "_$-,;:!?.@*/&#%^+<=>|~'\"`\\";
 
 #### Deriving letters
 
-We manipulate literals to evaluate to form the constants, `true`, `false`, `Infinity`, `NaN`, `undefined`, and an empty object `{}` which becomes the _string tag_ `'[object Object]'`. They yield us the following letters, case-sensitively: the space, the digits `0` to `9`, and the letters `a b c d e f i j l n o r s t u y I N O`.
+We manipulate literals to evaluate to form the constants, `true`, `false`, `Infinity`, `NaN`, `undefined`, and an empty object `{}` which becomes the **string tag** `'[object Object]'`. They yield us the following letters, case-sensitively: the space, the digits `0` to `9`, and the letters `a b c d e f i j l n o r s t u y I N O`.
 
-There are many ways to produce these literals, and only the ones with the minimum length are selected. These expressions are encoded inside a regular expression and then expanded at runtime with the [**`genex`**](https://github.com/alixaxel/genex.js/) library. Every time a literal or sub-expression of this type is expected, the compiler cycles through them.
+There are many ways to produce these literals, and only the ones with the minimum length are selected, encoded in a regular expression and expanded at runtime with the [**`genex`**](https://github.com/alixaxel/genex.js/) library. Every time a literal or sub-expression of this type is expected, the compiler cycles through them.
 
 ```js
 let constantExprs = {
@@ -235,11 +235,11 @@ Then, the letter `I` is extracted from `Infinity` by dividing `true` by `false`:
 
 ### Statements 3 and 4
 
-We use the letters we have retrieved to form the names of properties in our expressions by concatenating them letter by letter with the `+` operator. We form the words `constructor`, `concat`, `return`, `slice`, `sort`, `join`, `filter`, `source`, and the keywords `for` and `if`.
+We use the letters we have retrieved to form the names of properties in our expressions by concatenating them letter by letter with the `+` operator. We form the words `constructor`, `concat`, `return`, `slice`, `sort`, `join`, `filter`, `source`, and the keywords `for` and `if`. The keywords are suffixed with `_`.
 
-`[]` can also be used to call methods on values. For instance, `[]['flat']()` is semantically equivalent to `[].flat()`.
+`[]` is used to call methods on values. For instance, `[]['flat']()` is semantically equivalent to `[].flat()`.
 
-We can now access the constructors with the `constructor` property of "empty" literals or expressions: `Array`, `Boolean`, `Function`, `Number`, `String`, and `RegExp`, and similar to the previouos statement, we cast that constructor function into a string. `Object` is not considered part of this since all its letters are already defined in `$`.
+We can now access the constructors with the `constructor` property of "empty" literals or expressions: `Array`, `Boolean`, `Function`, `Number`, `String`, and `RegExp`, and similar to the previous statement, we cast that constructor function into a string. `Object` is not considered part of this since all its letters are already defined in `$`.
 
 ```js
 let constructorExprs = {
@@ -309,7 +309,7 @@ Functions can be converted into strings, which yield their source code when conv
 -   We quote the remaining portions of the string which are symbols, and join everything up with the string concatenation operator `+`.
 -   Finally, we pass the expression inside the `eval` function, which returns an anonymous function that is then assigned its corresponding primitive expression.
 
-<!-- 
+<!--
 ### Similar strings
 
 Using various string methods, we can employ algorithms to produce similar strings, so to minimize the number of values that need to be encoded. Some substrings manipulating primitive values like `'function'`, `'Array'`, `'undefined'`, `'object'`, so we can derive substrings from those.
