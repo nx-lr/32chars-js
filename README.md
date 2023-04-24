@@ -20,9 +20,7 @@ A major problem with JavaScript esoteric subsets like _JSF\*ck_ [Martin Kleppe] 
 
 ## History
 
-JavaScript is a great programming language. And just as it is great, it's also funny, weird and complicated.
-
-comes from JavaScript is weird and complicated. Much of that weirdness comes from its _loose typing_ that is "_completely detached from reality_" [Jeff Delaney, Fireship.io], allowing any expression to be evaluated as any type.
+JavaScript is a great programming language. And just as it is great, it's also funny, weird and complicated. Much of that weirdness comes from its _loose typing_ that is "_completely detached from reality_" [Jeff Delaney, Fireship.io], allowing any expression to be evaluated as any type.
 
 Programmers have come up with many ways of exploiting this weird language by developing encoders or [obfuscators](https://obfuscator.io) to hide their scripts in plain sight. And some of them without the use of letters or numbers.
 
