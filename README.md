@@ -92,7 +92,7 @@ The text is split by the space ` `, since regardless of script, ` ` is the most 
 
 ## Breaking down the output
 
-The output file uses only two variables, the underscore `_` and the dollar sign `$`. By default, `$` assigns characters, encoded substrings and functions to programmatically generated keys.The substrings are referenced, decoded and then used to build back the original string.
+The output file uses only two variables, the underscore `_` and the dollar sign `$`. By default, `$` assigns characters, encoded substrings and functions to programmatically generated keys. The substrings are referenced, decoded and then used to build back the original string.
 
 However, we have to form words that we use repeatedly to derive other letters, or form part of crucial functions. Some of these are keywords, function, method and property names. Throughout, only those that repeat twice or more are encoded with a specific, arbitrary key.
 
@@ -142,10 +142,9 @@ const props = {
     toString: "'",
 
     // statement 8: toString, escape and call
-    // U h k q w z
+    // U h w
 
     // statement 9
-    keys: "&",
     length: ":",
     raw: "`",
     toUpperCase: "@",
@@ -256,15 +255,15 @@ Since now we have the method names `entries` and `fromEntries`, and we can get t
 const mapValues=(obj,func)=>Object.fromEntries(Object.entries(obj).map(([key,val])=>[key,func(val)]));
 ```
 
-This function is assigned the key of `NaN` or `+{}`.
+This function is assigned the key of `true` or `![]`.
 
 ### Statement 5 and beyond
 
 The cycle of forming words, deriving characters and assigning them to `$` repeats yet again, until a general way of retrieving and decoding characters is found.
 
-We retrieve the following letters: `C D U h k w` to make the strings `toString`, `keys`, `length`, `raw` and `toUpperCase`, and the keyword `new`. Initiating a `Set` without prefixing a `new` keyword will throw a `TypeError`. We do not need the other two letters `q` and `z`, so we can skip them over.
+We retrieve the following letters: `C D U h w` to make the strings `toString`, `length`, `raw` and `toUpperCase`, and the keyword `new`. Initiating a `Set` without prefixing a `new` keyword will throw a `TypeError`. We do not need the other two letters `q` and `z`, so we can skip them over.
 
-#### `toString` and lowercase `h k w`
+#### `toString` and lowercase `h w`
 
 `toString` is formed by concatenating the letters `t` and `o`, and then retrieving the string `'String'` from the `String` constructor, by accessing its `name` property. With `toString`, we can retrieve the rest of the lowercase alphabet by converting numbers from base 10 to 36.
 
@@ -341,9 +340,8 @@ If the compiler evaluates either literal with the `eval` and still produces an e
 There are four aliased functions encoded inside the output:
 
 -   `encodeBijective`, aliased `0`;
--   `decodeBijective`, aliased `-1`;
--   `compressRange`, aliased `false`; and
--   `expandRange`, aliased `true`.
+-   `decodeBijective`, aliased `-1`; and
+-   `generateBlock`, aliased `NaN`.
 
 All these functions rely on the principle of **[bijective numeration](https://en.wikipedia.org/wiki/Bijective_numeration)**; every non-negative integer can be represented in exactly one way with a finite string of digits. The reverse is true: every string of digits made from an indexed, unique character set, corresponds to a natural number.
 
@@ -351,8 +349,7 @@ All these functions rely on the principle of **[bijective numeration](https://en
 const functionAliases = {
     encodeBijective: "+[]", // 0
     decodeBijective: "~[]", // -1
-    compressRange: "![]", // false
-    expandRange: "!''", // true
+    generateRange: "+''", // true
 };
 ```
 
@@ -370,23 +367,12 @@ const functionAliases = {
 
 The string is converted into an array by spreading the individual characters in a string into a new `Set` object, which ensures the passed string contains unique characters, and then finally into an array, including astral code points which normally are encoded as two code points if inside a string.
 
-`encodeRange` compresses and bijectively encodes the numbers inside a character range, with the comma and dot assigned as delimiters for numbers and ranges.
-
--   Captures each unique character of the string, sorted by increasing Unicode code points;
--   Converts them into integers with `String.codePointAt` (decoding function is `String.fromCodePoint`);
--   Compresses ranges of consecutive integers into their inclusive start and end point, as soon as one is spotted, it raises an error.
--   Converts every integer and range into a bijective base; and
--   Joins everything with _backslashes_ to delimit start/end pairs, _commas_ to delimit individual numbers/number pairs.
-
 Likewise, `decodeRange` does the opposite.
 
--   Splits the encoded substring by delimiter and range
--   Decodes them with `decodeBijective` using the 32 characters
--   Converts each resulting `BigInt` into a `String` and then a `Number`
--   Expands each range with an inclusive range function, else just leaves it alone
--   Flattens the resulting array
--   Maps each integer to its Unicode code point, to retrieve the corresponding Unicode character
--   Joins the resulting characters into a string to use in decoding
+-   Splits the base-31-encoded substring with the backslash
+-   Decodes the smallest and largest code points of that block
+-   Generates an inclusive array of numbers, and calls `String.fromCodePoint` on each
+-   Joins and returns a string of all the characters of that block
 
 The following is the source code of these functions, minified for compactness sake.
 
@@ -404,23 +390,13 @@ While most of these strings are encoded, some of them are decoded directly when 
 
 ### Encoding and decoding characters
 
-The compiler analyzes the text, and stores a record of all distinct Unicode characters inside the text and their code points. It then generates a category for each character, based on its Unicode metadata. This category corresponds to the _General Category_ of the Unicode character, if it is not a `Letter`, but if it is, its _`Script`_. Most Unicode characters are considered letters.
+The compiler analyzes the text, and stores a record of all distinct Unicode characters inside the text, their code points and what **block** it belongs to. The printable ASCII characters `U+20` to `U+7E` inclusive, as well as invalid code points not bound by a block and stray surrogates are excluded.
 
-The compiler assigns a category to each code point, checking the character against a regular expression corresponding to its Unicode category or script, until it finds a match.
-
--   Letter (`L`): lowercase (`Ll`), modifier (`Lm`), titlecase (`Lt`), uppercase (`Lu`), other (`Lo`)
--   Mark (`M`): spacing combining (`Mc`), enclosing (`Me`), non-spacing (`Mn`)
--   Number (`N`): decimal digit (`Nd`), letter (`Nl`), other (`No`)
--   Punctuation (`P`): connector (`Pc`), dash (`Pd`), initial quote (`Pi`), final quote (`Pf`), open (`Ps`), close (`Pe`), other (`Po`)
--   Symbol (`S`): currency (`Sc`), modifier (`Sk`), math (`Sm`), other (`So`)
--   Separator (`Z`): line (`Zl`), paragraph (`Zp`), space (`Zs`)
--   Other (`C`): control (`Cc`), format (`Cf`), unassigned (`Cn`), private use (`Co`), surrogate (`Cs`)
-
-It then groups these characters according to the assigned categories, sorts them according to their code points in ascending order, and calls the `compressRange` function to generate a bijective base-30 encoded substring, with the comma `,` and backslash `\` functioning as delimiter characters for values and ranges
+The compiler groups the characters according to their block, sorts them by their code point, and generates a pair of values encoded as base 31, with `\\` separating the start and end code points. Excluded characters are generated individually by the compiler.
 
 These constant strings are decoded at runtime by the output and assigned integer keys starting from 1 in `$`, so they are decoded once rather than the encoded character range every time a substring of that script is decoded, this causes the program to run for a long time.
 
-The compiler ignores the space and any sequence of 32 symbol characters, which are inserted when the string is assembled in the very last step of the program.
+The compiler ignores the space and any sequence of 32 symbol characters, which are inserted when the string is assembled.
 
 ### Encoding substrings
 
@@ -430,15 +406,15 @@ The substrings which do not contain any of the 32 symbol characters therefore ha
 
 #### Decimal digit substrings
 
-Anything that is not a symbol is encoded as bijective, to and from strings of different character sets with `BigInt` as an intermediate data type. All the encoded values are stored with the 31 characters in an arbitrary order (`` _$-,;:!?.@*/&#%^+<=>|~()[]{}'"` ``).
+Anything that is not a symbol is encoded as bijective, to and from strings of different character sets with `BigInt` as an intermediate data type. All the encoded values are stored with the 31 characters, with the quoting characters appended at the back (`` _$-,;:!?.@*/&#%^+<=>|~()[]{}'"` ``).
 
-Numeric-only substrings are decoded straight from base-32, and then converted into strings, wrapping the resultant `BigInt` inside a template literal thereby stripping its `n` suffix. All tokens that fall under this category have the categorical name `Digit`.
+Numeric-only substrings are decoded straight from base-31, and then converted into strings, wrapping the resultant `BigInt` inside a template literal to strip off its `n` suffix. All tokens that fall under this category have the categorical name `Digit`.
 
 #### Alphanumeric substrings
 
-Alphanumeric substrings follow the same rules as numbers. Zero-padded numeric strings are considered _alphanumeric_ since all leading zeroes are stripped. All tokens that fall under this category have the categorical name `Alnum`.
+Alphanumeric substrings follow the same rules as numbers. Zero-padded numeric strings are considered in this category since all leading zeroes are stripped. All tokens here have the categorical name `Alnum`.
 
-They are converted from `BigInt` values except this time from a constant digit string, which is the concatenation of Python's string constants `string.digits` and `string.ascii_letters`, or the first 62 digits of `base64`, and then hashed with the 31 characters in code point order, since it can be generated from the methods `Number#toString` and `String#toUpperCase`. This string,
+They are converted from `BigInt` values, except this time from a constant digit string, which is the concatenation of Python's string constants `string.digits` and `string.ascii_letters`, or the first 62 digits of `base64`, and then hashed with the 31 characters in code point order, since it can be generated from the methods `Number.toString` and `String.toUpperCase`. This string,
 
 <!-- prettier-ignore -->
 ```js
@@ -452,23 +428,21 @@ is generated with the expression
 [[...Array(36)].map((_,a)=>a.toString(36)),[...Array(26)].map((_,a)=>(a+10).toString(36).toUpperCase())].flat().join``
 ```
 
-The compiler generates a `BigInt` from the encoded substring with the above constant string, and then encodes the resulting `BigInt` into a string with the corresponding encoding with the 31 characters.
+The compiler generates a `BigInt` from the encoded substring with the above constant string, and then encodes the resulting `BigInt` into a string with the corresponding encoding in base-31.
 
-#### Unicode characters
+#### Unicode substrings
 
-The compiler uses the same bijective numeration principle to encode the other Unicode characters as above, but each with their own character string which is generated by the compiler, with the function `encodeRange` not passed into runtime. The substrings are assigned the corresponding keys first; `decodeRange` decodes each Unicode substring before it can be used in the compiler.
+The compiler uses the same bijective principle to encode the other Unicode characters, but each with their own start and end code points as defined in Unicode. Each unique substring captured by the tokenizer are assigned their own keys from the generator function
 
-The tokens are grouped according to their script, sorted according to frequency, "decoded" by their character string into a `BigInt` and encoded into base-31. Each key is then assigned a bijective-encoded string in increasing order.
+The tokens are grouped by their block, sorted by frequency, decoded bijectively by their zero-shifted code points and encoded bijectively into base-31. Each key is then assigned a bijective-encoded string in increasing order.
 
-The encoded strings and their keys are then placed inside an array destructuring operation, the keys on the left hand side and the encoded substrings on the right hand side. The right hand side with a mapper function that repeatedly decodes every substring as each key-substring pair is assigned to `$`. Each statement corresponds to one of the scripts or categories assigned by the compiler, with priority given to integer and alphanumeric strings.
+The encoded strings and their keys are then placed inside an object with the key and the encoded value, and a mapper function loops over the values of the object and decodes them when the result is run.
 
-### Tokenization
+### Assembling back the input string
 
-As soon as the regular expression encounters a non-ASCII letter, it begins a new token and matches all other Latin characters of the word and assigns that matched substring to the category `Latin`. The ASCII letter substring before is assigned `Alnum`. This is because the compiler captures ASCII alphanumeric substrings before capturing Latin-script substrings.
+The final string is composed by putting all the strings in an array, with the decoded substrings included in the result. The input string is first split by spaces, and the rest of the substrings concatenated if they do not have any spaces between them.
 
-The same logic applies for a non-Latin Unicode script, and even other Unicode characters.
-
-## Customizatio
+## Customization
 
 Here is a list of customization options available:
 
