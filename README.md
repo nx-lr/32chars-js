@@ -6,65 +6,113 @@
 
 ## Introduction
 
-32chars.js is a JavaScript encoder that encodes and obfuscates a piece of text into the shortest possible valid JavaScript code with only 32 ASCII symbol characters: `` !"#$%&'()*+,-./:;<=>?@[\]^_`{|}~ ``.
+**32chars.js** is a JavaScript encoder/obfuscator that that compiles a piece of text into the shortest possible valid JavaScript code with only 32 ASCII symbol characters. The 32 characters are: `` !"#$%&'()*+,-./:;<=>?@[\]^_`{|}~ ``.
 
-This project is a testament to the many existing JavaScript encoders out there, and the spiritual successor to the original, [jjencode](https://utf-8.jp/public/jjencode.html).
+A major problem with JavaScript esoteric subsets like _JSF\*ck_ [Martin Kleppe] is that they are **extremely verbose**. Certain single characters require far more than a thousand characters when expanded. The following is the JSF\*ck expression for lowercase `y`, pretty-printed for your convenience:
 
-## Background
+<!-- prettier-ignore -->
+```js
+(+[![]] +
+    [+(+!+[] + (!+[] + [])[!+[] + !+[] + !+[]] + +!+[] + +[] + +[] + +[])])[
+    +!+[] + [+[]]
+]
+```
 
-JavaScript has many weird and complicated parts. And it just so happens that they can write in JavaScript without any alphanumeric characters, but a minimal set of characters, up to [five](https://aem1k.com/five/) or [six](http://www.jsfuck.com/) possible symbols.
+## History
 
-The major problem with these compilers' outputs are extremely verbose, where a single character may expand to thousands of characters in this extremely minimal alphabet.
+JavaScript is a great programming language. And just as it is great, it's also funny, weird and complicated.
 
-32chars.js takes the exact opposite approach, using all of the punctuation and symbol characters in ASCII. Most, if not all of these characters, have special meaning in every major programming language.
+comes from JavaScript is weird and complicated. Much of that weirdness comes from its _loose typing_ that is "_completely detached from reality_" [Jeff Delaney, Fireship.io], allowing any expression to be evaluated as any type.
 
-So rather than encoding every single character in the input string, we break the string into runs of more than one character in length, where all the characters in that substring share common properties.
+Programmers have come up with many ways of exploiting this weird language by developing encoders or [obfuscators](https://obfuscator.io) to hide their scripts in plain sight. And some of them without the use of letters or numbers.
 
-With a large character set, we can minimize repetition, and the number of operations performed by the JavaScript engine.
+In 2009, Yosuke Hasegawa, developed [jjencode](https://utf-8.jp/public/jjencode.html), which could encode arbitrary JavaScript into an obfuscated form utilizing only 18 symbols `[]()!+,\"$.:;_{}~=`.
+
+Early the following year, an informal competition was held on the _Obfuscation_ forum on _Slackers_, a web application security site, to come up with a way to get the minimum number of characters required down to less than eight: `[]()!+,/`. Contributors managed to eliminate the need for the `,` and `/` characters, thereby reducing it to six: `[]()!+`.
+
+And for many years, the "Wall of Six", had not been broken yet. [Xchars.js](https://syllab.fr/projets/experiments/xcharsjs/index.html) by [Sylvain Pollet-Villard](https://syllab.fr/) was the first project that provided two different solutions for using five characters only: The `[+=_]` subset required a script with a special ID.
+
+The second subset `[+|>]`, initiated by [Masato Kinugawa](https://twitter.com/kinugawamasato/status/915549498725695489) makes use of the TC39 pipeline operator proposal which is currently only available as a Babel plugin.
+
+The third subset `[$+=]`, developed by Sylvain Pollet-Villard and Martin Kleppe themselves, make use of a specific version of jQuery UI (1.12.4), mapping specific characters based on the position in the source code.
+
+The same principles work with other versions of JQuery. It uses a public property of the `DatePicker` plugin to get access to the document body and inject the obfuscated script.
+
+## Rules
+
+The compiler should be a single file, and not contain any dependencies.
+
+The output code should:
+
+-   Evaluate exactly to the input string.
+-   Only contain the 32 characters.
+-   Be of the shortest length, using the least bytes.
+-   Run as a standalone file, no third-party libraries.
+-   Run anywhere, even outside the browser.
+-   Run without any special compilers, variables, IDs.
+-   Not overload any operators, variables.
+-   Not use any experimental syntax.
 
 ## Walkthrough
 
-With a large character set, most of these symbols also are valid JavaScript tokens. The most significant of them are:
+With a large character set, most of these symbols also are valid JavaScript tokens.
 
--   The quote characters `'`, `"` and `` ` `` delimit strings. The back tick `` ` `` delimits template strings, which allow for interpolation and tagged function calls.
--   Combinations of `_` and `$` form variables and identifiers.
--   The plus sign `+` concatenates strings, adds numbers and (tries to) cast other values into numbers.
--   Arithmetic `+ - * / % **` and bitwise `& | ^ ~ << >> >>>` operators with a `Number` and `BigInt` on either side.
--   The dot `.` accesses object properties that are valid JavaScript identifiers.
--   The comma `,` delimits array elements, function arguments and object properties, and can assign multiple variables in a single statement via de-structuring.
--   The semicolon `;` does what it does: separate statements.
--   The round brackets `()` calls functions and groups expressions with different precedences.
--   The square brackets `[]` accesses array and object elements; on their own, they create array literals.
--   The curly brackets `{}` delimit object literals when beside code blocks.
--   The construct `${}` interpolates expressions in template strings, converting them into strings if untagged.
--   The slash `/` to delimit regular expression literals and divide numbers.
--   The backslash `\` to escape characters in strings, even themselves.
+| Token | Place | Function |
+| --- | --- | --- |
+| `_ $` | Anywhere | Forms identifiers |
+| `/` | After brackets or statements | Forms regular expression literals |
+| `/` | Between expressions | Divides two numbers |
+| `+` | Between numbers | Adds numbers together |
+| `+` | Between expressions | Coerces into strings, and concatenates |
+| `+` | Before expressions | Coerces into number |
+| `-` | Before expressions | Coerces into number and negates |
+| `~` | Before expressions | Coerces into number and returns bitwise complement |
+| `!` | Before expressions | Coerces into Boolean and negates |
+| `:` | Inside objects | Separates key from value |
+| `,` | Outside brackets | Separates statements |
+| `,` | Inside brackets | Separates expressions, arguments, and properties |
+| `;` | Outside brackets | Separates statements |
+| `.` | Between two identifiers | Delimits object properties |
+| `' "` | Anywhere | Forms regular string |
+| `` ` `` | After expressions | Forms a tagged template string |
+| `` ` `` | Elsewhere | Forms a plain template string |
+| `${ }` | Inside template strings | Interpolates expressions |
+| `\` | Inside strings | Escapes characters |
+| `( )` | Elsewhere | Encloses expressions with different precedence |
+| `( )` | After expressions | Calls function or method |
+| `( )` | Before `=>` | Delimits function arguments |
+| `[ ]` | Elsewhere | Forms array literal |
+| `[ ]` | After expressions | Accesses object properties, array elements and string characters |
+| `{ }` | Elsewhere | Forms object literal |
+| `{ }` | After `=>` | Delimits function body |
 
-We have syntax to form strings literally. Strings are very fundamental to obfuscation, as we can store character sequences as custom data.
+Of course we can form strings. Strings are very fundamental to obfuscation, as we can store character sequences as custom data.
 
-However, there are many other ways to create strings, using JavaScript's newest syntax and functions: `RegExp` and `BigInt` data types, and many `String`, `Array`, and `Object` methods.
+There are three ways that we can represent strings literally: `'` and `"` form _regular strings_, and `` ` `` which forms a _template string_ which allows interpolation or calling functions and methods on them.
+
+However, there are of course many other ways to create strings, using JavaScript's latest syntax and built-in functions: `RegExp` and `BigInt` data types, and many `String`, `Array`, and `Object` methods.
 
 The compiler uses a two-step substitution encoding. First, characters and functions are assigned to variables and properties with programmatically generated keys, These are then decoded through these operations, and used either to construct new substrings or build back the original string.
 
 There are of course edge cases. Some expressions innately produce strings: constants (e.g. `true`, `false`, `0`), string tags (e.g. `[object Object]`), date strings (e.g. `2011-10-05T14:48:00.000Z`) and source code (e.g. `function Array() { [native code] }`).
 
-The compiler parses the text into categorical tokens depending on the type of character. This includes ASCII punctuation, digits and letters, words with diacritics, non-Latin scripts, and Unicode code points.
+The compiler tokenizes the input string recursively into categorical tokens: spaces, zeroes, ASCII punctuation, alphanumerics, non-Latin scripts, and other Unicode code points.
 
-JavaScript stores strings as **UTF-16**, so all BMP characters, code points `U+0000` to `U+FFFF` are encoded as _two_ bytes while the rest are encoded as _four_.
+JavaScript stores strings as **UTF-16**, so all BMP characters, code points `U+0000` to `U+FFFF` are encoded as _two_ bytes, except surrogate pairs, while code points from `U+10000` to `U+10FFFF`, are called _"astral"_ code points and encoded with the surrogate pairs.
 
 The text is split by a delimiter such as a space, or the most common substring which the compiler detects. The split elements go into an array and delimited with commas. There could be empty array slots, so nothing goes in between the commas. Unfortunately, JavaScript ignores trailing commas, so we have to explicitly add a trailing comma if the final element of an output array is empty.
 
 ### Quoting string literals
 
-We create string literals in JavaScript in three ways: single-quoted `''`, double-quoted `""` and _template_ (back tick) strings ` `` `. Both single and double-quoted strings are functionally the same. Template strings allow for interpolating values with the `${}` syntax. In the output, we quote sequences of ASCII symbols directly as they are in any of these three quotes.
+We create string literals in JavaScript in three ways: single-quoted `''`, double-quoted `""` and _template_ (backtick) strings ` `` `. Both single and double-quoted strings are functionally the same. Template strings allow for interpolating values with the `${}` syntax. In the output, we quote sequences of ASCII symbols directly as they are in any of these three quotes.
 
 Usually, the runs do not contain any of the quote characters `` ' " ` ``, or the backslash `\`, so any type of quote would do without escapes. If any of these above-mentioned characters are present, then the backslash, and the corresponding quote character is escaped, by prefixing it with a backslash (like `'\\'`), preventing the string from abruptly ending.
 
-In template literals delimited with back ticks `` ` ``, the sequence `${`, which begins interpolation, is also escaped to avoid opening interpolation.
+In template literals delimited with backticks `` ` ``, the sequence `${`, which begins interpolation, is also escaped to avoid opening interpolation.
 
 Each substring in the output goes through a quoting function, and calls `jsesc` on each. The number of escapes in all the three strings are counted, and the string literal with the least number of escapes is selected. In most cases where there are no escapes, the compiler just falls back cycling between the three delimiters.
 
-The rules for quoting object keys are different: back tick-delimited strings cannot be used, as they throw a syntax error; string keys which are valid identifiers, i.e. combinations of `_` and `$`, do not need to be quoted.
+The rules for quoting object keys are different: backtick-delimited strings cannot be used, as they throw a syntax error; string keys which are valid identifiers, i.e. combinations of `_` and `$`, do not need to be quoted.
 
 ### Statement 1
 
@@ -379,7 +427,7 @@ Here is a list of customization options available:
 -   `logResult` - Whether to log the result string. The default is `false`.
 -   `export` - Which key to export the string if `exportObject` is true. The default is `'object'`.
 -   `export` - Which key to export the string if `exportResult` is true. The default is `'result'`.
--   `defaultQuote` - Quoting style to fall back to, if smart quoting is enabled. One of `single`, `double`, or `back tick`. The default is `double`.
+-   `defaultQuote` - Quoting style to fall back to, if smart quoting is enabled. One of `single`, `double`, or `backtick`. The default is `double`.
 -   `'objectQuote'` - Whether to quote keys inside objects and which quotes to use. `'none'` skips quoting identifier keys, so sequences of `_` and `$` will not be quoted. If `calc` is selected, all the keys will be quoted inside square brackets. The default is `'none'`; options are `'none'`, `'single'`, `'double'` or `'calc'`.
 -   `smartQuote` - Whether or not to enable "smart" quoting; choosing quotes with the least number of escapes. If disabled, all strings inside the output, including object keys, will be quoted to `defaultQuote` and `objectQuote`. The default is `true`.
 -   `tokenLength` - Maximum length of a tokenized substring, inclusive of punctuation. All tokens will thus be split into the desired length. The default is `64`.
