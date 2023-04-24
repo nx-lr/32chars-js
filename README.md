@@ -2,7 +2,7 @@
 
 ## Disclaimer
 
-**This program is meant for education and experimental purposes only. THIS PROGRAM SHALL NOT BE USED FOR ANY MALICIOUS PURPOSE WHATSOEVER. I WILL NOT HOLD ANY RESPONSIBILITY FOR ANY DAMAGE.**
+**This program is meant for educational purposes ONLY. I will not be responsible for any damage caused.**
 
 ## Introduction
 
