@@ -2,7 +2,7 @@
 
 ## Disclaimer
 
-**This program is meant for educational purposes ONLY. I will not be responsible for any damage caused.**
+**This program is meant for educational purposes ONLY.**
 
 ## Introduction
 
